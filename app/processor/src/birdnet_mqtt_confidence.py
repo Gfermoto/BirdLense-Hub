@@ -83,9 +83,10 @@ def merge_birdnet_mqtt_bias_into_overrides(
     auto_val = max(0.01, min(auto_val, 0.99))
 
     now = datetime.now(timezone.utc)
+    from species_mapping_config import build_species_mapping
     from species_normalizer import normalize
 
-    species_mapping = app_config.get("detection.species_mapping") or {}
+    species_mapping = build_species_mapping(app_config)
     adjusted = 0
     try:
         prior_scores = mqtt_aggregator.get_birdnet_prior_scores(

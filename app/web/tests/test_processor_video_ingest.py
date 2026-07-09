@@ -9,7 +9,7 @@ from services.processor_ingest.video_ingest import prepare_processor_video
 
 @pytest.fixture
 def _patch_stat_ok(monkeypatch):
-    def _stat(path: str, *, kind: str):
+    def _stat(path: str):
         return True, "/resolved/" + path, None
 
     monkeypatch.setattr(
@@ -50,26 +50,13 @@ def test_prepare_rejects_below_min_confidence(_patch_stat_ok):
     assert "threshold" in r[1].get("error", "")
 
 
-def test_prepare_success_strips_bad_spectrogram(_patch_stat_ok, monkeypatch):
-    calls = []
-
-    def _stat(path: str, *, kind: str):
-        calls.append((path, kind))
-        if kind == "video":
-            return True, "/v/" + path, None
-        return False, None, "missing"
-
-    monkeypatch.setattr(
-        "services.processor_ingest.video_ingest.stat_recording_layout_file",
-        _stat,
-    )
+def test_prepare_success(_patch_stat_ok):
     t = datetime.now(timezone.utc).isoformat()
     r = prepare_processor_video(
         {
             "start_time": t,
             "end_time": t,
             "video_path": "data/recordings/2026/01/01/12-00-00/video.mp4",
-            "spectrogram_path": "data/recordings/2026/01/01/12-00-00/spec.png",
             "species": [
                 {"species_name": "Great Tit", "confidence": 0.9, "start_time": 0, "end_time": 1},
             ],
@@ -78,5 +65,5 @@ def test_prepare_success_strips_bad_spectrogram(_patch_stat_ok, monkeypatch):
     )
     assert r[0] is True
     pv = r[1]
-    assert pv.spectrogram_path == ""
+    assert pv.video_path.endswith("video.mp4")
     assert "Great Tit" in (pv.species_list[0].get("species_name") or "")

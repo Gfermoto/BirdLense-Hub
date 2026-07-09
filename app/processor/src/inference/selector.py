@@ -1,4 +1,4 @@
-"""Выбор backend инференса: OpenVINO (дефолт), torch; ONNX Runtime — позже (#371)."""
+"""Выбор backend инференса: torch, ONNX Runtime."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ import importlib.util
 import os
 from typing import Any, Mapping
 
-_IMPLEMENTED = frozenset({"torch", "openvino", "auto"})
-_PLANNED = frozenset({"onnxruntime", "tensorrt"})
+_IMPLEMENTED = frozenset({"torch", "onnxruntime", "tensorrt", "auto"})
+_PLANNED: frozenset[str] = frozenset()
 _BACKEND_ALIASES = {"onnx": "onnxruntime"}
 
 
@@ -34,13 +34,15 @@ def _resolve_backend(
 
 def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> str:
     """
-    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``openvino``.
+    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``.
+
+    По умолчанию ``torch``.
     """
     return _resolve_backend(
         app_config,
         env_key="BIRDLENSE_INFERENCE_BACKEND",
         config_key="processor.inference_backend",
-        default="openvino",
+        default="torch",
     )
 
 
@@ -50,9 +52,6 @@ def resolve_inference_device(app_config: Mapping[str, Any] | None = None) -> str
 
     Приоритет: ``BIRDLENSE_INFERENCE_DEVICE``, затем ``processor.inference_device``.
     Пустая строка → ``None`` (поведение Ultralytics по умолчанию).
-
-    Примеры для OpenVINO на Intel: ``intel:gpu``, ``intel:cpu``, ``intel:npu``
-    (см. документацию Ultralytics OpenVINO).
     """
     raw = (os.environ.get("BIRDLENSE_INFERENCE_DEVICE") or "").strip()
     if not raw and app_config is not None:
@@ -68,13 +67,13 @@ def resolve_classifier_inference_backend(
     Отдельный backend для классификатора.
 
     Приоритет: ``BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND``, затем
-    ``processor.classifier_inference_backend``, иначе ``openvino``.
+    ``processor.classifier_inference_backend``, иначе ``torch``.
     """
     return _resolve_backend(
         app_config,
         env_key="BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND",
         config_key="processor.classifier_inference_backend",
-        default="openvino",
+        default="torch",
     )
 
 
@@ -110,49 +109,6 @@ def assert_backend_supported(backend: str) -> None:
         )
 
 
-def openvino_runtime_available() -> bool:
-    """Проверить, установлен ли runtime OpenVINO (для auto-fallback)."""
-    return importlib.util.find_spec("openvino") is not None
-
-
-def resolve_openvino_device_policy(device: str) -> list[str]:
-    """
-    Развернуть политику устройств OpenVINO для прогрева/ретраев (Ultralytics OpenVINO).
-
-    ``auto`` → сначала iGPU, затем CPU; ``cpu`` и ``intel:cpu`` → только CPU.
-    """
-    d = (device or "auto").strip().lower()
-    if d == "auto":
-        return ["intel:gpu", "intel:cpu"]
-    if d in ("cpu", "intel:cpu"):
-        return ["intel:cpu"]
-    return [d]
-
-
-def resolve_openvino_profile(app_config: Mapping[str, Any] | None = None) -> str:
-    """latency / throughput; env ``BIRDLENSE_OPENVINO_PROFILE`` перекрывает конфиг."""
-    raw = (os.environ.get("BIRDLENSE_OPENVINO_PROFILE") or "").strip().lower()
-    if raw in ("latency", "throughput"):
-        return raw
-    if app_config is not None:
-        cfg = app_config.get("processor.openvino.profile")
-        if cfg is not None:
-            v = str(cfg).strip().lower()
-            if v in ("latency", "throughput"):
-                return v
-    return "latency"
-
-
-def resolve_openvino_num_requests(app_config: Mapping[str, Any] | None = None) -> int:
-    """Число infer-запросов; env ``BIRDLENSE_OPENVINO_NUM_REQUESTS`` перекрывает конфиг."""
-    raw = (os.environ.get("BIRDLENSE_OPENVINO_NUM_REQUESTS") or "").strip()
-    if raw.isdigit():
-        return max(1, int(raw))
-    if app_config is not None:
-        cfg = app_config.get("processor.openvino.num_requests")
-        if cfg is not None:
-            try:
-                return max(1, int(cfg))
-            except (TypeError, ValueError):
-                pass
-    return 1
+def onnxruntime_classifier_available() -> bool:
+    """ONNX Runtime available for birder_eu classifier path."""
+    return importlib.util.find_spec("onnxruntime") is not None

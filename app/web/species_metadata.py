@@ -38,6 +38,33 @@ _DISAMBIG_WIKI_TITLE_BY_COMMON_KEY: dict[str, str] = {
 
 # Строки каталога с ALL CAPS / опечатками (нет совпадения с allowlist) — подставляем стабильный заголовок en.wikipedia.
 _TYPO_SPECIES_WIKI_TITLE_BY_KEY: dict[str, str] = {
+    "african oyster catcher": "African oystercatcher",
+    "alberts towhee": "Albert's towhee",
+    "ashy thrushbird": "Ashy thrush",
+    "asian dollard bird": "Asian dollarbird",
+    "auckland shaq": "Auckland shag",
+    "banded pita": "Banded pitta",
+    "black cockato": "Red-tailed black cockatoo",
+    "black headed caique": "Black-headed caique",
+    "blackburniam warbler": "Blackburnian warbler",
+    "blonde crested woodpecker": "Blond-crested woodpecker",
+    "blue coau": "Blue coua",
+    "brandt cormarant": "Brandt's cormorant",
+    "brown crepper": "Brown creeper",
+    "brown noody": "Brown noddy",
+    "chestnet bellied euphonia": "Chestnut-bellied euphonia",
+    "crested nuthatch": "Velvet-fronted nuthatch",
+    "curl crested aracuri": "Curl-crested aracari",
+    "d-arnauds barbet": "D'Arnaud's barbet",
+    "double barred finch": "Double-barred finch",
+    "double brested cormarant": "Double-crested cormorant",
+    "eared pita": "Eared pitta",
+    "eastern towhee": "Eastern towhee",
+    "eastern towee": "Eastern towhee",
+    "eastern wip poor will": "Eastern whip-poor-will",
+    "fire tailled myzornis": "Fire-tailed myzornis",
+    "frill back pigeon": "Frillback pigeon",
+    "go away bird": "Gray go-away-bird",
     "golden bower bird": "Golden bowerbird",
     "greator sage grouse": "Greater sage-grouse",
     "green winged dove": "Pacific emerald dove",
@@ -49,6 +76,7 @@ _TYPO_SPECIES_WIKI_TITLE_BY_KEY: dict[str, str] = {
     "mckays bunting": "McKay's bunting",
     "orange brested bunting": "Orange-breasted bunting",
     "parakett auklet": "Parakeet auklet",
+    "red faced cormorant": "Red-faced cormorant",
     "red wiskered bulbul": "Red-whiskered bulbul",
     "rose breasted cockatoo": "Galah",
     "rudy kingfisher": "Ruddy kingfisher",
@@ -61,6 +89,7 @@ _TYPO_SPECIES_WIKI_TITLE_BY_KEY: dict[str, str] = {
     "stripped manakin": "Striped manakin",
     "stripped swallow": "Striated swallow",
     "swinhoes pheasant": "Swinhoe's pheasant",
+    "teal duck": "Eurasian teal",
     "touchan": "Toucan",
     "townsends warbler": "Townsend's warbler",
     "trumpter swan": "Trumpeter swan",
@@ -68,7 +97,12 @@ _TYPO_SPECIES_WIKI_TITLE_BY_KEY: dict[str, str] = {
     "venezuelian troupial": "Venezuelan troupial",
     "vermilion flycather": "Vermilion flycatcher",
     "wall creaper": "Wallcreeper",
+    "white browed crake": "White-browed crake",
+    "white eared hummingbird": "White-eared hummingbird",
     "wilsons bird of paradise": "Wilson's bird-of-paradise",
+    "yellow bellied flowerpecker": "Yellow-bellied flowerpecker",
+    # Gag / non-species label in legacy class_labels.txt — stable placeholder art.
+    "looney birds": "Rock dove",
 }
 
 # Intro extracts that clearly belong to non-bird encyclopedia articles (e.g. human genetics / hair).
@@ -683,6 +717,23 @@ def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
     return f"{parts[0]} {' '.join(p.lower() for p in parts[1:])}"
 
 
+def _wikipedia_title_variants_for_allowlist_common(display_name: str) -> list[str]:
+    """class_labels.txt часто без апострофов (ANNAS HUMMINGBIRD) — добавляем enwiki-варианты."""
+    raw = (display_name or "").strip()
+    if not raw or "'" in raw or "(" in raw:
+        return []
+    out: list[str] = []
+    m = re.match(r"^([A-Za-z]+)s\s+(.+)$", raw)
+    if m:
+        out.append(f"{m.group(1)}'s {m.group(2)}")
+    parts = raw.split()
+    if len(parts) >= 2:
+        titled = f"{parts[0].title()} {' '.join(p.title() for p in parts[1:])}"
+        if titled not in out:
+            out.append(titled)
+    return out
+
+
 def _wikipedia_query_titles_for_species(sp) -> list[str]:
     """Порядок заголовков: taxon wiki → taxon binomial → allowlist binomial → дизамб. common → enwiki → БД."""
     titles: list[str] = []
@@ -734,6 +785,9 @@ def _wikipedia_query_titles_for_species(sp) -> list[str]:
         for extra in ("Columba livia domestica", "Rock Dove"):
             if extra not in titles:
                 titles.append(extra)
+
+    for variant in _wikipedia_title_variants_for_allowlist_common(sp.name or ""):
+        titles.append(variant)
 
     seen: set[str] = set()
     out: list[str] = []

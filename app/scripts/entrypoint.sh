@@ -2,36 +2,45 @@
 set -e
 #
 # Single-container startup (order matters): Gunicorn -> HealthCheck -> Nginx
-# Operability / «если зависло»:
-#   docs/user/troubleshooting.md → «Single-container startup (entrypoint)»
-#   archive/internal/docs-legacy/RUNTIME_COUPLING.md — PYTHONPATH, web↔processor, compose dev-split draft
+# Orin variant: ONNX GPU (CUDA EP / TensorRT EP). No DRM/DRI groups,
+# no py3.6 worker (JetPack 6 has Python >=3.10 natively).
 #
 
 # =============================================================================
-# SECTION 1 — Root bootstrap: volume ownership, DRM groups, drop to birdlense
+# SECTION 1 — Root bootstrap: volume ownership, drop to birdlense
 # =============================================================================
 if [ "$(id -u)" = "0" ]; then
   mkdir -p /app/data/.ultralytics
-  # Битый symlink app_config/app_config -> /app/app_config ломает import app_config.app_config
-  # (Python берёт каталог вместо app_config.py). Удаляем только если это symlink.
   if [ -L /app/app_config/app_config ]; then
     rm -f /app/app_config/app_config
   fi
   chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
-  if [ -d /dev/dri ]; then
-    for dev in /dev/dri/renderD128 /dev/dri/card0; do
-      [ -e "$dev" ] || continue
-      gid="$(stat -c '%g' "$dev" 2>/dev/null || true)"
-      [ -n "$gid" ] || continue
-      [ "$gid" = "0" ] && continue
-      if ! getent group "$gid" >/dev/null 2>&1; then
-        groupadd -g "$gid" "hostgpu_$gid" 2>/dev/null || true
-      fi
-      grp="$(getent group "$gid" | awk -F: 'NR==1{print $1}')"
-      [ -n "$grp" ] && usermod -aG "$grp" birdlense 2>/dev/null || true
-    done
+  chmod -R a+rX /app/processor/models/ 2>/dev/null || true
+  # Orin (privileged Jetson): gosu drops Linux caps — CUDA EP returns 801 for non-root.
+  _orin_keep_root="${BIRDLENSE_ORIN_KEEP_ROOT:-1}"
+  case "${_orin_keep_root}" in 1|true|TRUE|yes|YES|on|ON) _orin_keep_root=1 ;; *) _orin_keep_root=0 ;; esac
+  if [ "${BIRDLENSE_PLATFORM:-orin}" = "orin" ] && [ "$_orin_keep_root" = "1" ]; then
+  : # stay root for ONNX CUDA / NVENC in privileged container
+  else
+    exec gosu birdlense /bin/bash "$0" "$@"
   fi
-  exec gosu birdlense /bin/bash "$0" "$@"
+fi
+
+# Orin: nvidia pip wheels (cublas/cudnn) must be on LD_LIBRARY_PATH for ONNX Runtime CUDA EP.
+if [ "${BIRDLENSE_PLATFORM:-orin}" = "orin" ]; then
+  _ort_ld=""
+  for _py_site in \
+    /usr/local/lib/python3.12/site-packages \
+    /usr/local/lib/python3.12/dist-packages; do
+    for _d in "${_py_site}/nvidia/cu13/lib" "${_py_site}/nvidia/cudnn/lib"; do
+      if [ -d "$_d" ]; then
+        _ort_ld="${_ort_ld:+${_ort_ld}:}${_d}"
+      fi
+    done
+  done
+  if [ -n "$_ort_ld" ]; then
+    export LD_LIBRARY_PATH="${_ort_ld}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+  fi
 fi
 
 # =============================================================================
@@ -54,8 +63,6 @@ if raw_hide:
 else:
     env_name = os.environ.get("BIRDLENSE_ENV", "").strip().lower()
     strict_auth = os.environ.get("BIRDLENSE_STRICT_API_AUTH", "").strip().lower() in truthy
-    # Safer default for public deployments: hide direct static recordings URLs
-    # whenever strict production auth is enabled.
     hide = env_name == "production" and strict_auth
 recordings_block = (
     ""
@@ -80,28 +87,39 @@ open("/etc/nginx/conf.d/default.conf", "w").write(t)
 # =============================================================================
 if [ -d /app/_bundled_data/images ]; then
   mkdir -p /app/data/images
-  cp -a /app/_bundled_data/images/. /app/data/images/
+  while IFS= read -r -d '' _bundled_src; do
+    _rel="${_bundled_src#/app/_bundled_data/images/}"
+    _dest="/app/data/images/${_rel}"
+    mkdir -p "$(dirname "$_dest")"
+    _src_size="$(stat -c '%s' "$_bundled_src" 2>/dev/null || echo 0)"
+    [ "$_src_size" -gt 0 ] || continue
+    if [ ! -f "$_dest" ]; then
+      cp -a "$_bundled_src" "$_dest"
+      continue
+    fi
+    _dest_size="$(stat -c '%s' "$_dest" 2>/dev/null || echo 0)"
+    if [ "$_dest_size" -eq 0 ] || [ "$_src_size" -gt "$_dest_size" ]; then
+      cp -a "$_bundled_src" "$_dest"
+    fi
+  done < <(find /app/_bundled_data/images -type f -print0)
 fi
 mkdir -p /app/data/file_test
 mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi
 
 # =============================================================================
-# SECTION 4 — Gunicorn (FastAPI on 127.0.0.1:8000)
+# SECTION 4 — Gunicorn (Flask on 127.0.0.1:8000)
 # =============================================================================
 GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
-# processor/src — пакет inference (ml_lineage_service, processor_*); см. archive/internal/docs-legacy/RUNTIME_COUPLING.md
 cd /app/web && PYTHONPATH=/app:/app/web:/app/processor/src gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
 
 # =============================================================================
-# SECTION 4b — Nginx раньше ожидания API (порт :8080 сразу на хосте; до готовности upstream — 502, не «молча»)
+# SECTION 4b — Nginx before API ready (port :8080 responds immediately, 502 if upstream not ready)
 # =============================================================================
-# Иначе CI/прокси ждут до 400 с без ответа на :8085 → curl 56. См. scripts/wait-hub-http.sh, .github/workflows/ci-pr.yml.
 nginx -c /app/nginx/docker-nginx-main.conf &
 
 # =============================================================================
 # SECTION 5 — Wait for web liveness (/api/ui/health)
 # =============================================================================
-# даём Gunicorn время привязаться к порту перед проверкой
 sleep 5
 health_wait_left=400
 until curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; do
@@ -114,14 +132,14 @@ if ! curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; the
 fi
 
 # =============================================================================
-# SECTION 7 — Optional MCP (127.0.0.1:8001)
+# SECTION 6 — Optional MCP (127.0.0.1:8001)
 # =============================================================================
 if python3 /app/scripts/check_mcp_enabled.py 2>/dev/null; then
   PYTHONPATH=/app python3 /app/web/birdlense_mcp.py --transport streamable-http --port 8001 --host 127.0.0.1 &
 fi
 
 # =============================================================================
-# SECTION 8 — Optional daily Re-ID SSL scheduler (inside container only)
+# SECTION 7 — Optional daily Re-ID SSL scheduler (inside container only)
 # =============================================================================
 is_true() {
   case "${1:-}" in
@@ -171,10 +189,31 @@ if is_true "${BIRDLENSE_REID_SSL_DAILY_ENABLED:-0}"; then
 fi
 
 # =============================================================================
-# SECTION 9 — Processor supervisor loop
+# SECTION 8 — Processor supervisor loop
 # =============================================================================
+if [ "${BIRDLENSE_PROCESSOR_ENABLED:-1}" = "0" ]; then
+  echo "Processor loop disabled by BIRDLENSE_PROCESSOR_ENABLED=0"
+  while true; do
+    sleep 3600
+  done
+fi
+
+# Orin: no separate GPU worker needed. ONNX Runtime uses CUDA EP / TensorRT EP directly.
+# Processor runs in the main Python process with ONNX GPU.
+_PROC_BACKOFF=2
+_PROC_BACKOFF_MAX=30
+_PROC_FAST_EXIT_THRESHOLD=15
 while true; do
-  PYTHONPATH=/app:/app/web python3 /app/processor/src/main.py || true
-  echo "Processor exited, restarting in 2s..."
-  sleep 2
+  _proc_start_ts=$(date +%s)
+  PYTHONPATH=/app:/app/web:/app/processor/src python3 /app/processor/src/main.py || true
+  _proc_elapsed=$(( $(date +%s) - _proc_start_ts ))
+  echo "Processor exited after ${_proc_elapsed}s (exit code $?), restarting in ${_PROC_BACKOFF}s..."
+  if [ $_proc_elapsed -lt $_PROC_FAST_EXIT_THRESHOLD ]; then
+    _PROC_BACKOFF=$(( _PROC_BACKOFF * 2 ))
+    [ $_PROC_BACKOFF -gt $_PROC_BACKOFF_MAX ] && _PROC_BACKOFF=$_PROC_BACKOFF_MAX
+  else
+    _PROC_BACKOFF=2
+  fi
+  sleep $_PROC_BACKOFF
 done
+unset _PROC_BACKOFF _PROC_BACKOFF_MAX _PROC_FAST_EXIT_THRESHOLD _proc_start_ts _proc_elapsed

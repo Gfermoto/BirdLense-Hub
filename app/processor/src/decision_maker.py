@@ -2,14 +2,21 @@ import logging
 import time
 from collections import Counter
 import re
+from typing import Any, Mapping
 
 from decision_outcome import compute_outcome_bucket
-from runtime_contract import apply_runtime_contract
+from persist_mode import (
+    binary_track_first_min_detector_conf,
+    can_binary_track_first_accept,
+    defer_static_pinned_reject,
+    track_has_bbox_frames,
+)
+from app_config.visit_eligibility import visit_eligible_for_named_species
+from runtime_contract import apply_runtime_contract, track_id_sort_key
+from processor_config_defaults import MIN_CONFIDENCE_TO_PROCESS
+from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
 logger = logging.getLogger(__name__)
-
-# Default min confidence; can be overridden via app_config processor.min_confidence_to_process.
-DEFAULT_MIN_CONFIDENCE = 0.30
 
 
 def _parse_optional_threshold(raw):
@@ -35,9 +42,11 @@ def _classifier_needs_review_flag(entropy, margin, entropy_ge, margin_le):
 
 
 def _is_rodent_detector_label(detector_label: str) -> bool:
-    """Канон в пайплайне — ``Rodent``; ``squirrel`` только для старых событий/логов."""
-    d = str(detector_label or "").strip().lower()
-    return d in {"rodent", "squirrel"}
+    """Канон Rodent + Trapper native ``Eurasian Red Squirrel`` (см. detection_strategy._is_squirrel_detector_label)."""
+    d = " ".join(str(detector_label or "").strip().lower().split())
+    if d in {"rodent", "squirrel"}:
+        return True
+    return "squirrel" in d
 
 
 def _normalized_species_keys(species_name):
@@ -76,7 +85,7 @@ class DecisionMaker:
         generic_bird_min_detector_conf=None,
         generic_bird_min_frames=3,
         generic_bird_min_area_frac=0.01,
-        generic_bird_min_best_frame_score=6.5,
+        generic_bird_min_best_frame_score=5.0,
         generic_rodent_min_frames=1,
         generic_rodent_max_area_frac=1.0,
         generic_rodent_min_best_frame_score=0.0,
@@ -91,7 +100,7 @@ class DecisionMaker:
         self._effective_max_inactive = float(max_inactive_seconds or 0) + max(0.0, min(pr, 120.0))
         self.min_track_duration = min_track_duration
         self.min_confidence_to_process = (
-            min_confidence_to_process if min_confidence_to_process is not None else DEFAULT_MIN_CONFIDENCE
+            min_confidence_to_process if min_confidence_to_process is not None else MIN_CONFIDENCE_TO_PROCESS
         )
         self.species_confidence_overrides = species_confidence_overrides or {}
         self._species_confidence_override_keys = {
@@ -123,7 +132,7 @@ class DecisionMaker:
         try:
             self.generic_bird_min_best_frame_score = float(generic_bird_min_best_frame_score)
         except (TypeError, ValueError):
-            self.generic_bird_min_best_frame_score = 6.5
+            self.generic_bird_min_best_frame_score = 5.0
         try:
             self.generic_rodent_min_frames = max(1, int(generic_rodent_min_frames))
         except (TypeError, ValueError):
@@ -140,7 +149,67 @@ class DecisionMaker:
             "min_track_duration": self.min_track_duration,
             "min_confidence_to_process": self.min_confidence_to_process,
         }
+        self._static_pinned_override: StaticPinnedTrackConfig | None = None
         self.reset()
+
+    @staticmethod
+    def _static_cfg_from_overrides(
+        overrides: dict | None,
+        *,
+        runtime_cfg: Mapping[str, Any] | None = None,
+    ) -> StaticPinnedTrackConfig | None:
+        if not overrides:
+            return None
+        from app_config.app_config import app_config as _app_config
+
+        base = StaticPinnedTrackConfig.from_runtime_cfg(runtime_cfg or getattr(_app_config, "config", None) or {})
+        updates: dict[str, Any] = {}
+        bool_keys = {"track_static_reject_enabled": "enabled"}
+        float_keys = {
+            "track_static_reject_min_duration_sec": "min_duration_sec",
+            "track_static_reject_min_duration_sparse_sec": "min_duration_sparse_sec",
+            "track_static_reject_max_center_dispersion_norm": "max_center_dispersion_norm",
+            "track_static_reject_max_relative_center_dispersion": "max_relative_center_dispersion",
+            "track_static_reject_max_bbox_iou_first_last_min": "max_bbox_iou_first_last_min",
+        }
+        int_keys = {
+            "track_static_reject_min_frames": "min_frames",
+            "track_static_reject_min_frames_sparse": "min_frames_sparse",
+        }
+        for src, dst in bool_keys.items():
+            if src not in overrides:
+                continue
+            raw = overrides[src]
+            if isinstance(raw, bool):
+                updates[dst] = raw
+            else:
+                updates[dst] = str(raw).strip().lower() in {"1", "true", "yes", "on"}
+        for src, dst in float_keys.items():
+            if src in overrides:
+                try:
+                    updates[dst] = float(overrides[src])
+                except (TypeError, ValueError):
+                    pass
+        for src, dst in int_keys.items():
+            if src in overrides:
+                try:
+                    updates[dst] = int(overrides[src])
+                except (TypeError, ValueError):
+                    pass
+        if not updates:
+            return None
+        from dataclasses import asdict
+
+        merged = {**asdict(base), **updates}
+        return StaticPinnedTrackConfig(**merged)
+
+    def _resolve_static_pinned_cfg(self) -> StaticPinnedTrackConfig:
+        if self._static_pinned_override is not None:
+            return self._static_pinned_override
+        from app_config.app_config import app_config
+
+        runtime_cfg = getattr(app_config, "config", None) or {}
+        return StaticPinnedTrackConfig.from_runtime_cfg(runtime_cfg)
 
     def _trust_band_for_decision(
         self,
@@ -170,6 +239,7 @@ class DecisionMaker:
         if decision_reason in {
             "rejected_short_track",
             "rejected_missing_detector_candidate",
+            "rejected_static_pinned_track",
         }:
             return "insufficient_frames"
         if decision_reason in {
@@ -303,10 +373,14 @@ class DecisionMaker:
                 self.min_confidence_to_process = float(overrides["min_confidence_to_process"])
             except (TypeError, ValueError):
                 pass
+        static_cfg = self._static_cfg_from_overrides(overrides)
+        if static_cfg is not None:
+            self._static_pinned_override = static_cfg
 
     def reset_runtime_overrides(self):
         self.min_track_duration = self._runtime_override_defaults["min_track_duration"]
         self.min_confidence_to_process = self._runtime_override_defaults["min_confidence_to_process"]
+        self._static_pinned_override = None
 
     def update_has_detections(self, has_detections):
         if not has_detections:
@@ -424,16 +498,235 @@ class DecisionMaker:
             "avg_top1_top2_margin": avg_top1_top2_margin,
         }
 
+    @staticmethod
+    def _unknown_classifier_labels(app_config) -> set[str]:
+        unknown = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird").strip().lower()
+        return {"bird", "unknown", unknown, "unknown bird"}
+
+    def _pick_named_classifier_from_events(
+        self,
+        app_config,
+        classifier_events: list[Any],
+    ) -> dict[str, Any] | None:
+        """Best non-generic Birder label from raw classifier events (top vote may be Unknown)."""
+        if not classifier_events:
+            return None
+        try:
+            min_guess = float(app_config.get("processor.classifier_best_guess_min_confidence") or 0.10)
+        except (TypeError, ValueError):
+            min_guess = 0.10
+        try:
+            min_events = int(app_config.get("processor.classifier_best_guess_min_events") or 1)
+        except (TypeError, ValueError):
+            min_events = 1
+        unknown = self._unknown_classifier_labels(app_config)
+        by_name: dict[str, list[dict[str, Any]]] = {}
+        for ev in classifier_events:
+            if not isinstance(ev, dict):
+                continue
+            name = str(ev.get("species_name") or "").strip()
+            if not name or name.lower() in unknown:
+                continue
+            by_name.setdefault(name, []).append(ev)
+        if not by_name:
+            return None
+
+        def _score(name: str) -> tuple[int, float, float]:
+            rows = by_name[name]
+            confs = [float(r.get("confidence") or 0.0) for r in rows]
+            combined = [float(r.get("combined_confidence") or 0.0) for r in rows]
+            avg_conf = sum(confs) / len(confs) if confs else 0.0
+            avg_combined = sum(combined) / len(combined) if combined else 0.0
+            return (len(rows), avg_conf, avg_combined)
+
+        best_name = max(by_name.keys(), key=lambda n: _score(n))
+        rows = by_name[best_name]
+        if len(rows) < min_events:
+            return None
+        avg_conf = sum(float(r.get("confidence") or 0.0) for r in rows) / len(rows)
+        if avg_conf < min_guess:
+            return None
+        avg_combined = sum(float(r.get("combined_confidence") or 0.0) for r in rows) / len(rows)
+        return {
+            "species_name": best_name,
+            "avg_classifier_confidence": avg_conf,
+            "combined_confidence": avg_combined,
+            "event_count": len(rows),
+        }
+
+    def _binary_track_first_override(
+        self,
+        *,
+        app_config,
+        track: dict,
+        detector_label: str,
+        detector_conf: float,
+        classifier_candidate: dict | None,
+    ) -> dict[str, Any] | None:
+        """Persist YOLO bird track + bbox; species from classifier when uncertain."""
+        if not can_binary_track_first_accept(
+            app_config=app_config,
+            detector_label=detector_label,
+            detector_conf=detector_conf,
+            min_confidence_to_process=float(self.min_confidence_to_process),
+            track=track,
+        ):
+            return None
+        species = "Bird"
+        combined = 0.0
+        decision_reason = "accepted_binary_track_classifier_uncertain"
+        if classifier_candidate is not None:
+            species = str(classifier_candidate.get("species_name") or "Bird").strip() or "Bird"
+            combined = float(classifier_candidate.get("combined_confidence") or 0.0)
+            if species.lower() in self._unknown_classifier_labels(app_config):
+                named = self._pick_named_classifier_from_events(
+                    app_config,
+                    track.get("classifier_events") or [],
+                )
+                if named is not None:
+                    species = str(named["species_name"])
+                    combined = max(combined, float(named.get("combined_confidence") or 0.0))
+                    decision_reason = "accepted_classifier_best_guess"
+        return {
+            "accepted": True,
+            "visit_eligible": visit_eligible_for_named_species(
+                species_name=species,
+                visit_eligible=True,
+                birder_unknown_label=str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"),
+            ),
+            "notification_eligible": False,
+            "out_species": species,
+            "out_conf": max(combined, float(detector_conf)),
+            "decision_reason": decision_reason,
+            "decision_kind": "accepted_species",
+            "evidence_state": "weak_classifier",
+            "classifier_needs_review": True,
+        }
+
+    def _classifier_best_guess_override(
+        self,
+        *,
+        app_config,
+        track: dict,
+        detector_label: str,
+        detector_conf: float,
+        classifier_candidate: dict,
+    ) -> dict[str, Any] | None:
+        """Persist Birder top species below combined threshold when votes/conf are weak but usable."""
+        if not bool(app_config.get("processor.classifier_best_guess_enabled", True)):
+            return None
+        if str(detector_label or "").strip().lower() != "bird":
+            return None
+        if not track_has_bbox_frames(track):
+            return None
+        if float(detector_conf) < binary_track_first_min_detector_conf(
+            app_config, float(self.min_confidence_to_process)
+        ):
+            return None
+        try:
+            min_guess = float(app_config.get("processor.classifier_best_guess_min_confidence") or 0.10)
+        except (TypeError, ValueError):
+            min_guess = 0.10
+        try:
+            min_events = int(app_config.get("processor.classifier_best_guess_min_events") or 1)
+        except (TypeError, ValueError):
+            min_events = 1
+        unknown_label = self._unknown_classifier_labels(app_config)
+        species = str(classifier_candidate.get("species_name") or "").strip()
+        if not species or species.lower() in unknown_label:
+            named = self._pick_named_classifier_from_events(
+                app_config,
+                track.get("classifier_events") or [],
+            )
+            if named is None:
+                return None
+            species = str(named["species_name"])
+            avg_conf = float(named.get("avg_classifier_confidence") or 0.0)
+            combined = float(named.get("combined_confidence") or 0.0)
+            if int(named.get("event_count") or 0) < min_events or avg_conf < min_guess:
+                return None
+        else:
+            if int(classifier_candidate.get("event_count") or 0) < min_events:
+                return None
+            avg_conf = float(classifier_candidate.get("avg_classifier_confidence") or 0.0)
+            if avg_conf < min_guess:
+                return None
+            combined = float(classifier_candidate.get("combined_confidence") or 0.0)
+        return {
+            "accepted": True,
+            "visit_eligible": visit_eligible_for_named_species(
+                species_name=species,
+                visit_eligible=True,
+                birder_unknown_label=str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"),
+            ),
+            "notification_eligible": False,
+            "out_species": species,
+            "out_conf": max(combined, avg_conf, float(detector_conf)),
+            "decision_reason": "accepted_classifier_best_guess",
+            "decision_kind": "accepted_species",
+            "evidence_state": "weak_classifier",
+            "classifier_needs_review": True,
+        }
+
+    def _apply_track_decision_override(
+        self, override: dict[str, Any]
+    ) -> tuple[bool, bool, bool, str, float, str, str, str, bool]:
+        return (
+            bool(override["accepted"]),
+            bool(override["visit_eligible"]),
+            bool(override["notification_eligible"]),
+            str(override["out_species"]),
+            float(override["out_conf"]),
+            str(override["decision_reason"]),
+            str(override["decision_kind"]),
+            str(override["evidence_state"]),
+            bool(override.get("classifier_needs_review")),
+        )
+
     def get_decisions(self, tracks):
         from app_config.app_config import app_config
+        from linear_pipeline import build_linear_decisions, is_linear_pipeline
+
+        if is_linear_pipeline(app_config):
+            return build_linear_decisions(self, tracks, app_config)
 
         decisions = []
         store_floor = float(self.min_confidence_to_store)
         entropy_ge = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_entropy_ge"))
         margin_le = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_margin_le"))
+        static_cfg = self._resolve_static_pinned_cfg()
         for track_id, track in tracks.items():
             detector_events = track.get("detector_events") or []
             if not detector_events:
+                continue
+
+            static_reason = static_pinned_track_reason(track, static_cfg)
+            if static_reason and defer_static_pinned_reject(
+                app_config=app_config,
+                track=track,
+                detector_events=detector_events,
+                min_confidence_to_process=float(self.min_confidence_to_process),
+            ):
+                static_reason = None
+            if static_reason:
+                decisions.append(
+                    apply_runtime_contract(
+                        {
+                            "track_id": track_id,
+                            "accepted": False,
+                            "outcome_bucket": "rejected",
+                            "decision_reason": "rejected_static_pinned_track",
+                            "decision_kind": "rejected",
+                            "trust_band": "red",
+                            "start_time": track["start_time"],
+                            "end_time": track["end_time"],
+                            "confidence": 0.0,
+                            "detection_provider": "yolo",
+                            "reject_reason_code": "insufficient_frames",
+                            "reject_detail": static_reason,
+                        }
+                    )
+                )
                 continue
 
             dur = track["end_time"] - track["start_time"]
@@ -457,6 +750,7 @@ class DecisionMaker:
                             "end_time": track["end_time"],
                             "confidence": 0.0,
                             "detection_provider": "yolo",
+                            "reject_reason_code": "insufficient_frames",
                         }
                     )
                 )
@@ -477,6 +771,7 @@ class DecisionMaker:
                             "end_time": track["end_time"],
                             "confidence": 0.0,
                             "detection_provider": "yolo",
+                            "reject_reason_code": "insufficient_frames",
                         }
                     )
                 )
@@ -495,6 +790,7 @@ class DecisionMaker:
 
             visit_eligible = True
             notification_eligible = True
+            force_classifier_review = False
 
             if classifier_candidate is not None:
                 species_name = classifier_candidate["species_name"]
@@ -527,22 +823,40 @@ class DecisionMaker:
                             else "weak_classifier"
                         )
                     elif detector_conf < store_floor:
-                        logger.debug(
-                            "Skipping track %s: detector confidence=%.3f < min_confidence_to_store=%.3f",
-                            track_id,
-                            detector_conf,
-                            store_floor,
+                        btf = self._binary_track_first_override(
+                            app_config=app_config,
+                            track=track,
+                            detector_label=detector_label,
+                            detector_conf=detector_conf,
+                            classifier_candidate=classifier_candidate,
                         )
-                        accepted = False
-                        out_species = detector_label
-                        out_conf = detector_conf
-                        decision_reason = "rejected_detector_below_store_floor"
-                        decision_kind = "rejected"
-                        evidence_state = (
-                            "conflicting_classifier_votes"
-                            if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
-                            else "weak_classifier"
-                        )
+                        if btf:
+                            accepted = bool(btf["accepted"])
+                            visit_eligible = bool(btf["visit_eligible"])
+                            notification_eligible = bool(btf["notification_eligible"])
+                            out_species = btf["out_species"]
+                            out_conf = float(btf["out_conf"])
+                            decision_reason = btf["decision_reason"]
+                            decision_kind = btf["decision_kind"]
+                            evidence_state = btf["evidence_state"]
+                            force_classifier_review = bool(btf.get("classifier_needs_review"))
+                        else:
+                            logger.debug(
+                                "Skipping track %s: detector confidence=%.3f < min_confidence_to_store=%.3f",
+                                track_id,
+                                detector_conf,
+                                store_floor,
+                            )
+                            accepted = False
+                            out_species = detector_label
+                            out_conf = detector_conf
+                            decision_reason = "rejected_detector_below_store_floor"
+                            decision_kind = "rejected"
+                            evidence_state = (
+                                "conflicting_classifier_votes"
+                                if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
+                                else "weak_classifier"
+                            )
                     else:
                         out_species = detector_label
                         out_conf = min(1.0, max(store_floor, detector_conf))
@@ -572,44 +886,101 @@ class DecisionMaker:
                             detector_conf=detector_conf,
                             track=track,
                         ):
-                            accepted = True
-                            visit_eligible = False
-                            notification_eligible = False
-                            decision_reason = "review_only_generic_bird"
-                            decision_kind = "review_only_generic"
-                            evidence_state = (
-                                "conflicting_classifier_votes"
-                                if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
-                                else "weak_classifier"
+                            btf = self._binary_track_first_override(
+                                app_config=app_config,
+                                track=track,
+                                detector_label=detector_label,
+                                detector_conf=detector_conf,
+                                classifier_candidate=classifier_candidate,
                             )
+                            if btf:
+                                accepted = bool(btf["accepted"])
+                                visit_eligible = bool(btf["visit_eligible"])
+                                notification_eligible = bool(btf["notification_eligible"])
+                                out_species = btf["out_species"]
+                                out_conf = float(btf["out_conf"])
+                                decision_reason = btf["decision_reason"]
+                                decision_kind = btf["decision_kind"]
+                                evidence_state = btf["evidence_state"]
+                                force_classifier_review = bool(btf.get("classifier_needs_review"))
+                            else:
+                                accepted = True
+                                visit_eligible = True
+                                notification_eligible = False
+                                decision_reason = "review_only_generic_bird"
+                                decision_kind = "review_only_generic"
+                                evidence_state = (
+                                    "conflicting_classifier_votes"
+                                    if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
+                                    else "weak_classifier"
+                                )
+                                force_classifier_review = True
                         else:
-                            if is_bird:
+                            guess = self._classifier_best_guess_override(
+                                app_config=app_config,
+                                track=track,
+                                detector_label=detector_label,
+                                detector_conf=detector_conf,
+                                classifier_candidate=classifier_candidate,
+                            )
+                            if guess:
+                                (
+                                    accepted,
+                                    visit_eligible,
+                                    notification_eligible,
+                                    out_species,
+                                    out_conf,
+                                    decision_reason,
+                                    decision_kind,
+                                    evidence_state,
+                                    force_classifier_review,
+                                ) = self._apply_track_decision_override(guess)
+                            elif is_bird:
                                 decision_reason = "fallback_bird"
                             elif is_rodent:
                                 decision_reason = "fallback_rodent"
                             else:
                                 decision_reason = "fallback_detector_generic"
-                            decision_kind = "accepted_generic"
-                            evidence_state = (
-                                "conflicting_classifier_votes"
-                                if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
-                                else "detector_backed_generic"
-                            )
+                            if not guess:
+                                decision_kind = "accepted_generic"
+                                evidence_state = (
+                                    "conflicting_classifier_votes"
+                                    if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
+                                    else "detector_backed_generic"
+                                )
             else:
                 if detector_conf < store_floor:
-                    logger.debug(
-                        "Skipping track %s (%s): detector confidence=%.3f < min_confidence_to_store=%.3f",
-                        track_id,
-                        detector_label,
-                        detector_conf,
-                        store_floor,
+                    btf = self._binary_track_first_override(
+                        app_config=app_config,
+                        track=track,
+                        detector_label=detector_label,
+                        detector_conf=detector_conf,
+                        classifier_candidate=None,
                     )
-                    accepted = False
-                    out_species = detector_label
-                    out_conf = detector_conf
-                    decision_reason = "rejected_detector_below_store_floor"
-                    decision_kind = "rejected"
-                    evidence_state = "detector_only_low_confidence"
+                    if btf:
+                        accepted = bool(btf["accepted"])
+                        visit_eligible = bool(btf["visit_eligible"])
+                        notification_eligible = bool(btf["notification_eligible"])
+                        out_species = btf["out_species"]
+                        out_conf = float(btf["out_conf"])
+                        decision_reason = btf["decision_reason"]
+                        decision_kind = btf["decision_kind"]
+                        evidence_state = btf["evidence_state"]
+                        force_classifier_review = bool(btf.get("classifier_needs_review"))
+                    else:
+                        logger.debug(
+                            "Skipping track %s (%s): detector confidence=%.3f < min_confidence_to_store=%.3f",
+                            track_id,
+                            detector_label,
+                            detector_conf,
+                            store_floor,
+                        )
+                        accepted = False
+                        out_species = detector_label
+                        out_conf = detector_conf
+                        decision_reason = "rejected_detector_below_store_floor"
+                        decision_kind = "rejected"
+                        evidence_state = "detector_only_low_confidence"
                 else:
                     out_species = detector_label
                     out_conf = min(1.0, max(store_floor, detector_conf))
@@ -635,12 +1006,31 @@ class DecisionMaker:
                         detector_conf=detector_conf,
                         track=track,
                     ):
-                        accepted = True
-                        visit_eligible = False
-                        notification_eligible = False
-                        decision_reason = "review_only_generic_bird"
-                        decision_kind = "review_only_generic"
-                        evidence_state = "detector_only"
+                        btf = self._binary_track_first_override(
+                            app_config=app_config,
+                            track=track,
+                            detector_label=detector_label,
+                            detector_conf=detector_conf,
+                            classifier_candidate=None,
+                        )
+                        if btf:
+                            accepted = bool(btf["accepted"])
+                            visit_eligible = bool(btf["visit_eligible"])
+                            notification_eligible = bool(btf["notification_eligible"])
+                            out_species = btf["out_species"]
+                            out_conf = float(btf["out_conf"])
+                            decision_reason = btf["decision_reason"]
+                            decision_kind = btf["decision_kind"]
+                            evidence_state = btf["evidence_state"]
+                            force_classifier_review = bool(btf.get("classifier_needs_review"))
+                        else:
+                            accepted = True
+                            visit_eligible = True
+                            notification_eligible = False
+                            decision_reason = "review_only_generic_bird"
+                            decision_kind = "review_only_generic"
+                            evidence_state = "detector_only"
+                            force_classifier_review = True
                     else:
                         if is_bird:
                             decision_reason = "fallback_bird"
@@ -661,6 +1051,14 @@ class DecisionMaker:
             clf_entropy = classifier_candidate.get("avg_entropy") if classifier_candidate is not None else None
             clf_margin = classifier_candidate.get("avg_top1_top2_margin") if classifier_candidate is not None else None
             clf_needs_review = _classifier_needs_review_flag(clf_entropy, clf_margin, entropy_ge, margin_le)
+
+            visit_eligible = visit_eligible_for_named_species(
+                species_name=out_species,
+                visit_eligible=bool(visit_eligible),
+                birder_unknown_label=str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"),
+            )
+            if not visit_eligible:
+                notification_eligible = False
 
             decisions.append(
                 apply_runtime_contract(
@@ -703,7 +1101,7 @@ class DecisionMaker:
                         ),
                         "classifier_entropy": clf_entropy,
                         "classifier_top1_top2_margin": clf_margin,
-                        "classifier_needs_review": clf_needs_review,
+                        "classifier_needs_review": clf_needs_review or force_classifier_review,
                         "decision_kind": decision_kind,
                         "reject_reason_code": reject_reason_code,
                         "evidence_state": evidence_state,
@@ -718,7 +1116,7 @@ class DecisionMaker:
             key=lambda item: (
                 int(not item.get("accepted", False)),
                 -float(item.get("confidence") or 0.0),
-                int(item.get("track_id") or 0),
+                track_id_sort_key(item.get("track_id")),
             )
         )
         return decisions

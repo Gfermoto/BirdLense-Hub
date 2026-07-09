@@ -53,11 +53,10 @@ def build_detection_stack(
     from inference.backend_cache import write_inference_backend_cache
     from inference.binary_paths import (
         detector_weights_available,
-        openvino_expected_input_size,
         resolve_binary_detector_weight_path,
-        resolve_relative_to_processor_root,
     )
     from inference.classifier_paths import (
+        classifier_engine,
         classifier_weights_available,
         resolve_classifier_weight_path,
     )
@@ -71,7 +70,6 @@ def build_detection_stack(
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
     )
-    from pipeline_policy import build_pipeline_policy_snapshot
 
     _ = warn_two_stage_fallback  # legacy param, no longer used
 
@@ -101,106 +99,59 @@ def build_detection_stack(
     assert_backend_supported(_requested_classifier_backend)
 
     binary_path, _inf_backend = resolve_binary_detector_weight_path(app_config, processor_root)
-    if _requested_backend == "openvino" and not (binary_path or "").strip():
-        raise FileNotFoundError(
-            "OpenVINO binary detector path missing: set processor.models.binary_openvino "
-            "or environment variable BIRDLENSE_BINARY_OPENVINO_PATH "
-            "(export: yolo export ... format=openvino).",
-        )
 
     classifier_path, _cls_backend = resolve_classifier_weight_path(
         app_config,
         processor_root,
     )
-    if _requested_classifier_backend == "openvino" and not (classifier_path or "").strip():
-        raise FileNotFoundError(
-            "OpenVINO classifier path missing: set processor.models.classifier_openvino "
-            "or environment variable BIRDLENSE_CLASSIFIER_OPENVINO_PATH "
-            "(export: yolo export ... format=openvino).",
-        )
-
-    if _inf_backend == "openvino":
-        expected_ov_imgsz = openvino_expected_input_size(binary_path)
-        configured_imgsz_values: set[int] = set()
-        for key in (
-            "processor.binary_imgsz",
-            "processor.adaptive_profiles.night.overrides.binary_imgsz",
-        ):
-            raw = app_config.get(key)
-            if raw is None:
-                continue
-            try:
-                configured_imgsz_values.add(int(raw))
-            except (TypeError, ValueError):
-                continue
-        if not configured_imgsz_values:
-            try:
-                configured_imgsz_values.add(int(app_config.get("processor.binary_imgsz", 640) or 640))
-            except (TypeError, ValueError):
-                configured_imgsz_values.add(640)
-
-        if expected_ov_imgsz and any(v != expected_ov_imgsz for v in configured_imgsz_values):
-            mismatch = ",".join(str(v) for v in sorted(configured_imgsz_values))
-            mismatch_msg = (
-                "OpenVINO detector input-size mismatch: model expects "
-                f"{expected_ov_imgsz}, configured binary_imgsz values={mismatch}. "
-                "Align processor.binary_imgsz (+ adaptive profile overrides) with model export imgsz."
-            )
-            can_auto_fallback = _requested_backend == "auto"
-            if can_auto_fallback:
-                torch_binary_path = resolve_relative_to_processor_root(
-                    str(
-                        app_config.get(
-                            "processor.models.binary",
-                            "models/detection/weights/yolo11n.pt",
-                        ),
-                    ).strip(),
-                    processor_root,
-                )
-                if detector_weights_available(torch_binary_path):
-                    logger.error(
-                        "%s Auto fallback detector backend: openvino -> torch (%s). "
-                        "Runtime uses .pt, not IR — quality/latency differ; fix binary_imgsz to %s for OpenVINO.",
-                        mismatch_msg,
-                        torch_binary_path,
-                        expected_ov_imgsz,
-                    )
-                    binary_path = torch_binary_path
-                    _inf_backend = "torch"
-                else:
-                    raise RuntimeError(mismatch_msg)
-            else:
-                raise RuntimeError(mismatch_msg)
 
     if not detector_weights_available(binary_path):
         raise FileNotFoundError(
             f"YOLO binary detector weights missing or invalid path: {binary_path}. "
-            "For torch set processor.models.binary (.pt); for OpenVINO use a directory or .xml "
-            "from yolo export format=openvino (processor.models.binary_openvino or "
-            "BIRDLENSE_BINARY_OPENVINO_PATH).",
+            "Set processor.models.binary (.pt/.onnx) or BIRDLENSE_BINARY_ONNX_PATH. "
+            "Fresh clone/deploy: run `make sync-models`.",
         )
     if not classifier_weights_available(classifier_path):
+        _eng = classifier_engine(app_config)
         raise FileNotFoundError(
-            f"YOLO classifier weights missing or invalid path: {classifier_path}. "
-            "For torch set processor.models.classifier (.pt); for OpenVINO use a directory "
-            "or .xml from yolo export format=openvino (processor.models.classifier_openvino "
-            "or BIRDLENSE_CLASSIFIER_OPENVINO_PATH).",
+            f"Classifier weights missing for engine={_eng!r}: {classifier_path}. "
+            "Birder EU: scripts/download_birder_classifier.py --export-onnx. "
+            "Birder EU: scripts/download_birder_classifier.py. "
+            "Legacy YOLO: processor.models.classifier (.pt).",
         )
 
+    from detector_class_map import apply_class_map_to_config
+
+    apply_class_map_to_config(app_config, processor_root, binary_path)
+
+    from tracking_policy import (
+        attach_tracking_policy_to_strategy,
+        build_unified_tracking_policy,
+    )
+
+    tracking_mode = "regen" if for_track_regen else "live"
+    tracking_policy = build_unified_tracking_policy(
+        app_config.config if hasattr(app_config, "config") else app_config,
+        mode=tracking_mode,
+        regional_species_override=regional_species_override,
+        strategy_override=strategy_override,
+        min_center_dist_override=min_center_dist_override,
+    )
     regional_species = regional_species_override
     if regional_species is None:
         regional_species = app_config.get("processor.regional_species") or []
-    match_live_regen = bool(
-        app_config.get("processor.track_regen_match_live_pipeline", False),
-    )
-    if (
+    if tracking_policy.regional_species_override is not None:
+        regional_species = list(tracking_policy.regional_species_override)
+    elif (
         for_track_regen
         and app_config.get("processor.track_regen_ignore_regional_species", True)
         and regional_species_override is None
-        and not match_live_regen
+        and not tracking_policy.unified_with_live
     ):
         regional_species = []
-    detector_scope = app_config.get("processor.detector_scope") or ["Bird", "Rodent"]
+    detector_scope = app_config.get("processor.detector_scope")
+    if detector_scope is None:
+        detector_scope = ["Bird"]
     max_classifications_per_frame = app_config.get(
         "processor.max_classifications_per_frame",
         2,
@@ -212,7 +163,7 @@ def build_detection_stack(
         min_box_size_px = int(min_box_size_px)
     except (TypeError, ValueError):
         min_box_size_px = 64
-    if for_track_regen:
+    if for_track_regen and not tracking_policy.unified_with_live:
         raw_mb = app_config.get("processor.track_regen_min_box_size_px")
         if raw_mb is not None:
             try:
@@ -236,9 +187,13 @@ def build_detection_stack(
 
     def _two_stage_kwargs() -> Dict[str, Any]:
         try:
-            _imgsz = int(app_config.get("processor.binary_imgsz", 640) or 640)
+            from pipeline_config import resolve_binary_model_imgsz
+
+            _imgsz = resolve_binary_model_imgsz(app_config)
         except (TypeError, ValueError):
-            _imgsz = 640
+            from pipeline_config import DEFAULT_MODEL_IMGSZ
+
+            _imgsz = DEFAULT_MODEL_IMGSZ
         return {
             "binary_model_path": binary_path,
             "classifier_model_path": classifier_path,
@@ -256,6 +211,7 @@ def build_detection_stack(
             "classifier_inference_backend": _cls_backend,
             "binary_inference_device": _binary_inference_device,
             "classifier_inference_device": _classifier_inference_device,
+            "classifier_engine": classifier_engine(app_config),
         }
 
     try:
@@ -263,51 +219,7 @@ def build_detection_stack(
         assert_ctor_kwargs(TwoStageStrategy.__init__, _ts_kw, label="TwoStageStrategy")
         detection_strategy = TwoStageStrategy(**_ts_kw)
     except Exception:
-        can_fallback_detector = _requested_backend == "auto" and _inf_backend == "openvino"
-        can_fallback_classifier = _requested_classifier_backend == "auto" and _cls_backend == "openvino"
-        if not (can_fallback_detector or can_fallback_classifier):
-            raise
-
-        if can_fallback_detector:
-            torch_binary_path = resolve_relative_to_processor_root(
-                str(
-                    app_config.get(
-                        "processor.models.binary",
-                        "models/detection/weights/yolo11n.pt",
-                    ),
-                ).strip(),
-                processor_root,
-            )
-            if not detector_weights_available(torch_binary_path):
-                raise
-            binary_path = torch_binary_path
-            _inf_backend = "torch"
-        if can_fallback_classifier:
-            torch_classifier_path = resolve_relative_to_processor_root(
-                str(
-                    app_config.get(
-                        "processor.models.classifier",
-                        "models/classification/weights/best.pt",
-                    ),
-                ).strip(),
-                processor_root,
-            )
-            if not os.path.isfile(torch_classifier_path):
-                raise
-            classifier_path = torch_classifier_path
-            _cls_backend = "torch"
-        logger.exception(
-            "Inference auto backend fallback: detector=(%s,%s)->%s classifier=(%s,%s)->%s",
-            binary_path,
-            _requested_backend,
-            _inf_backend,
-            classifier_path,
-            _requested_classifier_backend,
-            _cls_backend,
-        )
-        _ts_kw_fb = _two_stage_kwargs()
-        assert_ctor_kwargs(TwoStageStrategy.__init__, _ts_kw_fb, label="TwoStageStrategy(fallback)")
-        detection_strategy = TwoStageStrategy(**_ts_kw_fb)
+        raise
     logger.info(
         "Inference startup: detector_backend=%s classifier_backend=%s ultralytics_device_label=%s "
         "binary_inference_device_kw=%s classifier_inference_device_kw=%s binary_path=%s classifier_path=%s "
@@ -329,10 +241,14 @@ def build_detection_stack(
     if raw_auto in ("1", "true", "yes", "on"):
         from inference.auto_benchmark import measure_binary_detector_predict_ms
 
+        from pipeline_config import resolve_binary_model_imgsz
+
         try:
-            _isz = int(app_config.get("processor.binary_imgsz", 640) or 640)
+            _isz = resolve_binary_model_imgsz(app_config)
         except (TypeError, ValueError):
-            _isz = 640
+            from pipeline_config import DEFAULT_MODEL_IMGSZ
+
+            _isz = DEFAULT_MODEL_IMGSZ
         _ms = measure_binary_detector_predict_ms(
             detection_strategy.binary_model,
             imgsz=max(320, _isz),
@@ -358,15 +274,9 @@ def build_detection_stack(
     }
     assert_ctor_kwargs(FrameProcessor.__init__, _fp_kw, label="FrameProcessor")
     frame_processor = FrameProcessor(**_fp_kw)
-    frame_processor.strategy._for_track_regen = bool(for_track_regen)
-    _pp_kw = {
-        "for_track_regen": for_track_regen,
-        "strategy_override": strategy_override,
-        "regional_species_override": regional_species_override,
-        "min_center_dist_override": min_center_dist_override,
-    }
-    assert_ctor_kwargs(build_pipeline_policy_snapshot, _pp_kw, label="build_pipeline_policy_snapshot")
-    policy_snapshot = build_pipeline_policy_snapshot(app_config, **_pp_kw)
+    frame_processor.tracking_policy = tracking_policy
+    attach_tracking_policy_to_strategy(frame_processor.strategy, tracking_policy)
+    policy_snapshot = dict(tracking_policy.pipeline_policy)
     frame_processor.pipeline_policy = dict(policy_snapshot)
     merged_overrides = merge_species_confidence_overrides_with_ebird_top(app_config)
     min_store = app_config.get("detection.min_confidence_to_store")
@@ -405,46 +315,29 @@ def build_detection_stack(
             max_record_seconds,
             max_inactive_seconds,
         )
-    try:
-        min_track_duration_val = float(app_config.get("processor.min_track_duration", 1.0))
-    except (TypeError, ValueError):
-        min_track_duration_val = 1.0
-    min_conf_proc_val = app_config.get("processor.min_confidence_to_process")
-    dm_detector_store_val = min_confidence_to_store
-    if for_track_regen:
-        v = app_config.get("processor.track_regen_min_track_duration")
-        if v is not None:
-            try:
-                min_track_duration_val = float(v)
-            except (TypeError, ValueError):
-                pass
-        v = app_config.get("processor.track_regen_min_confidence_to_process")
-        if v is not None:
-            try:
-                min_conf_proc_val = float(v)
-            except (TypeError, ValueError):
-                pass
-        v = app_config.get("processor.track_regen_decision_detector_store_floor")
-        if v is not None:
-            try:
-                dm_detector_store_val = float(v)
-            except (TypeError, ValueError):
-                pass
-        if any(
-            app_config.get(k) is not None
-            for k in (
-                "processor.track_regen_min_track_duration",
-                "processor.track_regen_min_confidence_to_process",
-                "processor.track_regen_decision_detector_store_floor",
-            )
-        ):
-            logger.info(
-                "track_regen DecisionMaker thresholds: min_track_duration=%s "
-                "min_confidence_to_process=%s detector_store_floor=%s",
-                min_track_duration_val,
-                min_conf_proc_val,
-                dm_detector_store_val,
-            )
+    min_track_duration_val = float(tracking_policy.min_track_duration)
+    min_conf_proc_val = tracking_policy.min_confidence_to_process
+    dm_detector_store_val = (
+        float(tracking_policy.min_confidence_to_store)
+        if tracking_policy.min_confidence_to_store is not None
+        else min_confidence_to_store
+    )
+    if for_track_regen and not tracking_policy.unified_with_live:
+        logger.info(
+            "track_regen DecisionMaker thresholds (legacy regen policy): min_track_duration=%s "
+            "min_confidence_to_process=%s detector_store_floor=%s unified_with_live=false",
+            min_track_duration_val,
+            min_conf_proc_val,
+            dm_detector_store_val,
+        )
+    elif for_track_regen:
+        logger.info(
+            "track_regen DecisionMaker thresholds (unified with live): min_track_duration=%s "
+            "min_confidence_to_process=%s detector_store_floor=%s",
+            min_track_duration_val,
+            min_conf_proc_val,
+            dm_detector_store_val,
+        )
 
     _dm_kw = {
         "max_record_seconds": max_record_seconds,
@@ -458,7 +351,7 @@ def build_detection_stack(
         "generic_bird_min_detector_conf": app_config.get("processor.generic_bird_min_detector_conf"),
         "generic_bird_min_frames": app_config.get("processor.generic_bird_min_frames", 3),
         "generic_bird_min_area_frac": app_config.get("processor.generic_bird_min_area_frac", 0.01),
-        "generic_bird_min_best_frame_score": app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
+        "generic_bird_min_best_frame_score": app_config.get("processor.generic_bird_min_best_frame_score", 5.0),
         "generic_rodent_min_frames": app_config.get("processor.generic_rodent_min_frames", 1),
         "generic_rodent_max_area_frac": app_config.get("processor.generic_rodent_max_area_frac", 1.0),
         "generic_rodent_min_best_frame_score": app_config.get("processor.generic_rodent_min_best_frame_score", 0.0),

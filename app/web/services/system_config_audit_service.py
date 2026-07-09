@@ -8,6 +8,7 @@ import os
 import yaml
 
 import data_paths
+from app_config.deprecated_keys import DEPRECATED_USER_CONFIG_KEYS
 from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
 from app_config.trigger_config import (
     format_motion_source_summary,
@@ -15,25 +16,11 @@ from app_config.trigger_config import (
     normalize_transport_source,
 )
 
-# Совпадает с `integrations.scales.mqtt_topic_prefix` в default_config и примером `esphome/bird-feeder-scale.yaml`.
+logger = logging.getLogger(__name__)
+
 DOCUMENTED_SCALES_MQTT_PREFIX = "birdlense/scale"
 
 _log = logging.getLogger(__name__)
-
-DEPRECATED_USER_CONFIG_KEYS = (
-    "gallery.enabled",
-    "gallery.min_confidence",
-    "gallery.only_manually_corrected",
-    "gallery.upload_url",
-    "general.heimdall_url",
-    "notifications.enabled",
-    "notifications.excluded_species",
-    "notifications.rate_limit_per_minute",
-    "processor.detection_device",
-    "processor.detection_frame_interval",
-    "weather.ha_token",
-    "weather.ha_url",
-)
 
 TERMINAL_CONFIG_MAP_KEYS = frozenset(
     {
@@ -51,6 +38,30 @@ IGNORED_CONFIG_AUDIT_KEYS = frozenset(
         "weather.ha_url",
     }
 )
+
+# Ветки с динамическими leaf-ключами: audit не должен помечать их как unknown.
+IGNORED_CONFIG_AUDIT_PREFIXES = ("processor.camera_overrides.",)
+
+
+def _is_known_dynamic_config_key(path: str, *, default_keys: set[str]) -> bool:
+    key = str(path or "").strip()
+    if not key:
+        return False
+    if any(key.startswith(prefix) for prefix in IGNORED_CONFIG_AUDIT_PREFIXES):
+        suffix = key.split(".", 3)[-1]
+        if not suffix:
+            return False
+        return f"processor.{suffix}" in default_keys
+    if key.startswith("processor.adaptive_profiles.") and ".overrides." in key:
+        suffix = key.split(".overrides.", 1)[-1].strip()
+        if not suffix:
+            return False
+        return f"processor.{suffix}" in default_keys
+    if key.startswith("processor.adaptive_profiles."):
+        # profile container itself is dynamic.
+        return True
+    return False
+
 
 # Совпадает с `triggers.opencv.*` в `default_config.yaml`.
 RECOMMENDED_OPENCV_DIFF_THRESHOLD = 18
@@ -135,6 +146,19 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         blocking.append(
             "Frigate trigger is enabled but mqtt.broker is empty, so Frigate events will never reach the processor."
         )
+    source = str(app_config_get("video.source") or "go2rtc").strip().lower()
+    if source == "go2rtc":
+        try:
+            from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams
+
+            video_cfg = app_config_get("video") or {}
+            valid = get_valid_cameras(
+                video_config=video_cfg if isinstance(video_cfg, dict) else None,
+            )
+            for issue in validate_go2rtc_detect_streams(valid, video_source=source):
+                blocking.append(issue)
+        except Exception:
+            logger.warning("go2rtc detect_stream audit failed", exc_info=True)
     frigate_standalone = _bool_config(
         app_config_get("detection.frigate_standalone_when_no_yolo"),
         default=True,
@@ -374,12 +398,12 @@ def _preflight_config_safety(app_config_get) -> dict:
             "status": (
                 "warn"
                 if video_encoding == "cpu"
-                and detector_backend in {"openvino", "auto", "torch"}
-                and detector_device.startswith("intel")
+                and detector_backend in {"onnxruntime", "auto", "torch"}
+                and detector_device.startswith("cuda")
                 else "ok"
             ),
             "severity": "warning",
-            "message": "Detector on Intel device with CPU video encoding may hide regressions in split runtime path.",
+            "message": "Detector on GPU with CPU video encoding may hide regressions in split runtime path.",
         }
     )
     checks.append(
@@ -471,7 +495,7 @@ def _config_presets() -> list[dict]:
             "id": "balanced",
             "title": "Balanced",
             "overrides": {
-                "processor.inference_backend": "openvino",
+                "processor.inference_backend": "onnxruntime",
                 "video.encoding": "cpu",
                 "processor.binary_imgsz": 640,
                 "processor.min_seconds_between_recordings": 0.0,
@@ -504,7 +528,10 @@ def build_system_config_audit_payload(
         [
             k
             for k in user_keys
-            if k not in default_keys and k not in IGNORED_CONFIG_AUDIT_KEYS and not k.startswith("camera.")
+            if k not in default_keys
+            and k not in IGNORED_CONFIG_AUDIT_KEYS
+            and not k.startswith("camera.")
+            and not _is_known_dynamic_config_key(k, default_keys=default_keys)
         ]
     )
     deprecated_present = sorted([k for k in DEPRECATED_USER_CONFIG_KEYS if k in user_keys])
@@ -523,10 +550,21 @@ def build_system_config_audit_payload(
     )
     recall_tuning, recall_hints, recall_blocking = _recall_audit(app_config_get)
     scales_tuning, scales_warnings = _scales_mqtt_audit(app_config_get, user_cfg)
-    combined_warnings = [*recall_blocking, *scales_warnings]
+    scales_blocking = [w for w in scales_warnings if "mqtt.broker is empty" in w or "no weight MQTT topic" in w]
+    combined_warnings = [*recall_blocking, *scales_blocking]
     processor_runtime_hints = _processor_runtime_hints(app_config_get)
     preflight = _preflight_config_safety(app_config_get)
     runtime_parity = _runtime_parity_snapshot(app_config_get)
+    from services.system_operational_status import filter_runtime_parity_alerts
+
+    if isinstance(runtime_parity.get("parity_alerts"), dict):
+        runtime_parity = {
+            **runtime_parity,
+            "parity_alerts": filter_runtime_parity_alerts(
+                runtime_parity["parity_alerts"],
+                app_config_get=app_config_get,
+            ),
+        }
     return {
         "deprecated_keys_present": deprecated_present,
         "unknown_keys": unknown_keys,
@@ -539,6 +577,7 @@ def build_system_config_audit_payload(
         "processor_runtime_hints": processor_runtime_hints,
         "scales_mqtt": scales_tuning,
         "scales_warnings": scales_warnings,
+        "scales_blocking_warnings": scales_blocking,
         "config_warnings": combined_warnings,
         "config_presets": _config_presets(),
         "preflight": preflight,

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def normalize_correction_source(value: Any) -> str:
     src = (value or "").strip().lower()
-    if src in ("unknowns", "video"):
+    if src in ("unknowns", "video", "timeline"):
         return src
     return "other"
 

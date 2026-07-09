@@ -1,0 +1,31 @@
+# Orin lab (без LAN-камер): ONNX CUDA, Jetson NVENC/NVDEC, фикс. разрешение для bootstrap.
+# Применение: bash scripts/server-apply-user-config-patch.sh scripts/user-config.orin-lab.partial.yaml --write --restart
+_meta:
+  platform: orin
+processor:
+  classifier_engine: birder_eu
+  birder_eu_variant: convnext_v2_tiny_eu-common256px
+  inference_backend: onnxruntime
+  classifier_inference_backend: onnxruntime
+  inference_device: "cuda:0"
+  classifier_inference_device: "cuda:0"
+  binary_imgsz: 704
+  models:
+    binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+    classifier: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
+    reid_embedder: models/reid/ornimetrics/reid_embedder.onnx
+  reid:
+    device: "cuda:0"
+    inference_backend: onnxruntime
+video:
+  source: file
+  encoding: jetson
+  capture_backend: auto
+  record_hw_encode: false
+  force_recording_resolution: true
+  video_width: 2688
+  video_height: 1520
+  frigate:
+    enabled: false
+species:
+  catalog_allowlist_file: models/classification/convnext_v2_tiny_eu-common256px/class_labels.txt

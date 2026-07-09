@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pipeline_config import resolve_binary_model_imgsz
+
 
 def build_pipeline_policy_snapshot(
     app_config,
@@ -15,9 +17,9 @@ def build_pipeline_policy_snapshot(
     regional_species = regional_species_override
     if regional_species is None:
         regional_species = list(app_config.get("processor.regional_species") or [])
-    match_live_regen = bool(
-        app_config.get("processor.track_regen_match_live_pipeline", False),
-    )
+    from tracking_policy import unified_with_live_pipeline
+
+    match_live_regen = unified_with_live_pipeline(app_config.config if hasattr(app_config, "config") else app_config)
     ignore_regional = bool(
         app_config.get("processor.track_regen_ignore_regional_species", True),
     )
@@ -44,8 +46,8 @@ def build_pipeline_policy_snapshot(
         "track_regen_match_live_pipeline": bool(for_track_regen and match_live_regen),
         "track_regen_ignore_regional_species": bool(for_track_regen and ignore_regional),
         "min_center_dist": min_center_dist,
-        "binary_imgsz": int(app_config.get("processor.binary_imgsz", 640) or 640),
-        "detector_scope": list(app_config.get("processor.detector_scope") or ["Bird", "Rodent"]),
+        "binary_imgsz": resolve_binary_model_imgsz(app_config),
+        "detector_scope": list(app_config.get("processor.detector_scope") or ["Bird"]),
         "max_classifications_per_frame": int(
             app_config.get("processor.max_classifications_per_frame", 2) or 2,
         ),

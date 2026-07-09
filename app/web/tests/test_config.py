@@ -55,8 +55,4 @@ def test_production_requires_processor_secret_and_strict_ui_auth(monkeypatch):
         importlib.reload(config_module)
 
     monkeypatch.setenv("PROCESSOR_SECRET", "pytest-processor-secret")
-    with pytest.raises(RuntimeError, match="BIRDLENSE_STRICT_API_AUTH=1"):
-        importlib.reload(config_module)
-
-    monkeypatch.setenv("BIRDLENSE_STRICT_API_AUTH", "1")
     importlib.reload(config_module)

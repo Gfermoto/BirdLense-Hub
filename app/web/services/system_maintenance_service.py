@@ -5,11 +5,9 @@ from __future__ import annotations
 import logging
 import os
 import re
-import threading
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
-import routes.ui_system_jobs_state as job_state
 from app_config.app_config import app_config
 from models import Species, Video, db
 from services.http_response_cache import (
@@ -27,6 +25,11 @@ from services.species_visit_maintenance_service import (
     preview_clean_orphaned_visits,
     preview_realign_visit_times,
     preview_split_large_gap_visits,
+)
+from services.session_manifest_io import (
+    read_session_manifest_import_metadata,
+    read_session_manifest_times,
+    session_importable_from_disk,
 )
 from util import recordings_dir
 
@@ -51,18 +54,36 @@ def coerce_duplicate_group_limit(raw: object, default: int = 500) -> tuple[int |
     return max(10, min(v, 5000)), None
 
 
+def _scan_import_grace_minutes() -> float:
+    try:
+        minutes = float(app_config.get("reconcile.scan_import_grace_minutes") or 15)
+    except (TypeError, ValueError):
+        minutes = 15.0
+    return max(0.0, min(1440.0, minutes))
+
+
+def _scan_import_min_bytes() -> int:
+    try:
+        val = int(app_config.get("reconcile.scan_import_min_bytes") or 512)
+    except (TypeError, ValueError):
+        val = 512
+    return max(0, min(10_000_000, val))
+
+
 def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
     """
     Scan data/recordings/ for video.mp4 not in DB and add them.
-    On success may start spectrogram regen thread via app.extensions (if registered).
     """
     if not os.path.exists(recordings_dir()):
         return {"imported": 0, "message": "No recordings directory"}, 200
 
     existing_paths = {v.video_path for v in db.session.query(Video.video_path).all()}
     imported = 0
+    skipped_pending = 0
     cleaned_legacy_placeholders = 0
     cleaned_legacy_visits = 0
+    grace_minutes = _scan_import_grace_minutes()
+    min_bytes = _scan_import_min_bytes()
 
     try:
         cleaned_legacy_placeholders, cleaned_legacy_visits = _cleanup_legacy_import_placeholders()
@@ -98,32 +119,51 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                         if rel_path in existing_paths:
                             continue
 
+                        importable, skip_reason = session_importable_from_disk(
+                            ts_path,
+                            video_mp4,
+                            grace_minutes=grace_minutes,
+                            min_bytes=min_bytes,
+                        )
+                        if not importable:
+                            skipped_pending += 1
+                            _log.debug("Scan skip pending %s (%s)", rel_path, skip_reason)
+                            continue
+
                         try:
                             with db.session.begin_nested():
-                                y, mo, d, h, mi, s = map(int, m.groups())
-                                start_time = datetime(
-                                    y,
-                                    mo,
-                                    d,
-                                    h,
-                                    mi,
-                                    s,
-                                    tzinfo=timezone.utc,
-                                )
-                                end_time = start_time + timedelta(seconds=30)
-                                spectrogram = None
-                                for f in os.listdir(ts_path):
-                                    if f.startswith("spectrogram") and f.endswith(".jpg"):
-                                        spectrogram = f"data/recordings/{year}/{month}/{day}/{ts}/{f}"
-                                        break
+                                manifest_start, manifest_end = read_session_manifest_times(ts_path)
+                                if manifest_start is not None:
+                                    start_time = manifest_start
+                                    if manifest_end is None:
+                                        skipped_pending += 1
+                                        _log.debug("Scan skip pending %s (manifest_missing_end_time)", rel_path)
+                                        continue
+                                    end_time = manifest_end
+                                else:
+                                    y, mo, d, h, mi, s = map(int, m.groups())
+                                    start_time = datetime(
+                                        y,
+                                        mo,
+                                        d,
+                                        h,
+                                        mi,
+                                        s,
+                                        tzinfo=timezone.utc,
+                                    )
+                                    end_time = start_time + timedelta(seconds=30)
 
+                                manifest_trigger, manifest_camera = read_session_manifest_import_metadata(ts_path)
                                 video = Video(
                                     processor_version="1",
                                     start_time=start_time,
                                     end_time=end_time,
                                     video_path=rel_path,
-                                    spectrogram_path=spectrogram,
                                 )
+                                if manifest_trigger:
+                                    video.trigger_source = manifest_trigger
+                                if manifest_camera:
+                                    video.camera_id = manifest_camera
                                 db.session.add(video)
                             existing_paths.add(rel_path)
                             imported += 1
@@ -135,30 +175,17 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
         bust_response_caches()
         bust_system_response_caches()
 
-        spectrogram_started = False
-        if imported > 0:
-            run_sg = flask_app.extensions.get("birdlense", {}).get(
-                "run_regenerate_spectrograms",
-            )
-            if run_sg is not None:
-                with job_state._regenerate_lock:
-                    if job_state._regenerate_status["status"] != "running":
-                        threading.Thread(
-                            target=run_sg,
-                            args=(False, None, None, None),
-                            daemon=True,
-                        ).start()
-                        spectrogram_started = True
-
         message = f"Imported {imported} recordings"
+        if skipped_pending:
+            message += f"; skipped {skipped_pending} pending sessions"
         if cleaned_legacy_placeholders:
             message += f"; cleaned {cleaned_legacy_placeholders} legacy placeholders"
         return {
             "imported": imported,
+            "skipped_pending": skipped_pending,
             "cleaned_legacy_placeholders": cleaned_legacy_placeholders,
             "cleaned_legacy_visits": cleaned_legacy_visits,
             "message": message,
-            "spectrogramRegenerationStarted": spectrogram_started,
         }, 200
     except Exception:
         db.session.rollback()
@@ -295,4 +322,39 @@ def post_species_catalog_reconcile(payload: dict) -> tuple[dict, int]:
     except Exception as e:
         db.session.rollback()
         _log.exception("Species catalog reconcile failed: %s", e)
+        return {"error": str(e)}, 500
+
+
+def post_species_catalog_deep_reconcile(payload: dict) -> tuple[dict, int]:
+    from services.species_catalog_allowlist_service import clear_allowlist_cache
+    from services.species_catalog_reconcile_service import deep_reconcile_species_catalog
+    from util import bust_feeder_species_filter_cache
+
+    try:
+        dry_run = bool(payload.get("dry_run", True))
+        dup_limit, err = coerce_duplicate_group_limit(
+            payload.get("duplicate_group_limit", 500),
+        )
+        if err:
+            return {"error": err}, 400
+        rename_limit = payload.get("rename_limit", 5000)
+        try:
+            rename_limit = int(rename_limit)
+        except (TypeError, ValueError):
+            return {"error": "rename_limit must be int"}, 400
+
+        body = deep_reconcile_species_catalog(
+            dry_run=dry_run,
+            duplicate_group_limit=dup_limit,
+            rename_limit=rename_limit,
+            app_config_get=app_config.get,
+        )
+        if not dry_run:
+            clear_allowlist_cache()
+            bust_response_caches()
+            bust_feeder_species_filter_cache()
+        return body, 200
+    except Exception as e:
+        db.session.rollback()
+        _log.exception("Species catalog deep reconcile failed: %s", e)
         return {"error": str(e)}, 500

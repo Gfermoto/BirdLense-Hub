@@ -7,11 +7,14 @@ from pathlib import Path
 
 
 def test_detection_patch_writes_feedback_event(app, client):
-    from models import DetectionFeedbackEvent, Species, Video, VideoSpecies, db
+    from models import ActiveLearningCase, DetectionFeedbackEvent, Species, Video, VideoSpecies, db
 
     with app.app_context():
-        old_species = Species(name="Sparrow")
-        new_species = Species(name="Great Tit")
+        suffix = str(id(app))
+        old_species_name = f"Sparrow-{suffix}"
+        new_species_name = f"Great Tit-{suffix}"
+        old_species = Species(name=old_species_name)
+        new_species = Species(name=new_species_name)
         video = Video(
             processor_version="t",
             start_time=datetime(2026, 5, 1, 10, 0, 0, tzinfo=timezone.utc),
@@ -54,10 +57,19 @@ def test_detection_patch_writes_feedback_event(app, client):
         assert row is not None
         assert row.action == "relabel"
         assert row.video_species_id == det_id
-        assert row.from_species_name == "Sparrow"
-        assert row.to_species_name == "Great Tit"
+        assert row.from_species_name == old_species_name
+        assert row.to_species_name == new_species_name
         assert row.trigger_source == "video"
         assert row.apply_scope == "single_track"
+        queued = (
+            ActiveLearningCase.query.filter_by(
+                video_species_id=det_id,
+                reason_code="hard_positive_ui",
+            )
+            .order_by(ActiveLearningCase.id.desc())
+            .first()
+        )
+        assert queued is not None
 
 
 def test_feedback_loop_status_endpoint(client, app):
@@ -100,6 +112,8 @@ def test_feedback_loop_status_endpoint(client, app):
     assert body["schema"] == "feedback_loop_status@v1"
     assert body["events_total"] >= 1
     assert body["events_delete_as_background"] >= 1
+    assert "actions" in body
+    assert "queue" in body
     assert body["latest_export"]["status"] == "ok"
 
 
@@ -194,10 +208,10 @@ def test_export_feedback_learning_dataset_missing_table_updates_latest_status(tm
 
 
 def test_delete_detection_writes_background_feedback(app, client):
-    from models import DetectionFeedbackEvent, Species, Video, VideoSpecies, db
+    from models import ActiveLearningCase, DetectionFeedbackEvent, Species, Video, VideoSpecies, db
 
     with app.app_context():
-        species = Species(name="Bird")
+        species = Species(name=f"Bird-{id(app)}")
         video = Video(
             processor_version="t",
             start_time=datetime(2026, 5, 1, 12, 0, 0, tzinfo=timezone.utc),
@@ -236,3 +250,121 @@ def test_delete_detection_writes_background_feedback(app, client):
         assert row is not None
         assert row.action == "delete_as_background"
         assert row.to_species_name == "Background"
+        queued = (
+            ActiveLearningCase.query.filter_by(
+                video_species_id=det_id,
+                reason_code="hard_negative_ui",
+            )
+            .order_by(ActiveLearningCase.id.desc())
+            .first()
+        )
+        assert queued is not None
+
+
+def test_confirm_detection_writes_confirm_feedback_and_queue(app, client):
+    from models import ActiveLearningCase, DetectionFeedbackEvent, Species, Video, VideoSpecies, db
+
+    with app.app_context():
+        species = Species(name=f"Bird-confirm-{id(app)}")
+        video = Video(
+            processor_version="t",
+            start_time=datetime(2026, 5, 2, 12, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 5, 2, 12, 0, 30, tzinfo=timezone.utc),
+            video_path="data/recordings/fb/confirm.mp4",
+        )
+        db.session.add_all([species, video])
+        db.session.flush()
+        det = VideoSpecies(
+            video_id=video.id,
+            species_id=species.id,
+            start_time=1.0,
+            end_time=2.0,
+            confidence=0.77,
+            source="video",
+            detection_provider="yolo",
+            track_id=77,
+        )
+        db.session.add(det)
+        db.session.commit()
+        det_id = det.id
+
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.post(
+        f"/api/ui/detections/{det_id}/confirm",
+        json={"source": "unknowns", "apply_scope": "single_track"},
+    )
+    assert r.status_code == 200
+
+    with app.app_context():
+        row = DetectionFeedbackEvent.query.order_by(DetectionFeedbackEvent.id.desc()).first()
+        assert row is not None
+        assert row.action == "confirm_species"
+        queued = (
+            ActiveLearningCase.query.filter_by(
+                video_species_id=det_id,
+                reason_code="unknown_confirmed_ui",
+            )
+            .order_by(ActiveLearningCase.id.desc())
+            .first()
+        )
+        assert queued is not None
+
+
+def test_delete_visit_removes_all_detections(app, client):
+    from models import Species, SpeciesVisit, Video, VideoSpecies, db
+
+    with app.app_context():
+        species = Species(name="Crow")
+        video = Video(
+            processor_version="t",
+            start_time=datetime(2026, 5, 2, 10, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 5, 2, 10, 1, 0, tzinfo=timezone.utc),
+            video_path="data/recordings/fb/visit.mp4",
+        )
+        db.session.add_all([species, video])
+        db.session.flush()
+        visit = SpeciesVisit(
+            species_id=species.id,
+            start_time=video.start_time,
+            end_time=video.end_time,
+            max_simultaneous=1,
+        )
+        db.session.add(visit)
+        db.session.flush()
+        dets = []
+        for i in range(2):
+            dets.append(
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=float(i),
+                    end_time=float(i) + 0.5,
+                    confidence=0.6,
+                    source="video",
+                    detection_provider="yolo",
+                    track_id=10 + i,
+                )
+            )
+        db.session.add_all(dets)
+        db.session.commit()
+        visit_id = visit.id
+        video_id = video.id
+        det_ids = [d.id for d in dets]
+
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.delete(
+        f"/api/ui/visits/{visit_id}",
+        json={"source": "timeline"},
+    )
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["deleted_detections"] == 2
+
+    with app.app_context():
+        assert db.session.get(SpeciesVisit, visit_id) is None
+        for det_id in det_ids:
+            assert db.session.get(VideoSpecies, det_id) is None
+        assert db.session.get(Video, video_id) is not None

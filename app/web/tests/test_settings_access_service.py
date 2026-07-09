@@ -13,7 +13,7 @@ def test_gate_no_passwords_non_prod_false(monkeypatch):
     assert settings_gate_requires_password() is False
 
 
-def test_gate_no_passwords_prod_true(monkeypatch):
+def test_gate_no_passwords_prod_false(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "production")
     monkeypatch.delenv("BIRDLENSE_ENV", raising=False)
     from app_config.app_config import app_config
@@ -23,12 +23,12 @@ def test_gate_no_passwords_prod_true(monkeypatch):
     monkeypatch.setitem(gen, "settings_password", "")
     monkeypatch.setitem(gen, "contributor_password", "")
     try:
-        assert settings_gate_requires_password() is True
+        assert settings_gate_requires_password() is False
     finally:
         monkeypatch.delenv("FLASK_ENV", raising=False)
 
 
-def test_gate_no_passwords_prod_alias_true(monkeypatch):
+def test_gate_no_passwords_prod_alias_false(monkeypatch):
     monkeypatch.delenv("FLASK_ENV", raising=False)
     monkeypatch.setenv("BIRDLENSE_ENV", "PROD")
     from app_config.app_config import app_config
@@ -38,7 +38,7 @@ def test_gate_no_passwords_prod_alias_true(monkeypatch):
     monkeypatch.setitem(gen, "settings_password", "")
     monkeypatch.setitem(gen, "contributor_password", "")
     try:
-        assert settings_gate_requires_password() is True
+        assert settings_gate_requires_password() is False
     finally:
         monkeypatch.delenv("BIRDLENSE_ENV", raising=False)
 
@@ -79,7 +79,7 @@ def test_resolve_unlock_admin_bcrypt_stored(monkeypatch):
     assert resolve_password_unlock_role("nope") is None
 
 
-def test_empty_passwords_block_in_prod(monkeypatch):
+def test_empty_passwords_allow_verify_in_prod(monkeypatch):
     monkeypatch.setenv("BIRDLENSE_ENV", "production")
     from app_config.app_config import app_config
     from services.settings_access_service import (
@@ -90,7 +90,7 @@ def test_empty_passwords_block_in_prod(monkeypatch):
     monkeypatch.setitem(g, "settings_password", "")
     monkeypatch.setitem(g, "contributor_password", "")
     try:
-        assert empty_passwords_block_verify_in_production() is True
+        assert empty_passwords_block_verify_in_production() is False
     finally:
         monkeypatch.delenv("BIRDLENSE_ENV", raising=False)
 

@@ -45,10 +45,16 @@ export function MlRuntimeCard() {
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
         <Chip label={`encoding: ${valueOrDash(runtime.data.video.encoding)}`} />
         <Chip
-          label={`record VA-API: ${valueOrDash(runtime.data.video.record_with_vaapi)}`}
+          label={`capture: ${valueOrDash(runtime.data.video.capture_backend_config)}`}
         />
         <Chip
-          label={`capture: ${valueOrDash(runtime.data.video.capture_backend_config)}`}
+          label={`record_hw: ${runtime.data.video.record_hw_encode === false ? 'libx264' : 'hw'}`}
+        />
+        <Chip
+          label={`reid: ${valueOrDash(runtime.data.processor.reid_runtime_enabled)}`}
+        />
+        <Chip
+          label={`welfare: ${valueOrDash(runtime.data.processor.welfare_runtime_enabled)}`}
         />
         <Chip
           label={`detector backend: ${valueOrDash(runtime.data.processor.inference_backend)}`}

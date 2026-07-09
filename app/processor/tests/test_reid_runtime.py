@@ -1,4 +1,4 @@
-"""Unit tests for runtime DINOv2 Re-ID enrichment helpers."""
+"""Unit tests for runtime Ornimetrics Re-ID enrichment helpers."""
 
 import os
 import sys
@@ -32,23 +32,29 @@ class TestReidRuntime(unittest.TestCase):
             }
         ]
 
-        out = apply_runtime_reid_metadata(
-            detections,
-            embed_crop=lambda _crop: np.asarray([1.0, 0.0], dtype=np.float32),
-            load_candidates=lambda _species: [
-                (np.asarray([0.99, 0.01], dtype=np.float32), "Синичка"),
-            ],
-            model_name="dinov2_vits14",
-            similarity_threshold=0.8,
-            max_detections=4,
-            min_best_frame_score=5.5,
-            flag_low_similarity_for_review=True,
-            video_path="data/recordings/2026/05/02/235959/video.mp4",
-        )
+        with mock.patch(
+            "reid_runtime._cfg_bool",
+            side_effect=lambda key, default: True
+            if key == "processor.reid.include_embedding_payload"
+            else default,
+        ):
+            out = apply_runtime_reid_metadata(
+                detections,
+                embed_crop=lambda _crop: np.asarray([1.0, 0.0], dtype=np.float32),
+                load_candidates=lambda _species: [
+                    (np.asarray([0.99, 0.01], dtype=np.float32), "Синичка"),
+                ],
+                model_name="ornimetrics_reid",
+                similarity_threshold=0.8,
+                max_detections=4,
+                min_best_frame_score=5.5,
+                flag_low_similarity_for_review=True,
+                video_path="data/recordings/2026/05/02/235959/video.mp4",
+            )
 
         row = out[0]
         self.assertEqual(row.get("individual_nickname"), "Синичка")
-        self.assertEqual(row.get("reid_model"), "dinov2_vits14")
+        self.assertEqual(row.get("reid_model"), "ornimetrics_reid")
         self.assertEqual(row.get("reid_dim"), 2)
         self.assertTrue(isinstance(row.get("reid_embedding"), list))
         self.assertIn("runtime://data/recordings", str(row.get("reid_crop_key")))
@@ -77,17 +83,23 @@ class TestReidRuntime(unittest.TestCase):
                 }
             )
 
-        apply_runtime_reid_metadata(
-            detections,
-            embed_crop=_embed,
-            load_candidates=lambda _species: [],
-            model_name="dinov2_vits14",
-            similarity_threshold=0.9,
-            max_detections=2,
-            min_best_frame_score=0.0,
-            flag_low_similarity_for_review=True,
-            video_path="data/recordings/x/video.mp4",
-        )
+        with mock.patch(
+            "reid_runtime._cfg_get",
+            side_effect=lambda key, default=None: 60_000.0
+            if key == "processor.reid.max_runtime_ms"
+            else default,
+        ):
+            apply_runtime_reid_metadata(
+                detections,
+                embed_crop=_embed,
+                load_candidates=lambda _species: [],
+                model_name="ornimetrics_reid",
+                similarity_threshold=0.9,
+                max_detections=2,
+                min_best_frame_score=0.0,
+                flag_low_similarity_for_review=True,
+                video_path="data/recordings/x/video.mp4",
+            )
         self.assertEqual(calls["n"], 2)
 
     def test_apply_runtime_reid_marks_review_when_no_match(self):
@@ -109,7 +121,7 @@ class TestReidRuntime(unittest.TestCase):
             load_candidates=lambda _species: [
                 (np.asarray([0.0, 1.0], dtype=np.float32), "OldNick"),
             ],
-            model_name="dinov2_vits14",
+            model_name="ornimetrics_reid",
             similarity_threshold=0.95,
             max_detections=3,
             min_best_frame_score=0.0,
@@ -137,7 +149,7 @@ class TestReidRuntime(unittest.TestCase):
             detections,
             embed_crop=lambda _crop: np.asarray([0.1, 0.9], dtype=np.float32),
             load_candidates=lambda _species: [],
-            model_name="dinov2_vits14",
+            model_name="ornimetrics_reid",
             similarity_threshold=0.95,
             max_detections=3,
             min_best_frame_score=0.0,
@@ -166,7 +178,7 @@ class TestReidRuntime(unittest.TestCase):
             detections,
             embed_crop=lambda _crop: np.asarray([0.5, 0.5], dtype=np.float32),
             load_candidates=lambda _species: [],
-            model_name="dinov2_vits14",
+            model_name="ornimetrics_reid",
             similarity_threshold=0.95,
             max_detections=3,
             min_best_frame_score=0.0,

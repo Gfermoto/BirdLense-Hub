@@ -1,0 +1,10 @@
+{
+  "schema": "domain_finetune_contract@v1",
+  "required_candidates": [],
+  "required_evidence_markers": [],
+  "require_champion_shadow_ok": false,
+  "require_acceptance_gate_ok": false,
+  "require_rollback_ready_evidence": false,
+  "block_promote_on_weak_uplift": false,
+  "min_uplift_f1": 0.0
+}

@@ -1,7 +1,8 @@
 import axios from 'axios';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchReadiness, getApiErrorMessage, resolveImageUrl } from './api';
-import { afterEach, vi } from 'vitest';
+import * as clientModule from './client';
+import { ApiHttpError } from './client';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -30,6 +31,12 @@ describe('resolveImageUrl', () => {
 });
 
 describe('getApiErrorMessage', () => {
+  it('reads message from ApiHttpError', () => {
+    expect(getApiErrorMessage(new ApiHttpError(403, 'denied'), 'fallback')).toBe(
+      'denied',
+    );
+  });
+
   it('prefers backend JSON error text from axios errors', () => {
     const err = {
       isAxiosError: true,
@@ -52,46 +59,47 @@ describe('getApiErrorMessage', () => {
 
 describe('fetchReadiness', () => {
   it('returns degraded payloads even when backend uses HTTP 503', async () => {
-    vi.spyOn(axios, 'get').mockResolvedValue({
-      status: 503,
-      data: {
-        status: 'degraded',
-        ready: false,
-        checked_at: '2026-04-14T00:00:00Z',
-        checks: {
-          database: { status: 'error', error: 'database_unavailable' },
-          data_dir: {
-            path: 'data/',
-            exists: true,
-            is_dir: true,
-            writable: true,
-            status: 'ok',
-          },
-          app_config_dir: {
-            path: 'app_config/',
-            exists: true,
-            is_dir: true,
-            writable: true,
-            status: 'ok',
-          },
+    const degraded = {
+      status: 'degraded',
+      ready: false,
+      checked_at: '2026-04-14T00:00:00Z',
+      checks: {
+        database: { status: 'error', error: 'database_unavailable' },
+        data_dir: {
+          path: 'data/',
+          exists: true,
+          is_dir: true,
+          writable: true,
+          status: 'ok',
         },
-        components: {
-          web: 'ok',
-          processor: 'offline',
-          video: 'not_configured',
-          mqtt: 'not_configured',
-          yolo: 'unknown',
-        },
-        security_gates: {
-          runtime: 'development',
-          items: [
-            { id: 'strict_api_auth', status: 'warn' },
-            { id: 'flask_secret_key', status: 'ok' },
-            { id: 'processor_secret', status: 'ok' },
-          ],
+        app_config_dir: {
+          path: 'app_config/',
+          exists: true,
+          is_dir: true,
+          writable: true,
+          status: 'ok',
         },
       },
-    });
+      components: {
+        web: 'ok',
+        processor: 'offline',
+        video: 'not_configured',
+        mqtt: 'not_configured',
+        yolo: 'unknown',
+      },
+      security_gates: {
+        runtime: 'development',
+        items: [
+          { id: 'strict_api_auth', status: 'warn' },
+          { id: 'flask_secret_key', status: 'ok' },
+          { id: 'processor_secret', status: 'ok' },
+        ],
+      },
+    };
+    vi.spyOn(clientModule, 'csrfFetch').mockResolvedValue({
+      status: 503,
+      json: async () => degraded,
+    } as Response);
 
     const payload = await fetchReadiness();
 

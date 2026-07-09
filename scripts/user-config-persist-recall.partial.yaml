@@ -1,0 +1,5 @@
+# After detector recall: allow generic Bird rows to reach fusion/visits.
+detection:
+  min_confidence_to_store: 0.12
+processor:
+  min_track_duration: 0.5

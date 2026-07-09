@@ -108,8 +108,18 @@ describe('App species routes', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders card directory on /species-directory', async () => {
+  it('redirects legacy /species-directory to catalog quality', async () => {
     window.history.pushState({}, '', '/species-directory');
+
+    render(<App />);
+
+    expect(
+      await screen.findByText('species-directory-page'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders catalog quality on /system/catalog-quality', async () => {
+    window.history.pushState({}, '', '/system/catalog-quality');
 
     render(<App />);
 

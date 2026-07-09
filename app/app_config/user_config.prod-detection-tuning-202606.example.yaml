@@ -1,0 +1,27 @@
+# Prod tuning notes (2026-06) — prefer default_config + migration v2 + tuning_role.
+# Backup before edit: cp user_config.yaml user_config.yaml.bak-tuning-$(date -u +%Y%m%dT%H%M%SZ)
+#
+# Architecture (not per-id YAML forever):
+# - detection.persist_mode: binary_track_first  (default + migration)
+# - video.cameras[].tuning_role → processor.camera_tuning_by_role in default_config
+# - processor.camera_overrides.<id> only for exceptions
+
+detection:
+  persist_mode: binary_track_first
+
+video:
+  cameras:
+    # Example: replace ids with yours; roles map to default_config presets.
+    - id: BirdBox
+      tuning_role: feeder_close
+    - id: Forest
+      tuning_role: feeder_far
+
+# Optional global static gate (default_config already softened vs 2026-05 prod):
+processor:
+  track_static_reject_min_duration_sec: 2.0
+  track_static_reject_min_frames: 4
+  # Legacy per-id overrides — drop when tuning_role covers the camera:
+  # camera_overrides:
+  #   BirdBox:
+  #     min_confidence_binary: 0.12

@@ -1,4 +1,4 @@
-"""Tests for classifier OpenVINO/torch weight path resolver."""
+"""Tests for classifier torch/ONNX weight path resolver."""
 
 import os
 import sys
@@ -11,73 +11,152 @@ _src_path = os.path.abspath(os.path.join(_current_dir, "../src"))
 if _src_path not in sys.path:
     sys.path.insert(0, _src_path)
 
+VARIANT = "convnext_v2_tiny_eu-common256px"
+
 
 class TestClassifierPaths(unittest.TestCase):
     """Classifier path resolution and availability checks."""
 
-    def test_torch_default_path(self):
+    def test_yolo_requires_explicit_classifier_path(self):
         from inference.classifier_paths import resolve_classifier_weight_path
 
-        path, backend = resolve_classifier_weight_path(
-            {"processor.classifier_inference_backend": "torch"},
-            "/tmp/processor",
-        )
-        self.assertEqual(backend, "torch")
-        self.assertTrue(path.endswith("best.pt"))
+        with self.assertRaises(FileNotFoundError):
+            resolve_classifier_weight_path(
+                {
+                    "processor.classifier_engine": "yolo",
+                    "processor.classifier_inference_backend": "torch",
+                },
+                "/tmp/processor",
+            )
 
-    def test_openvino_empty_when_unconfigured(self):
+    def test_birder_default_torch_path(self):
         from inference.classifier_paths import resolve_classifier_weight_path
 
-        old = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
-        try:
-            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = "openvino"
-            path, backend = resolve_classifier_weight_path({}, "/tmp/processor")
+        with tempfile.TemporaryDirectory() as d:
+            proc = os.path.join(d, "processor")
+            model_dir = os.path.join(proc, "models/classification", VARIANT)
+            os.makedirs(model_dir, exist_ok=True)
+            pt = os.path.join(model_dir, f"{VARIANT}.pt")
+            with open(pt, "wb") as f:
+                f.write(b"x")
+            path, backend = resolve_classifier_weight_path(
+                {"processor.classifier_inference_backend": "torch"},
+                proc,
+            )
             self.assertEqual(backend, "torch")
-            self.assertTrue(path.endswith("best.pt"))
-        finally:
-            if old is None:
-                os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
-            else:
-                os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = old
+            self.assertTrue(path.endswith(".pt"))
 
-    def test_auto_prefers_openvino_when_available(self):
+    def test_ornimetrics_region_selects_nabirds_for_us_ca(self):
+        from inference.classifier_paths import (
+            resolve_classifier_weight_path,
+            resolve_ornimetrics_species_pack,
+        )
+
+        cfg = {
+            "processor.classifier_engine": "ornimetrics",
+            "processor.classifier_inference_backend": "auto",
+            "ebird.country": "CA",
+        }
+        with patch(
+            "inference.selector.onnxruntime_classifier_available",
+            return_value=True,
+        ):
+            path, backend = resolve_classifier_weight_path(cfg, "/tmp/processor")
+        self.assertEqual(resolve_ornimetrics_species_pack(cfg), "nabirds")
+        self.assertEqual(backend, "onnxruntime")
+        self.assertTrue(
+            path.endswith(
+                "models/classification/ornimetrics/"
+                "species_classifier_nabirds.onnx",
+            ),
+        )
+
+    def test_ornimetrics_region_selects_inat_for_non_na(self):
+        from inference.classifier_paths import (
+            resolve_classifier_weight_path,
+            resolve_ornimetrics_species_pack,
+        )
+
+        cfg = {
+            "processor.classifier_engine": "ornimetrics",
+            "processor.classifier_inference_backend": "auto",
+            "ebird.country": "RU",
+        }
+        with patch(
+            "inference.selector.onnxruntime_classifier_available",
+            return_value=True,
+        ):
+            path, backend = resolve_classifier_weight_path(cfg, "/tmp/processor")
+        self.assertEqual(resolve_ornimetrics_species_pack(cfg), "inat")
+        self.assertEqual(backend, "onnxruntime")
+        self.assertTrue(
+            path.endswith(
+                "models/classification/ornimetrics/"
+                "species_classifier_inat.onnx",
+            ),
+        )
+
+    def test_birder_eu_onnx_path(self):
         from inference.classifier_paths import resolve_classifier_weight_path
 
         with tempfile.TemporaryDirectory() as d:
-            ov = os.path.join(d, "openvino")
-            os.makedirs(ov, exist_ok=True)
-            with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
-                f.write("<net />")
-            with patch("inference.selector.openvino_runtime_available", return_value=True):
-                path, backend = resolve_classifier_weight_path(
-                    {
-                        "processor.classifier_inference_backend": "auto",
-                        "processor.models.classifier_openvino": ov,
-                    },
-                    "/tmp/processor",
-                )
-        self.assertEqual(backend, "openvino")
-        self.assertEqual(path, ov)
+            proc = os.path.join(d, "processor")
+            model_dir = os.path.join(proc, "models/classification", VARIANT)
+            os.makedirs(model_dir, exist_ok=True)
+            onnx = os.path.join(model_dir, f"{VARIANT}.onnx")
+            labels = os.path.join(model_dir, "class_labels.txt")
+            with open(onnx, "wb") as f:
+                f.write(b"x")
+            with open(labels, "w", encoding="utf-8") as f:
+                f.write("Eurasian jay\n")
+            cfg = {
+                "processor.classifier_engine": "birder_eu",
+                "processor.classifier_inference_backend": "onnxruntime",
+                "processor.models.classifier": (
+                    f"models/classification/{VARIANT}/{VARIANT}.onnx"
+                ),
+            }
+            with patch(
+                "inference.selector.onnxruntime_classifier_available",
+                return_value=True,
+            ):
+                path, backend = resolve_classifier_weight_path(cfg, proc)
+            self.assertEqual(backend, "onnxruntime")
+            self.assertTrue(path.endswith(VARIANT))
 
-    def test_auto_falls_back_to_torch_when_openvino_runtime_missing(self):
+    def test_birder_eu_weights_classifier_path(self):
         from inference.classifier_paths import resolve_classifier_weight_path
 
         with tempfile.TemporaryDirectory() as d:
-            ov = os.path.join(d, "openvino")
-            os.makedirs(ov, exist_ok=True)
-            with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
-                f.write("<net />")
-            with patch("inference.selector.openvino_runtime_available", return_value=False):
-                path, backend = resolve_classifier_weight_path(
-                    {
-                        "processor.classifier_inference_backend": "auto",
-                        "processor.models.classifier_openvino": ov,
-                        "processor.models.classifier": "models/classification/weights/best.pt",
-                    },
-                    "/tmp/processor",
-                )
-        self.assertEqual(backend, "torch")
-        self.assertTrue(path.endswith("best.pt"))
+            proc = os.path.join(d, "processor")
+            model_dir = os.path.join(proc, "models/classification", VARIANT)
+            os.makedirs(model_dir, exist_ok=True)
+            pt = os.path.join(model_dir, f"{VARIANT}.pt")
+            with open(pt, "wb") as f:
+                f.write(b"x")
+            cfg = {
+                "processor.classifier_engine": "birder_eu",
+                "processor.classifier_inference_backend": "torch",
+                "processor.models.classifier": (
+                    f"models/classification/{VARIANT}/{VARIANT}.pt"
+                ),
+            }
+            path, backend = resolve_classifier_weight_path(cfg, proc)
+            self.assertEqual(backend, "torch")
+            self.assertTrue(path.endswith(f"{VARIANT}.pt"))
+
+    def test_ornimetrics_pack_override_wins(self):
+        from inference.classifier_paths import resolve_ornimetrics_species_pack
+
+        self.assertEqual(
+            resolve_ornimetrics_species_pack(
+                {
+                    "processor.ornimetrics_species_pack": "inat",
+                    "ebird.country": "US",
+                }
+            ),
+            "inat",
+        )
 
 
 if __name__ == "__main__":

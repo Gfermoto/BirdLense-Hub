@@ -13,23 +13,79 @@ from typing import Any, Callable, Optional
 from argparse import Namespace
 
 from app_config.app_config import app_config
+from app_config.cameras import get_valid_cameras
 from app_config.trigger_config import format_trigger_display_line, get_active_trigger_names
 from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from fps_tracker import FPSTracker
 from processor_support import get_output_path, processor_status
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
+from detection_strategy import coerce_bgr_frame
+from recording_session_policy import effective_frigate_hold_seconds
+from recording_finalize_worker import FinalizeWorker
 from recording_finalize import finalize_motion_recording
+from processor_config_defaults import (
+    YOLO_BLIND_MIN_FRAMES,
+    YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES,
+    config_int,
+)
+from session_state_repository import SessionStateRepository
+from detect_first import (
+    _detect_first_gate_min_confidence,
+    build_frigate_assisted_detect_first_anchor,
+    build_raw_hits_detect_first_anchor,
+    detect_first_runtime_signal_fields,
+    enrich_detect_first_anchor,
+    is_valid_detect_first_anchor,
+    sanitize_anchor_for_context,
+)
+from detection_scheduler import (
+    build_detect_first_config,
+    build_probe_config,
+    frame_counts_as_detect_first_hit,
+    requires_detect_first_before_record,
+    resolve_detect_first_confirm_min_hits,
+    trigger_requires_detect_first,
+)
+from yolo_blind_monitor import YoloBlindLiveMonitor, run_blind_quickcheck
 
 logger = logging.getLogger(__name__)
 
 
 def _camera_processor_overrides(camera_id: str | None) -> dict:
-    """Per-camera processor overrides from ``processor.camera_overrides.<camera_id>``."""
+    """Per-camera overrides via ``threshold_resolution`` (role → camera)."""
+    from threshold_resolution import build_camera_processor_overrides
+
+    merged = build_camera_processor_overrides(app_config, camera_id)
+    out: dict = {}
+    for key, val in merged.items():
+        if key == "detection_interest_zones":
+            out["processor.detection_interest_zones"] = val
+        elif key == "detection_interest_zones_required":
+            out["processor.detection_interest_zones_required"] = val
+        else:
+            out[key] = val
+    return out
+
+
+def _camera_slot_for_id(camera_id: str | None) -> str | None:
     cam = str(camera_id or "").strip()
     if not cam:
-        return {}
-    raw = app_config.get(f"processor.camera_overrides.{cam}")
-    return dict(raw) if isinstance(raw, dict) else {}
+        return None
+    cameras = get_valid_cameras(video_config=(app_config.get("video") or {}))
+    for row in cameras:
+        if str(row.get("id") or "").strip() != cam:
+            continue
+        slot = str(row.get("camera_slot") or "").strip()
+        return slot or None
+    return None
+
+
+def _classifier_use_source_frame() -> bool:
+    """Toggle source-frame crops for classifier/ReID (env overrides config)."""
+    env_raw = (os.environ.get("BIRDLENSE_CLASSIFIER_USE_SOURCE_FRAME") or "").strip().lower()
+    if env_raw:
+        return env_raw in ("1", "true", "yes", "on")
+    return bool(app_config.get("processor.classifier_use_source_frame", True))
 
 
 class MotionRecordingSession:
@@ -51,6 +107,7 @@ class MotionRecordingSession:
         scales_topic_arg: Optional[str],
         data_dir: str,
         fps_tracker: FPSTracker,
+        finalize_worker: FinalizeWorker | None = None,
         file_test_runtime: Any = None,
     ) -> None:
         self.args = args
@@ -66,7 +123,41 @@ class MotionRecordingSession:
         self.scales_topic_arg = scales_topic_arg
         self.data_dir = data_dir
         self.fps_tracker = fps_tracker
+        self.finalize_worker = finalize_worker
         self.file_test_runtime = file_test_runtime
+        self.inference_lock = None
+        self.session_state_repo = SessionStateRepository()
+        self._startup_blind_confirmed = False
+        try:
+            blind_min_sessions = int(app_config.get("detection.yolo_blind_required_consecutive_sessions") or 1)
+            blind_min_frames = config_int(
+                app_config,
+                "detection.yolo_blind_min_frames",
+                YOLO_BLIND_MIN_FRAMES,
+            )
+            blind_min_frigate = config_int(
+                app_config,
+                "detection.yolo_blind_min_frigate_only_frames",
+                YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES,
+            )
+            blind_min_duration_s = float(app_config.get("detection.yolo_blind_min_duration_seconds") or 30.0)
+            blind_min_effective_fps = float(app_config.get("detection.yolo_blind_min_effective_fps") or 2.0)
+            self._startup_blind_confirmed = self.session_state_repo.is_blind_confirmed(
+                camera_id=self.default_camera_id,
+                min_recent_sessions=max(1, blind_min_sessions),
+                min_yolo_frames=max(1, blind_min_frames),
+                min_frigate_only_frames=max(1, blind_min_frigate),
+                min_duration_seconds=max(0.0, blind_min_duration_s),
+                min_effective_fps=max(0.1, blind_min_effective_fps),
+            )
+            if self._startup_blind_confirmed:
+                set_gauge("yolo_blind_restored_state", "1")
+                logger.warning(
+                    "recording_session: restored blind-state context for camera=%s",
+                    self.default_camera_id,
+                )
+        except Exception:
+            logger.debug("recording_session: startup state restore failed", exc_info=True)
 
     @property
     def media_source(self) -> Any:
@@ -88,6 +179,35 @@ class MotionRecordingSession:
             if camera_id and str(camera_id) in normalized:
                 cameras.extend(normalized)
         return sorted(set(cameras))
+
+    def _frigate_prior_active(
+        self,
+        *,
+        camera_id: str | None,
+        frigate_hold_seconds: float,
+    ) -> bool:
+        if frigate_hold_seconds <= 0:
+            return False
+        recent_frigate = getattr(self.motion_detector, "has_recent_frigate_activity", None)
+        if callable(recent_frigate):
+            try:
+                return bool(recent_frigate(camera=camera_id, max_age_seconds=frigate_hold_seconds))
+            except Exception:
+                pass
+        aggregator_recent = getattr(self.mqtt_aggregator, "has_recent_frigate_activity", None)
+        if callable(aggregator_recent):
+            camera_ids = self._session_activity_camera_ids(camera_id)
+            try:
+                return bool(
+                    aggregator_recent(
+                        camera_ids=camera_ids,
+                        max_age_seconds=frigate_hold_seconds,
+                        min_confidence=0.0,
+                    )
+                )
+            except Exception:
+                pass
+        return False
 
     def _has_session_activity(
         self,
@@ -144,7 +264,216 @@ class MotionRecordingSession:
                 return False
         return False
 
-    def run(self) -> bool:
+    def run_detection_probe_window(self, *, camera_id: str | None, trigger_source: str | None) -> bool:
+        """Run bounded detect-only loop before recording when trigger is in scheduler list."""
+        cfg = build_probe_config(app_config)
+        if not cfg.enabled:
+            return True
+        trigger = str(trigger_source or "").strip().lower()
+        if trigger not in set(cfg.triggers):
+            return True
+        self._bind_lores_media(camera_id)
+        self.frame_processor.reset()
+        frames, hits, _ = self._run_lores_yolo_window(
+            camera_id=camera_id,
+            max_frames=cfg.max_frames,
+            window_seconds=cfg.window_seconds,
+            stop_when=lambda h, _f: h >= cfg.min_hits,
+        )
+        self.frame_processor.reset()
+        logger.info(
+            "detection_probe: trigger=%s camera=%s frames=%s hits=%s min_hits=%s window=%.2fs",
+            trigger or "?",
+            camera_id or "?",
+            frames,
+            hits,
+            cfg.min_hits,
+            cfg.window_seconds,
+        )
+        positive = hits >= cfg.min_hits
+        return positive if cfg.start_recording_on_positive else True
+
+    def detect_until_confirmed(self, *, camera_id: str | None, trigger_source: str | None) -> dict[str, Any] | None:
+        """Run lores YOLO+ByteTrack window; return confirmed anchor or None (never bypass)."""
+        cfg = build_detect_first_config(app_config)
+        trigger = str(trigger_source or "").strip().lower()
+        if not trigger or not cfg.enabled:
+            return None
+        if not trigger_requires_detect_first(trigger_source=trigger, app_config=app_config):
+            return None
+        self._bind_lores_media(camera_id)
+        self.frame_processor.reset()
+        anchor: dict[str, Any] | None = None
+
+        cam_overrides = _camera_processor_overrides(camera_id)
+        confirm_min_hits = resolve_detect_first_confirm_min_hits(cfg, cam_overrides)
+
+        def _maybe_anchor(_hits: int, _frames: int) -> bool:
+            nonlocal anchor
+            if _hits < confirm_min_hits:
+                return False
+            gate_min_conf = _detect_first_gate_min_confidence(app_config, cam_overrides)
+            anchor = self.frame_processor.confirmed_track_anchor(
+                app_config=app_config,
+                min_track_duration=0.0,
+                min_confidence_to_process=gate_min_conf,
+            )
+            return anchor is not None
+
+        frames, hits, _ = self._run_lores_yolo_window(
+            camera_id=camera_id,
+            max_frames=cfg.max_frames,
+            window_seconds=cfg.window_seconds,
+            stop_when=_maybe_anchor,
+            count_raw_as_hit=True,
+        )
+        if anchor is None:
+            self.frame_processor.reset()
+            anchor = build_frigate_assisted_detect_first_anchor(
+                app_config=app_config,
+                camera_id=camera_id,
+                motion_detector=self.motion_detector,
+                trigger_source=trigger,
+            )
+            if anchor is not None:
+                inc_counter("detect_first_frigate_assisted_total")
+        if anchor is None and hits >= confirm_min_hits:
+            anchor = build_raw_hits_detect_first_anchor(
+                frame_processor=self.frame_processor,
+                app_config=app_config,
+                cam_overrides=cam_overrides,
+                hits=hits,
+                camera_id=camera_id,
+            )
+            if anchor is not None:
+                inc_counter("detect_first_raw_hits_anchor_total")
+        if anchor is None:
+            inc_counter("detect_first_no_anchor_total")
+        else:
+            inc_counter("detect_first_confirmed_total")
+        logger.info(
+            "detect_first: trigger=%s camera=%s frames=%s hits=%s min_hits=%s anchor=%s window=%.2fs",
+            trigger or "?",
+            camera_id or "?",
+            frames,
+            hits,
+            confirm_min_hits,
+            bool(anchor),
+            cfg.window_seconds,
+        )
+        if anchor is not None:
+            enrich_detect_first_anchor(
+                anchor,
+                detect_first_frames=frames,
+                detect_first_hits=hits,
+                trigger_source=trigger,
+                camera_id=camera_id,
+            )
+        return anchor
+
+    def _bind_lores_media(self, camera_id: str | None) -> None:
+        if not self.args.input and app_config.get("video.source") == "go2rtc":
+            self.media_source = self.get_media_source(camera_id or self.default_camera_id)
+        self._apply_main_playback_shape()
+
+    def _apply_main_playback_shape(self) -> None:
+        """Main-stream bbox normalization before lores YOLO (Frigate-style: record = playback frame)."""
+        from playback_geometry import apply_playback_shape_to_strategy, resolve_playback_shape_hw
+
+        refresh = getattr(self.media_source, "refresh_record_stream_geometry", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except Exception:
+                logger.debug("refresh_record_stream_geometry failed", exc_info=True)
+
+        main_size = getattr(self.media_source, "main_size", None)
+        shape_hw, source = resolve_playback_shape_hw(
+            config_main_size=main_size,
+            media_source=self.media_source,
+        )
+        if shape_hw is None:
+            return
+        if not apply_playback_shape_to_strategy(
+            self.frame_processor,
+            shape_hw,
+            source=source,
+            main_size_wh=main_size if main_size and len(main_size) >= 2 else None,
+        ):
+            return
+        if main_size and len(main_size) >= 2:
+            try:
+                cfg_hw = (int(main_size[1]), int(main_size[0]))
+                if cfg_hw != shape_hw and source != "config_main_size":
+                    inc_counter("playback_shape_config_mismatch_total")
+                    inc_counter("bbox_remap_mismatch_total")
+                    logger.warning(
+                        "playback_shape at session start: config=%sx%s applied=%sx%s source=%s",
+                        main_size[0],
+                        main_size[1],
+                        shape_hw[1],
+                        shape_hw[0],
+                        source,
+                    )
+            except (TypeError, ValueError):
+                pass
+
+    def _run_lores_yolo_window(
+        self,
+        *,
+        camera_id: str | None,
+        max_frames: int,
+        window_seconds: float,
+        stop_when: Callable[[int, int], bool] | None = None,
+        count_raw_as_hit: bool = False,
+    ) -> tuple[int, int, bool]:
+        """Bounded lores capture + YOLO loop. Returns (frames, hits, stopped_early)."""
+        camera_overrides = _camera_processor_overrides(camera_id)
+        start = time.monotonic()
+        frames = 0
+        hits = 0
+        stopped_early = False
+        while frames < max_frames and (time.monotonic() - start) <= window_seconds:
+            frame = self.media_source.capture()
+            if frame is None:
+                time.sleep(0.03)
+                continue
+            frames += 1
+            frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
+            lock = getattr(self, "inference_lock", None)
+
+            def _run_frame() -> bool:
+                return bool(
+                    self.frame_processor.run(
+                        frame,
+                        frame_time=frame_time,
+                        skip_light_gate=False,
+                        camera_overrides=camera_overrides,
+                    )
+                )
+
+            if lock is not None:
+                with lock:
+                    hit = _run_frame()
+            else:
+                hit = _run_frame()
+            if count_raw_as_hit and not hit:
+                hit = frame_counts_as_detect_first_hit(self.frame_processor.last_run_stats)
+            if hit:
+                hits += 1
+            if stop_when and stop_when(hits, frames):
+                stopped_early = True
+                break
+        return frames, hits, stopped_early
+
+    def run(
+        self,
+        *,
+        forced_camera_id: str | None = None,
+        forced_trigger_source: str | None = None,
+        detect_first_anchor: dict[str, Any] | None = None,
+        concurrent_context: dict[str, Any] | None = None,
+    ) -> bool:
         """Выполнить одну запись. Возвращает True, если внешний цикл main должен завершиться (режим --input)."""
         session_overrides = merge_birdnet_mqtt_bias_into_overrides(
             self.merged_overrides, app_config, self.mqtt_aggregator
@@ -153,13 +482,21 @@ class MotionRecordingSession:
 
         from motion_recording_camera import resolve_motion_recording_camera_id
 
-        camera_id = resolve_motion_recording_camera_id(
-            self.motion_detector,
-            mqtt_aggregator=self.mqtt_aggregator,
-            default_camera_id=self.default_camera_id,
+        camera_id = (
+            str(forced_camera_id).strip()
+            if forced_camera_id
+            else resolve_motion_recording_camera_id(
+                self.motion_detector,
+                mqtt_aggregator=self.mqtt_aggregator,
+                default_camera_id=self.default_camera_id,
+            )
         )
         frigate_trigger_event = None
-        if getattr(self.motion_detector, "get_triggered_by", lambda: None)() == "frigate":
+        trigger_by = (
+            str(forced_trigger_source or "").strip().lower()
+            or str(getattr(self.motion_detector, "get_triggered_by", lambda: None)() or "").strip().lower()
+        )
+        if trigger_by == "frigate":
             _last_frigate = getattr(self.motion_detector, "get_last_frigate_event", None)
             if callable(_last_frigate):
                 _ev = _last_frigate()
@@ -168,9 +505,24 @@ class MotionRecordingSession:
         if not self.args.input and app_config.get("video.source") == "go2rtc":
             self.media_source = self.get_media_source(camera_id)
 
+        _go2rtc_live = requires_detect_first_before_record(args=self.args, app_config=app_config)
+        _trigger_needs_anchor = trigger_requires_detect_first(
+            trigger_source=str(forced_trigger_source or trigger_by or "").strip().lower(),
+            app_config=app_config,
+        )
+        if _go2rtc_live and _trigger_needs_anchor and not is_valid_detect_first_anchor(detect_first_anchor):
+            inc_counter("main_ffmpeg_started_without_anchor_total")
+            logger.error(
+                "Refusing go2rtc recording without confirmed lores anchor (trigger=%s camera=%s)",
+                forced_trigger_source or trigger_by or "?",
+                camera_id,
+            )
+            return False
+
         output_path_physical, output_path_logical = get_output_path()
         video_output = os.path.join(output_path_physical, "video.mp4")
         video_path_for_api = f"{output_path_logical}/video.mp4"
+        playback_reconcile: dict[str, Any] = {}
 
         self.media_source.start_recording(video_output)
 
@@ -179,8 +531,55 @@ class MotionRecordingSession:
             video_output,
         )
         start_time = datetime.now(timezone.utc)
+        try:
+            from recording_session_manifest import write_recording_started
+
+            write_recording_started(
+                output_path_physical,
+                video_path_logical=video_path_for_api,
+                start_time=start_time,
+                camera_id=camera_id,
+                camera_slot=_camera_slot_for_id(camera_id),
+                trigger_source=str(forced_trigger_source or "").strip().lower() or None,
+            )
+        except Exception:
+            logger.debug("session manifest write failed", exc_info=True)
+        session_trigger_perf = time.perf_counter()
+
+        trace_writer = None
+        try:
+            from frame_decision_trace import open_session_trace, set_session_trace_writer
+
+            if bool(app_config.get("processor.frame_decision_trace_enabled", True)):
+                sk = datetime.now(timezone.utc).strftime("%H%M%S")
+                trace_writer = open_session_trace(
+                    Path(self.data_dir),
+                    session_key=sk,
+                    camera_id=camera_id,
+                )
+                set_session_trace_writer(trace_writer)
+        except Exception:
+            logger.debug("frame decision trace init failed", exc_info=True)
 
         try:
+            from pipeline_config import build_motion_trigger_context
+
+            trigger_ctx = build_motion_trigger_context(
+                self.motion_detector,
+                app_config,
+                media_source=self.media_source,
+            )
+            self.frame_processor.set_session_context(trigger_ctx.as_dict())
+            self._apply_main_playback_shape()
+            set_gauge("recording_trigger_source", trigger_ctx.triggered_by or "unknown")
+            set_gauge("recording_stream_fps", float(trigger_ctx.stream_fps))
+            logger.info(
+                "recording_session: trigger=%s stream_fps=%.2f model_imgsz=%s native_detect=%s",
+                trigger_ctx.triggered_by or "?",
+                trigger_ctx.stream_fps,
+                trigger_ctx.model_imgsz,
+                trigger_ctx.use_native_resolution,
+            )
             self.frame_processor.reset()
             self.decision_maker.reset()
             self.fps_tracker.reset()
@@ -190,6 +589,20 @@ class MotionRecordingSession:
                 frigate_hold_seconds = float(app_config.get("processor.frigate_activity_hold_seconds") or 0.0)
             except (TypeError, ValueError):
                 frigate_hold_seconds = 0.0
+            frigate_hold_seconds = effective_frigate_hold_seconds(
+                frigate_hold_seconds,
+                trigger_by,
+            )
+            try:
+                max_frigate_only_extension_frames = int(
+                    app_config.get("processor.frigate_only_extension_max_frames") or 0
+                )
+            except (TypeError, ValueError):
+                max_frigate_only_extension_frames = 0
+            max_frigate_only_extension_frames = max(
+                0,
+                max_frigate_only_extension_frames,
+            )
             try:
                 none_frame_retries = int(app_config.get("processor.capture_none_frame_retries") or 3)
             except (TypeError, ValueError):
@@ -204,14 +617,121 @@ class MotionRecordingSession:
                 "frames_seen": 0,
                 "yolo_frames_ran": 0,
                 "yolo_frames_with_tracks": 0,
+                "yolo_frames_with_raw_boxes": 0,
+                "yolo_raw_boxes_total": 0,
+                "yolo_accepted_boxes_total": 0,
                 "low_light_blocked_frames": 0,
                 "session_extended_by_frigate_only": 0,
+                "session_frigate_only_extension_guard_drops": 0,
+                "track_id_switches_count": 0,
+                "avg_track_duration_sec": 0.0,
+                "yolo_blind_phase": "none",
+                "blind_quickcheck_frames": 0,
+                "blind_quickcheck_hits": 0,
+                "yolo_frames_raw_unaccepted": 0,
+                "yolo_frames_raw_no_track": 0,
+                "quality_reject_counts": {},
+                **detect_first_runtime_signal_fields(detect_first_anchor),
             }
+            _quality_reject_keys = (
+                "rejected_static_objects",
+                "rejected_phantom_boxes",
+                "rejected_ignore_mask",
+                "rejected_interest_zone",
+                "rejected_motion_verified",
+                "rejected_global_static",
+                "rejected_texture",
+                "rejected_background_subtraction",
+                "scoring_rejected",
+                "scoring_review",
+                "scoring_accepted",
+            )
+            blind_suspected_since_monotonic: float | None = None
+            blind_quickcheck_until_monotonic = 0.0
+            try:
+                blind_min_frames = config_int(
+                    app_config,
+                    "detection.yolo_blind_min_frames",
+                    YOLO_BLIND_MIN_FRAMES,
+                )
+            except (TypeError, ValueError):
+                blind_min_frames = YOLO_BLIND_MIN_FRAMES
+            try:
+                blind_min_frigate = config_int(
+                    app_config,
+                    "detection.yolo_blind_min_frigate_only_frames",
+                    YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES,
+                )
+            except (TypeError, ValueError):
+                blind_min_frigate = YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES
+            try:
+                quickcheck_seconds = float(app_config.get("detection.yolo_blind_quickcheck_seconds") or 2.0)
+            except (TypeError, ValueError):
+                quickcheck_seconds = 2.0
+            try:
+                blind_alert_seconds = float(
+                    app_config.get("detection.yolo_blind_alert_seconds")
+                    or app_config.get("detection.yolo_blind_min_duration_seconds")
+                    or 30.0
+                )
+            except (TypeError, ValueError):
+                blind_alert_seconds = 30.0
+            blind_live_monitor = YoloBlindLiveMonitor(alert_seconds=blind_alert_seconds)
             runtime_profile_counts: Counter[str] = Counter()
             runtime_profile_overrides: dict[str, dict] = {}
             camera_overrides = _camera_processor_overrides(camera_id)
             if camera_overrides:
                 self.decision_maker.apply_runtime_overrides(camera_overrides)
+
+            def _raw_boxes_from_stats(local_stats: dict) -> int:
+                return int(local_stats.get("yolo_raw_boxes") or 0)
+
+            def _accumulate_run_stats(local_stats: dict, *, count_frame_metrics: bool = True) -> int:
+                """Session-level YOLO counters; one increment per captured frame (not per quickcheck probe)."""
+                raw_boxes_local = _raw_boxes_from_stats(local_stats)
+                if not count_frame_metrics:
+                    return raw_boxes_local
+                if raw_boxes_local > 0 and runtime_signals.get("trigger_to_first_bbox_wall_s") is None:
+                    runtime_signals["trigger_to_first_bbox_wall_s"] = round(
+                        max(0.0, time.perf_counter() - session_trigger_perf),
+                        6,
+                    )
+                if local_stats.get("yolo_track_found") and runtime_signals.get("trigger_to_first_track_wall_s") is None:
+                    runtime_signals["trigger_to_first_track_wall_s"] = round(
+                        max(0.0, time.perf_counter() - session_trigger_perf),
+                        6,
+                    )
+                if local_stats.get("yolo_ran"):
+                    runtime_signals["yolo_frames_ran"] += 1
+                    processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
+                if local_stats.get("yolo_track_found"):
+                    runtime_signals["yolo_frames_with_tracks"] += 1
+                    processor_status["last_yolo_detection_at"] = datetime.now(timezone.utc).isoformat()
+                if raw_boxes_local > 0:
+                    runtime_signals["yolo_frames_with_raw_boxes"] += 1
+                    runtime_signals["yolo_raw_boxes_total"] += raw_boxes_local
+                accepted_local = int(local_stats.get("yolo_accepted_boxes") or 0)
+                runtime_signals["yolo_accepted_boxes_total"] += accepted_local
+                if raw_boxes_local > 0 and accepted_local == 0:
+                    runtime_signals["yolo_frames_raw_unaccepted"] += 1
+                if raw_boxes_local > 0 and not local_stats.get("yolo_track_found"):
+                    runtime_signals["yolo_frames_raw_no_track"] += 1
+                runtime_signals["track_id_switches_count"] = max(
+                    int(runtime_signals.get("track_id_switches_count") or 0),
+                    int(local_stats.get("track_id_switches_count") or 0),
+                )
+                if local_stats.get("light_gate_blocked"):
+                    runtime_signals["low_light_blocked_frames"] += 1
+                qrc = runtime_signals.setdefault("quality_reject_counts", {})
+                if not isinstance(qrc, dict):
+                    qrc = {}
+                    runtime_signals["quality_reject_counts"] = qrc
+                for _qk in _quality_reject_keys:
+                    delta = int(local_stats.get(_qk) or 0)
+                    if delta:
+                        qrc[_qk] = int(qrc.get(_qk) or 0) + delta
+                return raw_boxes_local
+
             frame_n = 0
             consecutive_none_frames = 0
             while True:
@@ -241,6 +761,25 @@ class MotionRecordingSession:
                 if consecutive_none_frames > 0:
                     inc_counter("recording_capture_none_frame_recovered_total")
                     consecutive_none_frames = 0
+                classifier_source_frame = None
+                classifier_crop_mismatch = False
+                if _classifier_use_source_frame():
+                    raw_classifier_frame = getattr(
+                        self.media_source,
+                        "get_classifier_source_frame",
+                        lambda: None,
+                    )()
+                    mismatch_fn = getattr(
+                        self.media_source,
+                        "classifier_crop_source_mismatch",
+                        None,
+                    )
+                    if callable(mismatch_fn):
+                        classifier_crop_mismatch = bool(mismatch_fn())
+                    classifier_source_frame = coerce_bgr_frame(
+                        raw_classifier_frame,
+                        log_label="classifier_source_frame",
+                    )
                 frame_n += 1
                 runtime_signals["frames_seen"] += 1
                 if self.file_test_runtime:
@@ -255,21 +794,43 @@ class MotionRecordingSession:
                     )
                 processor_status["last_video_ok_at"] = datetime.now(timezone.utc).isoformat()
                 frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
-                with self.fps_tracker:
-                    has_detections = self.frame_processor.run(
-                        frame,
-                        frame_time=frame_time,
-                        camera_overrides=camera_overrides,
+                scoring_overrides = dict(camera_overrides or {})
+                if classifier_crop_mismatch:
+                    scoring_overrides["_classifier_crop_source_mismatch"] = True
+                if bool(app_config.get("processor.scoring_engine_enabled", False)):
+                    scoring_overrides["_scoring_frigate_prior_active"] = self._frigate_prior_active(
+                        camera_id=camera_id,
+                        frigate_hold_seconds=frigate_hold_seconds,
                     )
+                with self.fps_tracker:
+                    lock = getattr(self, "inference_lock", None)
+                    if lock is not None:
+                        with lock:
+                            has_detections = self.frame_processor.run(
+                                frame,
+                                frame_time=frame_time,
+                                classification_frame=classifier_source_frame,
+                                camera_overrides=scoring_overrides,
+                            )
+                    else:
+                        has_detections = self.frame_processor.run(
+                            frame,
+                            frame_time=frame_time,
+                            classification_frame=classifier_source_frame,
+                            camera_overrides=scoring_overrides,
+                        )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
-                if run_stats.get("yolo_ran"):
-                    runtime_signals["yolo_frames_ran"] += 1
-                    processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
-                if run_stats.get("yolo_track_found"):
-                    runtime_signals["yolo_frames_with_tracks"] += 1
-                    processor_status["last_yolo_detection_at"] = datetime.now(timezone.utc).isoformat()
-                if run_stats.get("light_gate_blocked"):
-                    runtime_signals["low_light_blocked_frames"] += 1
+                if camera_id:
+                    from frigate_live_track import get_frigate_live_bbox
+                    from motion_detectors.opencv_live_overlay import publish_merged_detector_overlay
+
+                    live_polygons = list(getattr(self.frame_processor, "live_detector_polygons", None) or [])
+                    publish_merged_detector_overlay(
+                        camera_id,
+                        live_polygons,
+                        frigate_bbox_norm=get_frigate_live_bbox(camera_id),
+                    )
+                raw_boxes = _accumulate_run_stats(run_stats)
                 runtime_profile = str(run_stats.get("runtime_profile") or "").strip()
                 if runtime_profile:
                     runtime_profile_counts[runtime_profile] += 1
@@ -283,8 +844,66 @@ class MotionRecordingSession:
                     camera_id=camera_id,
                     frigate_hold_seconds=frigate_hold_seconds,
                 )
-                if has_detections and not raw_yolo_detections:
+
+                # Primary-path recovery: normal frame_processor.run() produced raw boxes.
+                if raw_boxes > 0:
+                    runtime_signals["yolo_blind_phase"] = "recovered"
+                    blind_suspected_since_monotonic = None
+                    blind_quickcheck_until_monotonic = 0.0
+
+                frigate_only_extension = bool(frigate_hold_seconds > 0 and has_detections and not raw_yolo_detections)
+                if frigate_only_extension:
                     runtime_signals["session_extended_by_frigate_only"] += 1
+                    if (
+                        max_frigate_only_extension_frames > 0
+                        and runtime_signals["session_extended_by_frigate_only"] > max_frigate_only_extension_frames
+                    ):
+                        runtime_signals["session_frigate_only_extension_guard_drops"] += 1
+                        has_detections = False
+                        frigate_only_extension = False
+                        logger.info(
+                            "recording_session: frigate-only extension guard hit (camera=%s, max_frames=%s)",
+                            camera_id or "_default",
+                            max_frigate_only_extension_frames,
+                        )
+                    suspicion_ready = (
+                        runtime_signals["yolo_frames_ran"] >= max(1, blind_min_frames)
+                        and runtime_signals["yolo_raw_boxes_total"] == 0
+                        and runtime_signals["session_extended_by_frigate_only"] >= max(1, blind_min_frigate)
+                    )
+                    if suspicion_ready and runtime_signals["yolo_blind_phase"] == "none":
+                        runtime_signals["yolo_blind_phase"] = "suspected"
+                        blind_suspected_since_monotonic = time.monotonic()
+                        blind_quickcheck_until_monotonic = blind_suspected_since_monotonic + max(
+                            0.2, quickcheck_seconds
+                        )
+
+                if runtime_signals["yolo_blind_phase"] == "suspected":
+                    now_m = time.monotonic()
+                    if now_m <= blind_quickcheck_until_monotonic:
+                        runtime_signals["blind_quickcheck_frames"] += 1
+                        qc_stats = run_blind_quickcheck(
+                            self.frame_processor,
+                            frame,
+                            cfg=app_config,
+                            frame_time=frame_time,
+                            classification_frame=classifier_source_frame,
+                        )
+                        quick_raw = _accumulate_run_stats(qc_stats, count_frame_metrics=False)
+                        if quick_raw > 0:
+                            runtime_signals["blind_quickcheck_hits"] += 1
+                            runtime_signals["yolo_blind_phase"] = "recovered"
+                            blind_suspected_since_monotonic = None
+                            blind_quickcheck_until_monotonic = 0.0
+                    elif runtime_signals["yolo_blind_phase"] == "suspected":
+                        runtime_signals["yolo_blind_phase"] = "confirmed"
+
+                blind_live_monitor.on_frame(
+                    frigate_only_extension=frigate_only_extension,
+                    yolo_track_found=bool(run_stats.get("yolo_track_found")),
+                    yolo_raw_boxes=raw_boxes,
+                    runtime_signals=runtime_signals,
+                )
 
                 self.decision_maker.update_has_detections(has_detections)
                 self.decision_maker.get_first_species_result(
@@ -294,11 +913,38 @@ class MotionRecordingSession:
                     break
             self.fps_tracker.log_summary()
         finally:
+            if camera_id:
+                try:
+                    from motion_detectors.opencv_live_overlay import set_yolo_live_overlay
+
+                    set_yolo_live_overlay(camera_id, {"detector_polygons": []})
+                except Exception:
+                    logger.debug("yolo live overlay clear failed", exc_info=True)
+            try:
+                from frame_decision_trace import set_session_trace_writer
+
+                if trace_writer is not None:
+                    trace_writer.close()
+                set_session_trace_writer(None)
+            except Exception:
+                logger.debug("frame decision trace close failed", exc_info=True)
             if self.file_test_runtime:
                 self.file_test_runtime.poll()
                 self.file_test_runtime.abort_session = False
             self.media_source.stop_recording()
             end_time = datetime.now(timezone.utc)
+
+            playback_reconcile = {}
+            try:
+                from playback_geometry import reconcile_playback_shape_after_record
+
+                playback_reconcile = reconcile_playback_shape_after_record(
+                    frame_processor=self.frame_processor,
+                    video_output=video_output,
+                    media_source=self.media_source,
+                )
+            except Exception:
+                logger.debug("playback_shape reconcile failed", exc_info=True)
 
         try:
             _mqtt_b = (os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker") or "").strip() or None
@@ -317,22 +963,29 @@ class MotionRecordingSession:
             set_gauge("last_session_low_light_blocked_frames", runtime_signals["low_light_blocked_frames"])
             if dominant_runtime_profile:
                 set_gauge("last_session_runtime_profile", dominant_runtime_profile)
-            finalize_motion_recording(
-                self.api,
-                self.motion_detector,
-                self.mqtt_aggregator,
-                self.frame_processor,
-                self.decision_maker,
-                start_time=start_time,
-                end_time=end_time,
-                output_path_physical=output_path_physical,
-                output_path_logical=output_path_logical,
-                video_output=video_output,
-                video_path_for_api=video_path_for_api,
-                scales_topic_arg=self.scales_topic_arg,
-                data_dir=self.data_dir,
-                recording_context={
+            try:
+                stability = self.frame_processor.get_tracking_stability_stats()
+                runtime_signals["track_id_switches_count"] = int(stability.get("track_id_switches_count") or 0)
+                runtime_signals["avg_track_duration_sec"] = float(stability.get("avg_track_duration_sec") or 0.0)
+            except Exception:
+                logging.debug("track stability summary failed", exc_info=True)
+            finalize_kwargs = {
+                "api": self.api,
+                "motion_detector": self.motion_detector,
+                "mqtt_aggregator": self.mqtt_aggregator,
+                "frame_processor": self.frame_processor,
+                "decision_maker": self.decision_maker,
+                "start_time": start_time,
+                "end_time": end_time,
+                "output_path_physical": output_path_physical,
+                "output_path_logical": output_path_logical,
+                "video_output": video_output,
+                "video_path_for_api": video_path_for_api,
+                "scales_topic_arg": self.scales_topic_arg,
+                "data_dir": self.data_dir,
+                "recording_context": {
                     "triggered_camera": camera_id,
+                    "camera_slot": _camera_slot_for_id(camera_id),
                     "frigate_trigger_event": frigate_trigger_event,
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
                     "triggered_by": getattr(self.motion_detector, "get_triggered_by", lambda: None)(),
@@ -345,11 +998,38 @@ class MotionRecordingSession:
                         "session_extended_by_frigate": runtime_signals["session_extended_by_frigate_only"] > 0,
                         "runtime_profile": dominant_runtime_profile,
                         "runtime_profile_frames": dict(runtime_profile_counts),
+                        "playback_geometry": playback_reconcile,
                     },
+                    "concurrent_recording": dict(concurrent_context or {}),
                 },
-            )
+            }
+            opencv_diag = getattr(self.motion_detector, "get_opencv_diagnostics", lambda: None)()
+            if opencv_diag is None:
+                opencv_diag = getattr(self.motion_detector, "diagnostics", lambda: None)()
+            if isinstance(opencv_diag, dict):
+                finalize_kwargs["recording_context"]["runtime_signals"]["opencv_trigger_diagnostics"] = opencv_diag
+            anchor_snapshot = sanitize_anchor_for_context(detect_first_anchor)
+            if anchor_snapshot is not None:
+                finalize_kwargs["recording_context"]["detect_first_anchor"] = anchor_snapshot
+            tracks = getattr(self.frame_processor, "tracks", None) or {}
+            if isinstance(tracks, dict) and tracks:
+                import copy
+
+                finalize_kwargs["recording_context"]["tracks_snapshot"] = copy.deepcopy(tracks)
+            if self.finalize_worker is not None:
+                if self.finalize_worker.enqueue(finalize_kwargs):
+                    logger.info("recording_session: finalize task enqueued (async worker mode)")
+                else:
+                    # Backpressure fallback: never drop finalized clip; run sync as safety net.
+                    logger.warning("recording_session: finalize queue full, fallback to synchronous finalize")
+                    finalize_motion_recording(**finalize_kwargs)
+            else:
+                finalize_motion_recording(**finalize_kwargs)
         except Exception as e:
+            from processor_exception_handling import reraise_if_io_critical
+
+            reraise_if_io_critical(e)
             inc_counter("recording_finalize_failures_total")
-            logger.error(e)
+            logger.error("recording_session finalize failed", exc_info=True)
 
         return bool(self.args.input)

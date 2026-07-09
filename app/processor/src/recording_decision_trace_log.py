@@ -13,6 +13,10 @@ def write_decision_trace_activity(api: Any, decision_trace: dict[str, Any]) -> N
         return
     if not (decision_trace.get("persisted_tracks") or decision_trace.get("rejected_tracks")):
         return
+    log_fn = getattr(api, "activity_log_async", None)
+    if callable(log_fn):
+        log_fn("decision_trace", decision_trace)
+        return
     try:
         api.activity_log("decision_trace", decision_trace)
     except Exception:

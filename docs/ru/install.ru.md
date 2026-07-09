@@ -2,7 +2,7 @@
 
 [English](../user/install.md)
 
-BirdLense Hub — мониторинг кормушки: детекция птиц по видео и аудио, записи, аналитика. Docker только на **x86_64** (Intel или AMD).
+BirdLense Hub — мониторинг кормушки на **Jetson Orin**: детекция птиц по видео, записи, аналитика. Docker на **aarch64** (Orin NX/NANO).
 
 **Сначала:** [OVERVIEW](./overview.ru.md) · **Сценарии:** [SCENARIOS](./scenarios.ru.md)
 
@@ -10,7 +10,7 @@ BirdLense Hub — мониторинг кормушки: детекция пти
 
 | Компонент | Описание |
 |-----------|----------|
-| **Docker** | **x86_64 / amd64** (Intel или AMD), Compose v2 — ARM/aarch64 не поддерживаются |
+| **Docker** | **aarch64** (Jetson Orin NX/NANO), Compose v2, NVIDIA Container Runtime |
 | **Go2RTC** | Видеопотоки с IP-камер (standalone или Frigate) |
 | **MQTT** (опционально) | Frigate events; BirdNET (любой совместимый источник JSON, чаще BirdNET-Go или BirdNET-Pi) |
 
@@ -75,7 +75,7 @@ cp .env.example .env
 docker compose -f docker-compose.image.yml up -d
 ```
 
-Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. Файлы: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** из каталога `app/` выполните `bash scripts/docker-compose-intel-override-gen.sh` (все `card*`/`renderD*`, `group_add` video/render, `CAP_PERFMON`) или см. `docker-compose.intel.example.yml` для ручной правки GID. Если в логах **`Failed to initialize PMU`** при этом уже есть `PERFMON` в compose — на **хосте** (не в контейнере) ослабьте **`kernel.perf_event_paranoid`**: `make deploy` и CI при наличии `docker-compose.override.yml` пишут **`/etc/sysctl.d/99-birdlense-perf.conf`** со значением **0** и вызывают `sysctl -p` (дефолт **3** на части VPS режет perf; если **0** мало — вручную **`sudo sysctl kernel.perf_event_paranoid=-1`** или контейнер с **`privileged: true`** в override).
+Образ: `ghcr.io/gfermoto/birdlense-hub:latest`. Файлы: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`.
 
 ---
 
@@ -103,7 +103,7 @@ make deploy
 
 **Каталог на сервере:** в `scripts/deploy.sh` по умолчанию `DEPLOY_REMOTE_DIR=/root/BirdLense`. Имя локальной папки клона (`BirdLense-Hub` или своё) с этим не связано.
 
-**Что делает:** останавливает и удаляет контейнер **`birdlense`** (контейнер **`birdlense-redis`** не трогает), собирает UI **локально**, **rsync** с исключениями как в `scripts/deploy.sh` (в т.ч. **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, **`.venv-ci`** / **`.venv-docs`**, `app/.venv`, `site/`, кэши ruff/pytest), дописывает секреты в **`app/.env`** на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./configuration.ru.md), [SECRETS_ROTATION.ru.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md)), при наличии `/dev/dri/renderD*` — **`bash scripts/docker-compose-intel-override-gen.sh`**, на сервере в `app/` — **`make build && make start`**, затем **`scripts/verify-stack.sh`** для **`DEPLOY_URL`** (health, readiness, status, камеры при доступности).
+**Что делает:** останавливает и удаляет контейнер **`birdlense`** (контейнер **`birdlense-redis`** не трогает), собирает UI **локально**, **rsync** с исключениями (в т.ч. **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, кэши ruff/pytest), дописывает секреты в **`app/.env`** на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./configuration.ru.md)), на сервере в `app/` — **`make build && make start`**, затем **`scripts/verify-stack.sh`** для **`DEPLOY_URL`** (health, readiness, status, камеры при доступности).
 
 **Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → workflow **Deploy** в GitHub Actions (self-hosted runner с метками `self-hosted`, `birdlense`). Если запуск долго **Queued** — runner не в сети или не зарегистрирован; до починки используйте **`make deploy`** с вашей машины.
 

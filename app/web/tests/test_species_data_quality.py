@@ -26,6 +26,7 @@ def test_species_ids_to_exclude_from_bird_catalog_filters_off_allowlist_active_s
     """Active off-allowlist species must disappear when UI asks to hide suspects."""
     from models import Species, SpeciesVisit, db
     from services import species_data_quality_service as mod
+    from app_config.app_config import app_config
 
     monkeypatch.setattr(
         mod,
@@ -58,9 +59,64 @@ def test_species_ids_to_exclude_from_bird_catalog_filters_off_allowlist_active_s
         allowed_id = allowed.id
         exotic_id = exotic.id
 
-        excluded = mod.species_ids_to_exclude_from_bird_catalog(db.session)
+        prev = app_config.get("species.catalog_filter_off_allowlist")
+        app_config.set("species.catalog_filter_off_allowlist", True)
+        try:
+            excluded = mod.species_ids_to_exclude_from_bird_catalog(db.session)
+        finally:
+            app_config.set("species.catalog_filter_off_allowlist", prev)
 
     assert exotic_id in excluded
+    assert allowed_id not in excluded
+
+
+def test_species_ids_to_exclude_from_bird_catalog_default_keeps_observed_species(
+    app,
+    monkeypatch,
+):
+    from models import Species, SpeciesVisit, db
+    from services import species_data_quality_service as mod
+    from app_config.app_config import app_config
+
+    monkeypatch.setattr(
+        mod,
+        "load_catalog_allowlist_norm_keys",
+        lambda _get: frozenset({"parus major (great tit)", "great tit"}),
+    )
+
+    with app.app_context():
+        allowed = Species(name="Parus major (Great Tit)")
+        exotic = Species(name="Knob Billed Duck")
+        db.session.add_all([allowed, exotic])
+        db.session.flush()
+        db.session.add_all(
+            [
+                SpeciesVisit(
+                    species_id=allowed.id,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    max_simultaneous=1,
+                ),
+                SpeciesVisit(
+                    species_id=exotic.id,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    max_simultaneous=1,
+                ),
+            ]
+        )
+        db.session.commit()
+        allowed_id = allowed.id
+        exotic_id = exotic.id
+
+        prev = app_config.get("species.catalog_filter_off_allowlist")
+        app_config.set("species.catalog_filter_off_allowlist", False)
+        try:
+            excluded = mod.species_ids_to_exclude_from_bird_catalog(db.session)
+        finally:
+            app_config.set("species.catalog_filter_off_allowlist", prev)
+
+    assert exotic_id not in excluded
     assert allowed_id not in excluded
 
 

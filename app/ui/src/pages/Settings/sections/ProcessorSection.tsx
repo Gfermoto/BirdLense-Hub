@@ -9,25 +9,34 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Alert from '@mui/material/Alert';
 import type { Settings } from '../../../types';
 import { ProcessorConfidenceBlock } from './processor/ProcessorConfidenceBlock';
+import { ProcessorScoringBlock } from './processor/ProcessorScoringBlock';
 import { ProcessorSessionTimingBlock } from './processor/ProcessorSessionTimingBlock';
 import { ProcessorMultiCameraBirdnetBlock } from './processor/ProcessorMultiCameraBirdnetBlock';
 import { ProcessorConfidenceAdvancedBlock } from './processor/ProcessorConfidenceAdvancedBlock';
 import { ProcessorFalsePositiveGuardrailsBlock } from './processor/ProcessorFalsePositiveGuardrailsBlock';
 import { ProcessorLightGateBlock } from './processor/ProcessorLightGateBlock';
-import { ProcessorSpectrogramDatasetBlock } from './processor/ProcessorSpectrogramDatasetBlock';
+import { ProcessorDatasetBlock } from './processor/ProcessorDatasetBlock';
 import { ProcessorFrigateFusionBlock } from './processor/ProcessorFrigateFusionBlock';
 import { ProcessorAdaptiveProfilesBlock } from './processor/ProcessorAdaptiveProfilesBlock';
 import { ProcessorDetectorPipelineBlock } from './processor/ProcessorDetectorPipelineBlock';
 import { ProcessorBirdnetExtendedBlock } from './processor/ProcessorBirdnetExtendedBlock';
 import { ProcessorModelsScopeBlock } from './processor/ProcessorModelsScopeBlock';
 import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
-import { ProcessorBehaviorRecognitionBlock } from './processor/ProcessorBehaviorRecognitionBlock';
+import { ProcessorStreamGeometryBlock } from './processor/ProcessorStreamGeometryBlock';
+import { ProcessorMotionCalibrationBlock } from './processor/ProcessorMotionCalibrationBlock';
+import { ProcessorDetectFirstBlock } from './processor/ProcessorDetectFirstBlock';
+import { ProcessorCameraProfilesBlock } from './processor/ProcessorCameraProfilesBlock';
+import { ProcessorRolePresetsBlock } from './processor/ProcessorRolePresetsBlock';
+
+import type { SettingsTier } from '../settingsTier';
+import { showAdvancedProcessorBlocks } from '../settingsTier';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
-  simpleMode?: boolean;
+  settingsTier?: SettingsTier;
 };
 
 function SectionHeading({
@@ -56,13 +65,12 @@ function SectionHeading({
   );
 }
 
-export function ProcessorSection({ form, simpleMode = true }: Props) {
+export function ProcessorSection({ form, settingsTier = 'basic' }: Props) {
+  const advanced = showAdvancedProcessorBlocks(settingsTier);
   const { t } = useTranslation();
   const location = useLocation();
   const expandProcessor =
-    location.hash === '#processor-weights' ||
-    location.hash === '#processor-models' ||
-    location.hash === '#processor-behavior';
+      location.hash === '#processor-models';
 
   return (
     <Accordion
@@ -94,57 +102,65 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
             {t('settings.accordionProcessorDesc')}
           </Typography>
 
-          <SectionHeading first>
-            {t('settings.processorSectionHeadingDetection')}
-          </SectionHeading>
-          <ProcessorConfidenceBlock form={form} />
+          <SectionHeading first>1. Триггеры</SectionHeading>
+          <Alert severity="info" variant="outlined" sx={{ mb: 1.5 }}>
+            OpenCV/Frigate/motion/scales триггеры настраиваются в разделе «Захват и
+            кормушка». Здесь — логика обработки после старта сессии.
+          </Alert>
           <ProcessorSessionTimingBlock form={form} />
-
-          <Divider sx={{ my: 2 }} />
-
-          <SectionHeading>
-            {t('settings.processorSectionHeadingScene')}
-          </SectionHeading>
+          {advanced ? <ProcessorFrigateFusionBlock form={form} /> : null}
           <ProcessorLightGateBlock form={form} />
           <ProcessorAdaptiveProfilesBlock form={form} />
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>2. Детектор</SectionHeading>
+          <ProcessorDetectFirstBlock form={form} />
           <ProcessorDetectorPipelineBlock form={form} />
-
-          <Divider sx={{ my: 2 }} />
-
-          <SectionHeading>
-            {t('settings.processorSectionHeadingBehavior')}
-          </SectionHeading>
-          <Box id="processor-behavior">
-            <ProcessorBehaviorRecognitionBlock form={form} />
-          </Box>
-
-          <Divider sx={{ my: 2 }} />
-
-          <SectionHeading>
-            {t('settings.processorSectionHeadingAudio')}
-          </SectionHeading>
-          <ProcessorMultiCameraBirdnetBlock form={form} />
-          <ProcessorBirdnetExtendedBlock form={form} />
-
-          <Divider sx={{ my: 2 }} />
-
-          {!simpleMode ? (
+          {advanced ? (
             <>
-              <SectionHeading>
-                {t('settings.processorSectionHeadingQuality')}
-              </SectionHeading>
+              <ProcessorStreamGeometryBlock form={form} />
+              <ProcessorCameraProfilesBlock form={form} />
+              <ProcessorRolePresetsBlock form={form} />
+              <ProcessorTrackRegenBlock form={form} />
+            </>
+          ) : null}
+          {advanced ? (
+            <>
+              <ProcessorModelsScopeBlock form={form} />
+              <ProcessorMotionCalibrationBlock form={form} />
+            </>
+          ) : null}
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>3. Классификатор и ReID</SectionHeading>
+          <ProcessorConfidenceBlock form={form} />
+          <ProcessorMultiCameraBirdnetBlock form={form} />
+          {advanced ? <ProcessorBirdnetExtendedBlock form={form} /> : null}
+          {advanced ? (
+            <>
+              <ProcessorScoringBlock form={form} />
               <ProcessorConfidenceAdvancedBlock form={form} />
               <ProcessorFalsePositiveGuardrailsBlock form={form} />
+            </>
+          ) : null}
 
+          {advanced ? (
+            <>
               <Divider sx={{ my: 2 }} />
+              <SectionHeading>{t('settings.processorSectionHeadingData')}</SectionHeading>
+              <ProcessorDatasetBlock form={form} />
+            </>
+          ) : null}
 
-              <SectionHeading>
-                {t('settings.processorSectionHeadingData')}
-              </SectionHeading>
-              <ProcessorSpectrogramDatasetBlock form={form} />
-              <ProcessorModelsScopeBlock form={form} />
-              <ProcessorTrackRegenBlock form={form} />
-              <ProcessorFrigateFusionBlock form={form} />
+          {advanced ? (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <SectionHeading>{t('settings.processorSectionHeadingQuality')}</SectionHeading>
+              <Typography variant="body2" color="text.secondary">
+                Диагностические и quality-gate параметры.
+              </Typography>
             </>
           ) : null}
         </Box>

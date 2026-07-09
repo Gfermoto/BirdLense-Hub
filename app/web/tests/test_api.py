@@ -176,10 +176,6 @@ class TestLibraryDatasetFlow:
                 assert r_stats.status_code == 200
                 assert isinstance(r_stats.json, list)
 
-                r_spec_status = client.get("/api/ui/system/regenerate-spectrograms/status")
-                assert r_spec_status.status_code == 200
-                assert "status" in r_spec_status.json
-
                 r_tracks_status = client.get("/api/ui/system/regenerate-tracks/status")
                 assert r_tracks_status.status_code == 200
                 assert "status" in r_tracks_status.json
@@ -318,7 +314,7 @@ class TestTrackRegenFallback:
         assert same_species is False
 
     def test_derive_track_regen_species_scope_uses_mapping_and_prior_observed(self, app):
-        from models import Species, Video, VideoSpecies, db
+        from models import Video, VideoSpecies, db
         from services.track_regen_service import derive_track_regen_species_scope
         from app_config.app_config import app_config
         from datetime import datetime
@@ -333,9 +329,9 @@ class TestTrackRegenFallback:
                 },
             )
             try:
-                sp = Species(name="Eurasian Jay")
-                db.session.add(sp)
-                db.session.flush()
+                from tests.conftest import get_or_create_species
+
+                sp = get_or_create_species("Eurasian Jay")
                 video = Video(
                     processor_version="test",
                     start_time=datetime(2026, 3, 25, 8, 0, 0),
@@ -387,97 +383,103 @@ class TestTrackRegenFallback:
 
         from models import ActivityLog, Video, db
         import services.system_track_regen.worker_core as worker_mod
+        from app_config.app_config import app_config
 
-        with app.app_context():
-            video = Video(
-                processor_version="test",
-                start_time=datetime(2026, 4, 18, 8, 21, 31, tzinfo=timezone.utc),
-                end_time=datetime(2026, 4, 18, 8, 22, 17, tzinfo=timezone.utc),
-                video_path="data/recordings/2026/04/18/082131/video.mp4",
-            )
-            db.session.add(video)
-            db.session.flush()
-            db.session.add(
-                ActivityLog(
-                    type="decision_trace",
-                    data=json.dumps(
-                        {
-                            "video_id": video.id,
-                            "video_path": video.video_path,
-                            "accepted_tracks": [{"track_id": -1, "species_name": "Eurasian Jay", "accepted": True}],
-                            "rejected_tracks": [],
-                        }
-                    ),
+        old_match_live = app_config.get("processor.track_regen_match_live_pipeline")
+        app_config.set("processor.track_regen_match_live_pipeline", False)
+        try:
+            with app.app_context():
+                video = Video(
+                    processor_version="test",
+                    start_time=datetime(2026, 4, 18, 8, 21, 31, tzinfo=timezone.utc),
+                    end_time=datetime(2026, 4, 18, 8, 22, 17, tzinfo=timezone.utc),
+                    video_path="data/recordings/2026/04/18/082131/video.mp4",
                 )
+                db.session.add(video)
+                db.session.flush()
+                db.session.add(
+                    ActivityLog(
+                        type="decision_trace",
+                        data=json.dumps(
+                            {
+                                "video_id": video.id,
+                                "video_path": video.video_path,
+                                "accepted_tracks": [{"track_id": -1, "species_name": "Eurasian Jay", "accepted": True}],
+                                "rejected_tracks": [],
+                            }
+                        ),
+                    )
+                )
+                db.session.commit()
+                video_id = video.id
+
+            monkeypatch.setattr(worker_mod, "resolve_recording_video_file", lambda _path: "/tmp/fake-regen.mp4")
+            monkeypatch.setattr(worker_mod, "_derive_track_regen_species_scope", lambda *_args, **_kwargs: [])
+            monkeypatch.setattr(
+                worker_mod,
+                "VisitProcessor",
+                lambda *_args, **_kwargs: types.SimpleNamespace(
+                    process_detections=lambda *_a, **_k: [],
+                    _get_or_create_species=lambda *_a, **_k: None,
+                ),
             )
-            db.session.commit()
-            video_id = video.id
 
-        monkeypatch.setattr(worker_mod, "resolve_recording_video_file", lambda _path: "/tmp/fake-regen.mp4")
-        monkeypatch.setattr(worker_mod, "_derive_track_regen_species_scope", lambda *_args, **_kwargs: [])
-        monkeypatch.setattr(
-            worker_mod,
-            "VisitProcessor",
-            lambda *_args, **_kwargs: types.SimpleNamespace(
-                process_detections=lambda *_a, **_k: [],
-                _get_or_create_species=lambda *_a, **_k: None,
-            ),
-        )
-
-        fake_track_regenerator = types.SimpleNamespace(
-            build_detection_pipeline=lambda *args, **kwargs: ("fp", "dm"),
-            process_video_for_tracks=lambda *args, **kwargs: [
-                {
-                    "track_id": 1,
-                    "species_name": "Bird",
-                    "confidence": 0.61,
-                    "start_time": 1.2,
-                    "end_time": 3.0,
-                    "detection_provider": "yolo",
-                    "decision_reason": "fallback_bird",
-                    "decision_kind": "accepted_generic",
-                    "accepted": True,
-                    "frames": [{"t": 1.2, "bbox": [0.1, 0.1, 0.2, 0.2]}],
-                }
-            ],
-        )
-        fake_detection_fusion = types.SimpleNamespace(
-            build_fused_video_detections=lambda detections, _mqtt_events, **kwargs: list(detections),
-        )
-        monkeypatch.setitem(sys.modules, "track_regenerator", fake_track_regenerator)
-        monkeypatch.setitem(sys.modules, "detection_fusion", fake_detection_fusion)
-
-        worker_mod.run_regenerate_tracks_worker(
-            app,
-            force=False,
-            start_date=None,
-            end_date=None,
-            video_ids=[video_id],
-        )
-
-        with app.app_context():
-            logs = (
-                db.session.query(ActivityLog)
-                .filter(ActivityLog.type == "decision_trace")
-                .order_by(ActivityLog.id.asc())
-                .all()
+            fake_track_regenerator = types.SimpleNamespace(
+                build_detection_pipeline=lambda *args, **kwargs: ("fp", "dm"),
+                process_video_for_tracks=lambda *args, **kwargs: [
+                    {
+                        "track_id": 1,
+                        "species_name": "Bird",
+                        "confidence": 0.61,
+                        "start_time": 1.2,
+                        "end_time": 3.0,
+                        "detection_provider": "yolo",
+                        "decision_reason": "fallback_bird",
+                        "decision_kind": "accepted_generic",
+                        "accepted": True,
+                        "frames": [{"t": 1.2, "bbox": [0.1, 0.1, 0.2, 0.2]}],
+                    }
+                ],
             )
-            latest = json.loads(logs[-1].data)
+            fake_detection_fusion = types.SimpleNamespace(
+                build_fused_video_detections=lambda detections, _mqtt_events, **kwargs: list(detections),
+            )
+            monkeypatch.setitem(sys.modules, "track_regenerator", fake_track_regenerator)
+            monkeypatch.setitem(sys.modules, "detection_fusion", fake_detection_fusion)
 
-        assert len(logs) == 2
-        assert latest["video_id"] == video_id
-        assert latest["persisted_tracks"][0]["track_id"] == 1
-        assert latest["persisted_tracks"][0]["species_name"] == "Bird"
-        assert latest["persisted_tracks"][0]["primary_provider"] == "yolo"
-        assert latest["persisted_tracks"][0]["fallback_used"] is True
-        assert latest["recording_context"]["triggered_by"] == "track_regen"
-        assert latest["recording_context"]["runtime_signals"]["yolo_ran"] is True
-        assert latest["recording_context"]["runtime_signals"]["yolo_track_found"] is True
-        assert latest["recording_context"]["pipeline_policy"]["regen"]["profile"] == "single_video_quality"
-        assert latest["recording_context"]["pipeline_policy"]["regen"]["scope_strategy"] in {
-            "global_classifier_scope",
-            "match_live_pipeline",
-        }
+            worker_mod.run_regenerate_tracks_worker(
+                app,
+                force=False,
+                start_date=None,
+                end_date=None,
+                video_ids=[video_id],
+            )
+
+            with app.app_context():
+                logs = (
+                    db.session.query(ActivityLog)
+                    .filter(ActivityLog.type == "decision_trace")
+                    .order_by(ActivityLog.id.asc())
+                    .all()
+                )
+                latest = json.loads(logs[-1].data)
+
+            assert len(logs) == 2
+            assert latest["video_id"] == video_id
+            assert latest["persisted_tracks"][0]["track_id"] == 1
+            assert latest["persisted_tracks"][0]["species_name"] == "Bird"
+            assert latest["persisted_tracks"][0]["primary_provider"] == "yolo"
+            assert latest["persisted_tracks"][0]["fallback_used"] is True
+            assert latest["recording_context"]["triggered_by"] == "track_regen"
+            assert latest["recording_context"]["runtime_signals"]["yolo_ran"] is True
+            assert latest["recording_context"]["runtime_signals"]["yolo_track_found"] is True
+            assert latest["recording_context"]["pipeline_policy"]["regen"]["profile"] == "single_video_quality"
+            assert latest["recording_context"]["pipeline_policy"]["regen"]["scope_strategy"] in {
+                "global_classifier_scope",
+                "match_live_pipeline",
+            }
+        finally:
+            app_config.set("processor.track_regen_match_live_pipeline", old_match_live)
 
     def test_single_video_regen_uses_quality_profile(self, app, monkeypatch):
         import sys
@@ -538,15 +540,19 @@ class TestTrackRegenFallback:
 
         old_frame_step = app_config.get("processor.track_regen_frame_step")
         old_lores = app_config.get("processor.track_regen_lores_px")
+        old_lores_wh = app_config.get("processor.track_regen_lores_wh")
         old_live = app_config.get("processor.track_regen_match_live_pipeline")
         old_inference_lores = app_config.get("processor.inference_lores_px")
+        old_inference_lores_wh = app_config.get("processor.inference_lores_wh")
         old_timeout = app_config.get("processor.track_regen_video_timeout_sec")
         old_precise_timeout = app_config.get("processor.track_regen_precise_timeout_sec")
         try:
             app_config.set("processor.track_regen_frame_step", 6)
             app_config.set("processor.track_regen_lores_px", 512)
+            app_config.set("processor.track_regen_lores_wh", None)
             app_config.set("processor.track_regen_match_live_pipeline", False)
             app_config.set("processor.inference_lores_px", 640)
+            app_config.set("processor.inference_lores_wh", None)
             app_config.set("processor.track_regen_video_timeout_sec", 300)
             app_config.set("processor.track_regen_precise_timeout_sec", 420)
 
@@ -560,8 +566,10 @@ class TestTrackRegenFallback:
         finally:
             app_config.set("processor.track_regen_frame_step", old_frame_step)
             app_config.set("processor.track_regen_lores_px", old_lores)
+            app_config.set("processor.track_regen_lores_wh", old_lores_wh)
             app_config.set("processor.track_regen_match_live_pipeline", old_live)
             app_config.set("processor.inference_lores_px", old_inference_lores)
+            app_config.set("processor.inference_lores_wh", old_inference_lores_wh)
             app_config.set("processor.track_regen_video_timeout_sec", old_timeout)
             app_config.set("processor.track_regen_precise_timeout_sec", old_precise_timeout)
 
@@ -867,9 +875,11 @@ class TestTimeline:
         assert sc is not None
         assert abs(float(sc["delta_kg"]) - 0.015) < 1e-6
         assert sc["display_unit"] == "g"
+        assert sc["weight_change_grams"] == 15.0
+        assert sc["weight_trend"] == "up"
 
-    def test_timeline_visit_includes_nickname_and_model_behavior(self, app, client):
-        """Visit payload keeps individual nickname and model behavior label."""
+    def test_timeline_visit_includes_nickname(self, app, client):
+        """Visit payload keeps individual nickname."""
         from app_config.app_config import app_config
         from models import Species, SpeciesVisit, Video, VideoSpecies, db
         from services.http_response_cache import bust_response_caches
@@ -892,8 +902,6 @@ class TestTimeline:
                 start_time=datetime(2026, 3, 25, 15, 0, 0),
                 end_time=datetime(2026, 3, 25, 15, 0, 30),
                 video_path=f"data/recordings/2026/03/25/150002/identity_{id(app)}.mp4",
-                behavior_label="feeding",
-                behavior_confidence=0.88,
             )
             db.session.add_all([visit, video])
             db.session.flush()
@@ -922,8 +930,6 @@ class TestTimeline:
         )
         assert row is not None
         assert row.get("individual_nickname") == "Sparky"
-        labels = [e.get("label") for e in row.get("behavior_events") or []]
-        assert labels == ["feeding"]
         first_det = (row.get("detections") or [{}])[0]
         assert first_det.get("individual_nickname") == "Sparky"
 
@@ -939,6 +945,7 @@ class TestTimeline:
                 processor_version="test",
                 start_time=st,
                 end_time=st.replace(minute=1),
+                trigger_source="opencv",
                 video_path=f"2026/03/24/120000/orphan_timeline_{id(app)}.mp4",
             )
             db.session.add(v)
@@ -957,8 +964,8 @@ class TestTimeline:
         assert unlinked and all(row["id"] < 0 for row in unlinked)
         assert all(row.get("detections") == [] for row in unlinked)
 
-    def test_timeline_unlinked_video_keeps_nickname_and_model_behavior(self, app, client):
-        """Unlinked video payload must keep nickname and model behavior contract parity."""
+    def test_timeline_unlinked_video_keeps_nickname(self, app, client):
+        """Unlinked video payload must keep nickname contract parity."""
         from datetime import datetime, timezone
         from models import Species, Video, VideoSpecies, db
         from services.http_response_cache import bust_response_caches
@@ -972,8 +979,7 @@ class TestTimeline:
                 processor_version="test",
                 start_time=st,
                 end_time=st.replace(minute=1),
-                behavior_label="feeding",
-                behavior_confidence=0.91,
+                trigger_source="opencv",
                 video_path=f"2026/03/24/160000/orphan_identity_{id(app)}.mp4",
             )
             db.session.add(v)
@@ -1013,8 +1019,6 @@ class TestTimeline:
         )
         assert row is not None
         assert row.get("individual_nickname") == "Nova"
-        labels = [e.get("label") for e in (row.get("behavior_events") or [])]
-        assert labels == ["feeding"]
         first_det = (row.get("detections") or [{}])[0]
         assert first_det.get("individual_nickname") == "Nova"
         assert first_det.get("detection_provider") == "yolo"
@@ -1047,6 +1051,7 @@ class TestTimeline:
                 start_time=st,
                 end_time=et,
                 favorite=False,
+                trigger_source="opencv",
                 video_path=f"data/recordings/2026/03/24/120001/nf_{id(app)}.mp4",
             )
             vs_nf = VideoSpecies(
@@ -1071,6 +1076,7 @@ class TestTimeline:
                 start_time=st2,
                 end_time=et2,
                 favorite=True,
+                trigger_source="opencv",
                 video_path=f"data/recordings/2026/03/24/120002/f_{id(app)}.mp4",
             )
             vs_f = VideoSpecies(
@@ -1089,6 +1095,7 @@ class TestTimeline:
                 start_time=st3,
                 end_time=et3,
                 favorite=True,
+                trigger_source="opencv",
                 video_path=f"data/recordings/2026/03/24/120003/orphan_fav_{id(app)}.mp4",
             )
             db.session.add_all(
@@ -1277,7 +1284,9 @@ class TestHealth:
         data = r.json
         assert data["status"] == "ok"
         assert data["ready"] is True
-        assert "checked_at" in data
+        assert "bbox_slo_ok" in data
+        assert "bbox_slo_reason" in data
+        assert data["checked_at"]
         assert data["checks"]["database"]["status"] == "ok"
         assert data["checks"]["data_dir"]["status"] == "ok"
         assert data["checks"]["app_config_dir"]["status"] == "ok"
@@ -1890,8 +1899,8 @@ class TestVideos:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)
 
-    def test_patch_video_behavior_and_get_detail(self, app, client):
-        """PATCH behavior_label/confidence; GET detail includes behavior_* (#416)."""
+    def test_patch_video_favorite(self, app, client):
+        """PATCH favorite flag; GET detail includes it."""
         from datetime import datetime, timezone
 
         from app_config.app_config import app_config
@@ -1916,30 +1925,26 @@ class TestVideos:
 
             rp = client.patch(
                 f"/api/ui/videos/{vid}",
-                json={"behavior_label": "feeding", "behavior_confidence": 0.82},
+                json={"favorite": True},
             )
             assert rp.status_code == 200
             body = rp.get_json()
-            assert body.get("behavior_label") == "feeding"
-            assert abs(float(body.get("behavior_confidence") or 0) - 0.82) < 1e-6
+            assert body.get("favorite") is True
 
             rg = client.get(f"/api/ui/videos/{vid}")
             assert rg.status_code == 200
             detail = rg.get_json()
-            assert detail.get("behavior_label") == "feeding"
-            assert abs(float(detail.get("behavior_confidence") or 0) - 0.82) < 1e-6
+            assert detail.get("favorite") is True
 
-            rc = client.patch(f"/api/ui/videos/{vid}", json={"behavior_label": ""})
+            rc = client.patch(f"/api/ui/videos/{vid}", json={"favorite": False})
             assert rc.status_code == 200
             cleared = rc.get_json()
-            assert not cleared.get("behavior_label")
-            assert cleared.get("behavior_confidence") in (None, 0, 0.0)
+            assert cleared.get("favorite") is False
 
             rg2 = client.get(f"/api/ui/videos/{vid}")
             assert rg2.status_code == 200
             d2 = rg2.get_json()
-            assert not d2.get("behavior_label")
-            assert d2.get("behavior_confidence") in (None, 0, 0.0)
+            assert d2.get("favorite") is False
         finally:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)
@@ -2243,7 +2248,7 @@ class TestDatabaseBackupRestore:
 class TestStoragePurge:
     def test_purge_storage_deletes_db_rows_and_files(self, app, client, tmp_path, monkeypatch):
         from app_config.app_config import app_config
-        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        from models import SpeciesVisit, Video, VideoSpecies, db
         import util as util_mod
 
         old_admin = app_config.get("general.settings_password")
@@ -2259,7 +2264,9 @@ class TestStoragePurge:
 
         try:
             with app.app_context():
-                species = Species(name="Eurasian Jay")
+                from tests.conftest import get_or_create_species
+
+                species = get_or_create_species("Eurasian Jay")
                 visit = SpeciesVisit(
                     species=species,
                     start_time=datetime(2026, 3, 26, 3, 13, 9),
@@ -2281,7 +2288,7 @@ class TestStoragePurge:
                     confidence=0.91,
                     source="video",
                 )
-                db.session.add_all([species, visit, video, detection])
+                db.session.add_all([visit, video, detection])
                 db.session.commit()
 
             response = client.post("/api/ui/storage/purge", json={"date": "2026-03-26"})
@@ -2683,7 +2690,7 @@ class TestSpeciesRegionalScope:
 
             bust_response_caches()
 
-            r = client.get("/api/ui/species")
+            r = client.get("/api/ui/species", query_string={"scope": "all"})
             assert r.status_code == 200
             row = next((x for x in r.json if x["id"] == sid), None)
             assert row is not None
@@ -2910,6 +2917,11 @@ class TestMigrationCalendar:
     def test_migration_calendar_rejects_bad_catalog(self, client):
         r = client.get("/api/ui/migration-calendar", query_string={"catalog": "maybe"})
         assert r.status_code == 400
+
+    def test_migration_calendar_accepts_catalog_all_alias(self, client):
+        r = client.get("/api/ui/migration-calendar", query_string={"catalog": "all"})
+        assert r.status_code == 200
+        assert r.json.get("catalog") == "full_eu"
 
     def test_migration_calendar_rejects_bad_metric(self, client):
         r = client.get("/api/ui/migration-calendar", query_string={"metric": "events"})
@@ -3176,9 +3188,15 @@ class TestScanRecordings:
         monkeypatch.setitem(app_config.config, "general", general)
 
         monkeypatch.setenv("DATA_DIR", str(tmp_path))
+        import os
+        import time
+
         rec_dir = tmp_path / "recordings" / "2026" / "03" / "30" / "131825"
         rec_dir.mkdir(parents=True)
-        (rec_dir / "video.mp4").write_bytes(b"fake-video")
+        mp4 = rec_dir / "video.mp4"
+        mp4.write_bytes(b"x" * 800)
+        old = time.time() - 7200.0
+        os.utime(mp4, (old, old))
 
         now = datetime(2026, 3, 29, 12, 0, 0, tzinfo=timezone.utc).replace(
             tzinfo=None,
@@ -3351,6 +3369,20 @@ class TestConfigAudit:
                 "species_confidence_overrides": {
                     "Bird": 0.2,
                 },
+                "camera_overrides": {
+                    "BirdBox": {
+                        "min_box_size_px": 10,
+                        "definitely_unknown_camera_override_key": 1,
+                    }
+                },
+                "adaptive_profiles": {
+                    "night": {
+                        "overrides": {
+                            "max_box_area_norm": 0.9,
+                            "definitely_unknown_profile_override_key": 1,
+                        }
+                    }
+                },
             },
             "secrets": {"zip": "12345"},
         }
@@ -3378,6 +3410,13 @@ class TestConfigAudit:
         assert "species.tuning_target_species_ids" not in data["unknown_keys"]
         assert "ebird.species_mapping.Gray-headed Woodpecker" not in data["unknown_keys"]
         assert "processor.species_confidence_overrides.Bird" not in data["unknown_keys"]
+        assert "processor.camera_overrides.BirdBox.min_box_size_px" not in data["unknown_keys"]
+        assert "processor.adaptive_profiles.night.overrides.max_box_area_norm" not in data["unknown_keys"]
+        assert "processor.camera_overrides.BirdBox.definitely_unknown_camera_override_key" in data["unknown_keys"]
+        assert (
+            "processor.adaptive_profiles.night.overrides.definitely_unknown_profile_override_key"
+            in data["unknown_keys"]
+        )
         assert "secrets.zip" not in data["unknown_keys"]
 
     def test_config_audit_preflight_and_runtime_parity(self, client, tmp_path, monkeypatch):
@@ -3390,8 +3429,8 @@ class TestConfigAudit:
             "mqtt": {"broker": ""},
             "video": {"encoding": "cpu"},
             "processor": {
-                "inference_backend": "openvino",
-                "inference_device": "intel:gpu",
+                "inference_backend": "onnxruntime",
+                "inference_device": "cuda:0",
             },
         }
         user_config = tmp_path / "user_config.yaml"
@@ -3488,7 +3527,7 @@ class TestSpeciesSummaryReadOnly:
 
     def test_summary_hourly_activity_uses_observer_local_hour(self, app, client):
         from app_config.app_config import app_config
-        from models import Species, SpeciesVisit, db
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
         from observer_time import observer_local_hour
 
         unique = f"API Summary Time Owl {id(app)}"
@@ -3502,12 +3541,29 @@ class TestSpeciesSummaryReadOnly:
             sp = Species(name=unique, metadata_status="ok")
             db.session.add(sp)
             db.session.flush()
+            visit = SpeciesVisit(
+                species_id=sp.id,
+                start_time=visit_start,
+                end_time=visit_end,
+                max_simultaneous=4,
+            )
+            video = Video(
+                processor_version="test",
+                start_time=visit_start,
+                end_time=visit_end,
+                video_path="/tmp/summary-hourly-test.mp4",
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
             db.session.add(
-                SpeciesVisit(
+                VideoSpecies(
+                    video_id=video.id,
                     species_id=sp.id,
-                    start_time=visit_start,
-                    end_time=visit_end,
-                    max_simultaneous=4,
+                    species_visit_id=visit.id,
+                    start_time=0.0,
+                    end_time=10.0,
+                    confidence=0.9,
+                    source="video",
                 ),
             )
             db.session.commit()

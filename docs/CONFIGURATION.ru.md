@@ -4,8 +4,8 @@
 
 This page moved to **current documentation**:
 
-**[ru/configuration.ru.md](ru/configuration.ru.md)**
+**[user/configuration.md](user/configuration.md)**
 
 ---
 
-[Documentation index](index.md) · [Contributor guide](contributor/documentation.md)
+[Documentation index](index.md) · [User guide](user/configuration.md)

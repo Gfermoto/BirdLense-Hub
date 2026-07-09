@@ -46,6 +46,22 @@ if os.path.isdir(_processor_src) and _processor_src not in sys.path:
     sys.path.insert(0, _processor_src)
 
 
+def get_or_create_species(name: str, **fields):
+    """Reuse allowlist-seeded Species rows (startup materialize) to avoid UNIQUE(name)."""
+    from models import Species, db
+
+    sp = Species.query.filter_by(name=name).first()
+    if sp is not None:
+        for key, value in fields.items():
+            if value is not None:
+                setattr(sp, key, value)
+        return sp
+    sp = Species(name=name, **fields)
+    db.session.add(sp)
+    db.session.flush()
+    return sp
+
+
 @pytest.fixture
 def app():
     """Create Flask app. Run: cd app && pytest web/tests, or in Docker: pytest tests/."""
@@ -63,6 +79,9 @@ def app():
     app_config.set("homeassistant.url", "")
     app_config.set("notifications.telegram_proxy_type", "")
     app_config.set("notifications.telegram_proxy_url", "")
+    gen = app_config.config.setdefault("general", {})
+    gen["settings_password"] = ""
+    gen["contributor_password"] = ""
     app = create_app()
     app.config["TESTING"] = True
     return app
@@ -100,7 +119,6 @@ def _reset_global_test_state():
         import routes.ui_system_jobs_state as _js
 
         idle = {"status": "idle", "result": None, "error": None, "progress": None}
-        _js._regenerate_status = dict(idle)
         _js._regenerate_tracks_status = dict(idle)
         _js._species_metadata_status = dict(idle)
         _js._catalog_cards_status = dict(idle)

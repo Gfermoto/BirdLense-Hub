@@ -16,6 +16,7 @@
     "system": "Service",
     "systemHint": "Station health, species catalog, and maintenance tools you rarely need every day.",
     "library": "Data",
+    "labelling": "Labelling",
     "libraryHint": "On-disk archive, training exports, and storage care. Watch clips under Recordings.",
     "supportProject": "Support",
     "logout": "Log out",
@@ -138,12 +139,19 @@
     "serviceNotice": "Archive and data maintenance. Day-to-day clips live under Recordings."
   },
   "overview": {
-    "lastBird": "Last bird today",
-    "lastBirdUnknown": "Bird (species unknown)",
+    "lastBird": "Last activity today",
+    "lastBirdUnknown": "Bird (detector, species not identified)",
+    "lastRodentUnknown": "Rodent (detector)",
+    "unidentifiedBird": "Bird (detector)",
+    "unidentifiedRodent": "Rodent (detector)",
     "errorLoad": "Error loading data. Check that the API is available.",
     "checkApi": "Check: open /api/ui/health in browser — should return {status: ok}.",
-    "bySource": "By detection source",
-    "bySourceHint": "How many visits include at least one segment from this provider. Row sums can exceed total visits when one visit merged multiple sources.",
+    "bySource": "By trigger source",
+    "bySourceHint": "How many visits are linked to this recording trigger source.",
+    "byDetectionProvider": "By detection provider",
+    "byDetectionProviderHint": "Which pipeline actually assigned the species (YOLO, Frigate, BirdNET MQTT, etc.) — not the same as trigger source.",
+    "detectionProviderLegacy": "Legacy",
+    "detectionProviderUnknown": "Unknown",
     "volunteerDataLabelingHint": "Volunteers can help with data labeling — contact us.",
     "noData": "No data for selected day",
     "hourlyActivity": "Hourly Activity",
@@ -151,8 +159,9 @@
     "topSpecies": "Top Species Distribution",
     "uniqueSpecies": "Unique Species",
     "uniqueSpeciesHint": "Distinct bird species with detections on the selected day",
-    "totalVisits": "Total Visits",
-    "totalVisitsHint": "Number of visits (SpeciesVisit sessions) on the selected day. A visit may include multiple clips and multiple recognition segments.",
+    "totalVisits": "Total Activity",
+    "totalVisitsHint": "Named species visits plus detector-only Bird and Rodent segments for the selected day",
+    "totalVisitsBreakdown": "{{named}} identified · {{bird}} bird (detector) · {{rodent}} rodent",
     "visitsLastHour": "Visits (Last Hour)",
     "visitsLastHourHint": "Visits overlapping the last 60 minutes from now (same clock as the API).",
     "meanDuration": "Mean Recording Duration",
@@ -198,8 +207,9 @@
     "advancedDesc": "YOLO (bird detection) is used in processor — models in processor.models config. Here only recording params and filters.",
     "modeOverview": "Overview",
     "modeWorkspace": "Workspace",
+    "modeExpert": "Expert",
     "modeAria": "Settings page mode",
-    "simpleModeHint": "Showing core settings. Switch to “Workspace” for advanced processor tuning and species catalog tools.",
+    "simpleModeHint": "Showing core settings. Switch to “Workspace” for advanced processor tuning and species catalog tools. Expert adds YAML import/export.",
     "accordionGeneral": "General",
     "accordionGeneralDesc": "System-level hub settings, weather, MCP, performance, and backup controls.",
     "accordionConnection": "Connection",
@@ -288,9 +298,10 @@
     "streamNameHint": "Primary stream used for clip recording. This name is shown in Live.",
     "streamName": "Recording stream name",
     "streamNamePlaceholder": "main_stream",
-    "detectStreamName": "Detection stream (optional)",
-    "detectStreamNamePlaceholder": "e.g. yard_detect",
-    "detectStreamNameHint": "Optional: separate stream for motion, YOLO, and preview — usually lower resolution/FPS. Can be a direct low-res camera stream or another relay stream name. Empty = same stream as recording.",
+    "detectStreamName": "Detection stream (lores)",
+    "detectStreamNamePlaceholder": "e.g. yard_detect or RTSP substream",
+    "detectStreamNameHint": "Required for Go2RTC: motion, YOLO, and tracking use this stream only. stream_name above is main MP4 record only.",
+    "detectStreamNameSameAsRecordError": "Detection stream must be a separate lores stream, not the recording stream.",
     "cameraName": "Camera name",
     "cameraPlaceholder": "Feeder",
     "addCamera": "+ Add camera",
@@ -423,19 +434,19 @@
     "go2rtcPassword": "Go2RTC password",
     "encodingLabel": "Recording encoding",
     "encodingCpu": "CPU",
-    "encodingIntel": "Intel GPU (integrated)",
-    "encodingHint": "Intel — VA-API on any Intel integrated GPU. Requires /dev/dri/renderD128 in container.",
-    "recordWithVaapiLabel": "Encode recording file with VA-API (h264_vaapi)",
-    "recordWithVaapiHint": "Off uses libx264 for the MP4 file only — more stable on some iGPUs (broken moov / encode error 24). Live capture can still use VA-API when Capture backend is Auto. Inference (OpenVINO) is unchanged.",
+    "encodingJetson": "Jetson NVENC (Orin)",
+    "encodingHint": "Jetson — аппаратное кодирование на Orin (NVENC/NVMPI). CPU — libx264 fallback.",
+    "recordHwEncodeLabel": "Hardware-encode recording (NVENC)",
+    "recordHwEncodeHint": "Off uses libx264 (CPU) for the MP4 file. Live capture may still use NVDEC/NVENC when backend is Auto.",
     "recordStreamCodecLabel": "Record stream as",
     "recordStreamCodecH264": "H.264 (browser-safe)",
     "recordStreamCodecCopy": "Copy from stream (fast, may be HEVC)",
-    "recordStreamCodecHint": "H.264 re-encodes on CPU when encoding is «cpu»; Intel GPU path already outputs H.264. New recordings only — old clips keep their codec.",
+    "recordStreamCodecHint": "H.264 re-encodes on CPU when encoding is «cpu»; Jetson NVENC already outputs H.264. New recordings only — old clips keep their codec.",
     "captureBackendLabel": "Live capture backend",
     "captureBackendAuto": "Auto",
     "captureBackendOpenCv": "OpenCV / CPU",
-    "captureBackendFfmpegVaapi": "FFmpeg VA-API",
-    "captureBackendHint": "Auto keeps OpenCV on CPU mode and tries FFmpeg VA-API for motion/detection frames when recording encoding is Intel and /dev/dri works.",
+    "captureBackendFfmpegNvmpi": "FFmpeg NVMPI (NVDEC)",
+    "captureBackendHint": "Auto: NVMPI on Orin when encoding is Jetson; OpenCV fallback on CPU mode.",
     "videoPreRecordSeconds": "Pre-record buffer (seconds)",
     "videoPreRecordSecondsHint": "Adds this many seconds before trigger time to each clip when available. 0 disables pre-roll.",
     "videoAutoReconnect": "Auto reconnect camera stream",
@@ -477,6 +488,17 @@
     "triggerSource": "Trigger source",
     "opencvDiffThreshold": "Frame diff threshold",
     "opencvMinContourArea": "Min contour area",
+    "opencvMasksLiveHint": "OpenCV trigger exclusion masks are per camera in Live view (fullscreen editor). They do not affect YOLO.",
+    "opencvMasksLiveLink": "Open Live view",
+    "yoloDetectionZonesTitle": "YOLO zones (not OpenCV)",
+    "yoloDetectionZonesDesc": "Global polygons to filter YOLO detections after a session starts: ignore inside mask and/or interest zones. Format: [[[x,y],...], ...], coordinates 0..1.",
+    "yoloIgnoreMasks": "YOLO ignore masks",
+    "yoloIgnoreMasksHint": "Detection center inside polygon is rejected.",
+    "yoloInterestZones": "YOLO interest zones",
+    "yoloInterestZonesHint": "Optional: keep detections only inside zones.",
+    "yoloInterestZonesRequired": "Require interest zones (reject outside)",
+    "yoloPolygonsInvalidJson": "Invalid JSON.",
+    "yoloPolygonsInvalidShape": "Expected an array of polygons.",
     "motionCheckEveryNFrames": "Check motion every N frames",
     "motionCheckEveryNFramesHint": "OpenCV only: 1 = every frame, 3 = every 3rd. Reduces CPU load at high FPS.",
     "mqttSensorAlert": "MQTT sensor: subscribe to topic. On ON/1 — start a clip session (camera capture + detector). Tasmota: stat/NAME/STATE or stat/NAME/PIR.",
@@ -621,9 +643,107 @@
     "processorDetectorPipelineTitle": "Detector pipeline & performance",
     "processorDetectorPipelineDesc": "YOLO input size, live downscale, blur gate, classification scheduling, and slow-detect warning threshold.",
     "processorBinaryImgsz": "Detection head input size (imgsz)",
-    "processorBinaryImgszHint": "Must match the bundled OpenVINO IR export (`processor.binary_imgsz`, usually **640**). Larger = heavier CPU/GPU.",
-    "processorInferenceLoresPx": "Live inference lores width (px)",
-    "processorInferenceLoresPxHint": "Decoder/resize width before detection in live/file playlist. Keep ≤ binary_imgsz.",
+    "processorBinaryImgszHint": "Must match detector ONNX export (`processor.binary_imgsz`, often **704** on production). Larger = heavier GPU/CPU.",
+    "processorInferenceLoresPx": "Live inference lores width (px, legacy square)",
+    "processorInferenceLoresPxHint": "Used when inference_lores_wh is unset. Keep aligned with detect substream.",
+    "processorStreamGeometryTitle": "Detect stream geometry",
+    "processorStreamGeometryDesc": "Detect substream size and FPS fallback when probe/RTSP returns nothing. See video.detect_fps under Capture.",
+    "processorDetectUseNativeResolution": "Native detect resolution (no capture letterbox)",
+    "processorDetectUseNativeResolutionHint": "When true, letterbox runs inside the detector only.",
+    "processorInferenceLoresWidth": "Detect width (width×height, px)",
+    "processorInferenceLoresHeight": "Detect height (width×height, px)",
+    "processorInferenceLoresWhHint": "Width×height (W×H) order; typically 704×576 for Go2RTC substream. Overrides inference_lores_px.",
+    "processorDetectionQualityAssumedFps": "Assumed FPS (fallback)",
+    "processorDetectionQualityAssumedFpsHint": "Used when probe and video.detect_fps=0 do not yield FPS.",
+    "processorDetectFirstTitle": "Detect-first (lores before record)",
+    "processorDetectFirstDesc": "YOLO on the detect substream must confirm a track before FFmpeg records main. Without anchor, recording does not start.",
+    "processorDetectFirstEnabled": "Detect-first enabled",
+    "processorDetectFirstWindowSeconds": "Detect-first window (sec)",
+    "processorDetectFirstWindowSecondsHint": "How long to run lores YOLO after trigger.",
+    "processorDetectFirstMaxFrames": "Detect-first max frames",
+    "processorDetectFirstConfirmMinHits": "Min YOLO hits for anchor",
+    "processorDetectFirstConfirmMinHitsHint": "Frames with detection before track check.",
+    "processorDetectFirstConfirmMinTrackSeconds": "Min track duration for anchor (sec)",
+    "processorCameraProfilesTitle": "Per-camera thresholds",
+    "processorCameraProfilesDesc": "processor.camera_overrides.<id> — overrides role preset. Empty = inherit.",
+    "processorCameraProfilesRoleHint": "Camera role (close-up / wide view) is set under Capture → Cameras and in role presets below.",
+    "processorCameraProfilesEmpty": "Add cameras under Capture & feeder.",
+    "processorRolePresetsTitle": "Camera role presets",
+    "processorRolePresetsDesc": "Base thresholds for close-up and wide-view roles (processor.camera_tuning_by_role).",
+    "cameraTuningRole": "Tuning role",
+    "cameraTuningRoleDefault": "No role",
+    "cameraTuningRoleHint": "Close-up = feeder close camera thresholds; wide view = overview camera thresholds.",
+    "cameraTuningRole_feeder_close": "Close-up",
+    "cameraTuningRole_feeder_far": "Wide view",
+    "cameraTuningRoleFeederClose": "Close-up",
+    "cameraTuningRoleFeederFar": "Wide view",
+    "cameraTuningMinConfidenceBinary": "min_confidence_binary",
+    "cameraTuningMinConfidenceBinaryBird": "min_confidence_binary_bird",
+    "cameraTuningMinConfidenceToProcess": "min_confidence_to_process",
+    "cameraTuningMinTrackDuration": "min_track_duration (sec)",
+    "cameraTuningMinBoxSizePx": "min_box_size_px",
+    "cameraTuningMaxBoxAreaNorm": "max_box_area_norm",
+    "cameraTuningMaxBoxAreaNormHint": "Reject boxes larger than fraction of frame.",
+    "cameraTuningScoringGiantBoxAreaFrac": "scoring_giant_box_area_frac",
+    "cameraTuningScoringGiantBoxAreaFracHint": "Scoring reject when bbox exceeds frame fraction.",
+    "cameraTuningDetectRecordTimeOffsetSec": "detect_record_time_offset_sec",
+    "cameraTuningDetectRecordTimeOffsetSecHint": "Main MP4 seek offset for TG crop (sec).",
+    "cameraTuningTrackStaticRejectEnabled": "track_static_reject_enabled",
+    "cameraTuningTrackStaticRejectMinDurationSec": "track_static_reject_min_duration_sec",
+    "cameraTuningTrackStaticRejectMinFrames": "track_static_reject_min_frames",
+    "cameraTuningLightGateEnabled": "light_gate_enabled",
+    "cameraTuningBinaryImgsz": "binary_imgsz",
+    "processorNotifyPreviewSource": "TG preview source",
+    "processorNotifyPreviewSourceHint": "auto — main MP4, fallback lores best_frame.",
+    "processorNotifyPreviewSourceAuto": "auto",
+    "processorNotifyPreviewSourceRecord": "record_hires (main)",
+    "processorNotifyPreviewSourceLores": "best_frame_lores",
+    "processorDetectRecordTimeOffsetSecGlobal": "Detect↔record offset (global, sec)",
+    "processorDetectRecordTimeOffsetSecGlobalHint": "Per-camera — in per-camera thresholds.",
+    "processorMog2Title": "MOG2 background",
+    "processorMog2Desc": "Reject boxes that sit on learned static feeder background.",
+    "processorMog2Enabled": "Enable background subtraction",
+    "processorMog2EnabledHint": "processor.background_subtraction_enabled",
+    "processorMog2History": "MOG2 history",
+    "processorMog2HistoryHint": "Background model length in frames.",
+    "processorMog2VarThreshold": "MOG2 varThreshold",
+    "processorMog2VarThresholdHint": "Pixel change sensitivity.",
+    "processorMog2MinFgRatio": "Min foreground ratio in bbox",
+    "processorMog2MinFgRatioHint": "Below this — treat as static background.",
+    "processorMog2WarmupFrames": "Warmup frames",
+    "processorMog2WarmupFramesHint": "Frames before filter activates.",
+    "processorMog2DetectShadows": "MOG2 detect shadows",
+    "motionCalibrationTitle": "Motion & static calibration",
+    "motionCalibrationDesc": "Tune MOG2 and static-object filters with live preview. Detection MOG2 applies on the next frame without restart; OpenCV trigger MOG2 may need a processor restart after save.",
+    "motionCalibrationTriggerTitle": "OpenCV trigger (MOG2 / hybrid)",
+    "motionCalibrationDetectionMethod": "Motion detection method",
+    "motionCalibrationDetectionMethodHint": "triggers.opencv.detection_method — frame_diff, mog2, or hybrid.",
+    "motionCalibrationMog2VarThreshold": "MOG2 varThreshold (trigger)",
+    "motionCalibrationMog2VarThresholdHint": "Lower = more sensitive motion (more FP on wind/IR).",
+    "motionCalibrationMog2MinArea": "MOG2 min contour area",
+    "motionCalibrationMog2MinAreaHint": "Higher = ignore smaller blobs (FN risk for distant birds).",
+    "motionCalibrationMog2Shadows": "MOG2 detect shadows (trigger)",
+    "motionCalibrationStaticTitle": "Static object filter",
+    "motionCalibrationStaticEnabled": "Suppress static objects",
+    "motionCalibrationStaticConfFloor": "Static scene bird confidence floor",
+    "motionCalibrationStaticConfFloorHint": "processor.static_scene_bird_min_confidence",
+    "motionCalibrationStaticJitter": "Max temporal jitter (px)",
+    "motionCalibrationStaticJitterHint": "processor.static_temporal_max_jitter_px — tight values increase FN risk.",
+    "motionCalibrationPreviewMode": "Preview mode",
+    "motionCalibrationPreviewDetection": "Detection MOG2 (YOLO path)",
+    "motionCalibrationPreviewTrigger": "Trigger MOG2",
+    "motionCalibrationPreviewStatic": "Static + detection MOG2",
+    "motionCalibrationPreviewBtn": "Test / preview",
+    "motionCalibrationPreviewLoading": "Loading…",
+    "motionCalibrationPreviewOverlay": "Frame + mask overlay",
+    "motionCalibrationPreviewMask": "Foreground mask",
+    "processorTrackRegenLoresWidth": "Regen width (px)",
+    "processorTrackRegenLoresHeight": "Regen height (px)",
+    "processorTrackRegenLoresWhHint": "Overrides track_regen_lores_px; usually matches live detect.",
+    "processorTrackRegenBinaryOnly": "Regen binary-only (no classifier)",
+    "resolutionDetect704": "704×576 (detect substream)",
+    "videoDetectFps": "Detect FPS (0 = auto)",
+    "videoDetectFpsHint": "0 uses stream probe. Explicit value overrides probe.",
     "processorFrameProcessingWarnMs": "Slow detect warning (ms)",
     "processorFrameProcessingWarnMsHint": "If one detect() call exceeds this, a warning metric is recorded.",
     "processorClassificationScheduler": "Classification scheduler",
@@ -692,12 +812,9 @@
     "processorBehaviorReviewThreshold": "Review threshold",
     "processorBehaviorReviewThresholdHint": "0–1. If stored confidence is below this value, the first detection may be flagged for review (behavior_uncertainty).",
     "processorBehaviorInferenceBackend": "Behavior inference backend",
-    "processorBehaviorInferenceBackendHint": "auto: use ONNX/IR when processor.models.behavior_openvino is set (labels from weights_path), otherwise logistic JSON. OpenVINO device follows classifier inference device / BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE.",
-    "processorBehaviorInferenceAuto": "Auto (OpenVINO when model path exists)",
+    "processorBehaviorInferenceBackendHint": "auto: use ONNX when processor.models.behavior weights_path points to an ONNX export, otherwise logistic JSON.",
+    "processorBehaviorInferenceAuto": "Auto (ONNX when model path exists)",
     "processorBehaviorInferenceLogisticJson": "Logistic JSON (numpy)",
-    "processorBehaviorInferenceOpenvino": "OpenVINO (ONNX/IR)",
-    "processorBehaviorOpenvinoFallback": "On OpenVINO failure fall back to logistic JSON",
-    "processorBehaviorOpenvinoFallbackHint": "When off, IR load/inference failures skip filling behavior from the same weights_path logistic export.",
     "processorBehaviorMaxRuntimeDets": "Max tracks for features",
     "processorBehaviorMaxRuntimeDetsHint": "How many detections contribute to runtime proxy features at finalize (1–500).",
     "processorModelsScopeTitle": "Models, regional scope & generic Bird",
@@ -706,14 +823,15 @@
     "processorModelsSupportLink": "Weight uploads, fingerprints, and maintenance actions now live in <syslink>System → Service mode</syslink>.",
     "processorWeightsIntroInline": "File status for the paths above: built-in image assets or copies after upload. Upload/reset updates user_config and requests a processor restart.",
     "processorInferenceBackend": "Detector inference backend",
-    "processorInferenceBackendAuto": "Auto (prefer OpenVINO, fallback to Torch)",
+    "processorInferenceBackendAuto": "Auto (prefer ONNX Runtime, fallback to Torch)",
     "processorInferenceBackendTorch": "Torch / Ultralytics",
-    "processorInferenceBackendOpenvino": "OpenVINO IR",
-    "processorInferenceBackendHint": "Auto prefers OpenVINO when IR path and runtime are available, otherwise falls back to Torch. OpenVINO uses processor.models.binary_openvino or BIRDLENSE_BINARY_OPENVINO_PATH. ONNX Runtime stays YAML-only until implemented.",
+    "processorInferenceBackendOnnxruntime": "ONNX Runtime",
+    "processorInferenceBackendTensorrt": "TensorRT",
+    "processorInferenceBackendHint": "Auto prefers ONNX Runtime when .onnx weights exist, otherwise falls back to Torch. Model paths are managed in service mode.",
     "processorClassifierInferenceBackend": "Classifier inference backend",
-    "processorClassifierInferenceBackendHint": "Separate backend for species classifier. Auto prefers OpenVINO classifier IR when available, otherwise uses Torch checkpoint.",
+    "processorClassifierInferenceBackendHint": "Separate backend for species classifier. Auto prefers Birder ONNX when available, otherwise Torch checkpoint.",
     "processorInferenceDevice": "Detector inference device",
-    "processorInferenceDeviceHint": "Optional device override (e.g. intel:gpu for OpenVINO). Leave empty for automatic selection; BIRDLENSE_INFERENCE_DEVICE in .env wins at runtime.",
+    "processorInferenceDeviceHint": "Optional device override (e.g. cuda:0). Leave empty for automatic selection; BIRDLENSE_INFERENCE_DEVICE in .env wins at runtime.",
     "processorClassifierInferenceDevice": "Classifier inference device",
     "processorClassifierInferenceDeviceHint": "Optional classifier device override. Leave empty to follow the detector/BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE.",
     "processorDetectorWeightContract": "Detector class contract",
@@ -721,10 +839,6 @@
     "processorDetectorWeightContractWarn": "Warn",
     "processorDetectorWeightContractEnforce": "Enforce",
     "processorDetectorWeightContractHint": "Checks model class names against detector_scope; enforce fails fast on mismatch.",
-    "processorModelBinaryOpenvinoPath": "OpenVINO detection-head path",
-    "processorModelBinaryOpenvinoPathHint": "Directory or .xml export from YOLO/OpenVINO. Leave empty unless inference backend is OpenVINO.",
-    "processorModelClassifierOpenvinoPath": "OpenVINO classifier path",
-    "processorModelClassifierOpenvinoPathHint": "Directory or .xml export from YOLO/OpenVINO for species classifier. Used when classifier backend is OpenVINO/Auto.",
     "processorDetectionStrategy": "Detection strategy",
     "processorDetectionStrategyValue": {
       "two_stage": "Two-stage: detector + classifier",
@@ -877,6 +991,32 @@
     "confidenceAdvanced": "Advanced",
     "falsePositiveGuardrailsTitle": "False positive guardrails",
     "falsePositiveGuardrailsDesc": "Tighten the first-stage detector and generic fallback so feeder clutter is less likely to turn into fake birds.",
+    "processorScoringTitle": "Scoring engine thresholds",
+    "processorScoringDesc": "SOTA 2.0 unified ScoringEngine: low/high band, relaxed floor, Frigate prior boost, and moving-ROI motion gate.",
+    "processorScoringDefaultLowThreshold": "Scoring low threshold",
+    "processorScoringDefaultLowThresholdHint": "processor.scoring_default_low_threshold — below this, detections are rejected unless relaxed rules apply.",
+    "processorScoringDefaultHighThreshold": "Scoring high threshold",
+    "processorScoringDefaultHighThresholdHint": "processor.scoring_default_high_threshold — strong accept band for live scoring.",
+    "processorScoringRelaxedMinConfidence": "Relaxed min confidence",
+    "processorScoringRelaxedMinConfidenceHint": "processor.scoring_relaxed_min_confidence — floor when role/camera preset relaxes thresholds.",
+    "processorScoringFrigatePriorBoost": "Frigate prior boost",
+    "processorScoringFrigatePriorBoostHint": "processor.scoring_frigate_prior_boost — bonus when Frigate agrees with YOLO in the same clip.",
+    "processorScoringMovingRoiMinMotionScore": "Moving ROI min motion score",
+    "processorScoringMovingRoiMinMotionScoreHint": "processor.scoring_moving_roi_min_motion_score — boxes in moving ROI need at least this motion score.",
+    "processorSceneAdaptiveTitle": "Scene-adaptive confidence",
+    "processorSceneAdaptiveDesc": "Raises bird confidence floor on static/night/low-motion scenes.",
+    "processorSceneAdaptiveConfEnabled": "Scene-adaptive confidence enabled",
+    "processorSceneAdaptiveConfEnabledHint": "processor.scene_adaptive_conf_enabled",
+    "processorBboxIouGateTitle": "Bbox geometry IoU gate",
+    "processorBboxIouGateDesc": "Letterbox roundtrip check — drops phantom full-frame boxes when IoU with remapped geometry is too low.",
+    "processorBboxIouGateEnabled": "Bbox IoU gate enabled",
+    "processorBboxIouGateEnabledHint": "detection.bbox_iou_gate_enabled",
+    "processorBboxIouGateMin": "Min roundtrip IoU",
+    "processorBboxIouGateMinHint": "detection.bbox_iou_gate_min — typical 0.85.",
+    "processorBboxIouGateAction": "Gate action",
+    "processorBboxIouGateActionWarn": "warn (log only)",
+    "processorBboxIouGateActionReject": "reject (drop boxes)",
+    "processorBboxIouGateActionHint": "detection.bbox_iou_gate_action — reject drops phantom letterbox bboxes.",
     "speciesConfidenceOverrides": "Per-species thresholds (rare)",
     "speciesConfidenceOverridesHint": "Catalog name: threshold per line (e.g. **Rodent**: 0.28 for rodents). Lower for rare species.",
     "minBoxSizePx": "Min box size (px)",
@@ -907,6 +1047,7 @@
     "birdFamilies": "Bird families",
     "resolution": "Recording resolution",
     "resolutionHint": "Frame size for capture and recording. Affects quality and load.",
+    "recordingResolutionAuto": "Recording resolution is detected automatically from each camera's main/record RTSP stream (supports resolutions above Full HD). To force a fixed size for offline file replay, set video.force_recording_resolution and video_width/height in YAML.",
     "go2rtcUrlLabel": "Go2RTC URL",
     "weatherSource": "Weather source",
     "weatherOpenWeather": "OpenWeather",
@@ -948,11 +1089,12 @@
     "updateTitle": "Station settings",
     "restartInfo": "After saving, the processor restarts automatically to apply changes.",
     "pageDescription": "Options are grouped by topic: general station, connections and video, capture and feeder, notifications, integrations, and recognition. Open the section you need and use the hints next to each field.",
+    "deprecatedKeysAfterSave": "Saved, but user_config still has deprecated keys ({{count}}): {{keys}}. Clean them up under System → Config audit.",
     "savedRestart": "Settings saved. Processor will restart within ~60 seconds.",
     "restartFailed": "Failed to restart processor",
     "savedRestarting": "Settings saved. Processor is restarting.",
     "saveError": "Failed to save settings. Check your connection or try again.",
-    "processorOpenvinoPathsManagedHint": "OpenVINO paths are hidden in UI and managed by service mode/server config. In settings, users only select detector and classifier backends."
+    "processorOnnxPathsManagedHint": "ONNX model paths are hidden in UI and managed in service mode. Here you only choose detector and classifier backends."
   },
   "live": {
     "title": "Live — all cameras",
@@ -960,9 +1102,61 @@
     "streamTitle": "Live Stream",
     "loading": "Loading...",
     "errorLoad": "Could not load the live camera list.",
-    "modeGo2rtc": "RTC/MSE",
-    "modeMjpeg": "MJPEG",
-    "streamModeAria": "Live video transport: WebRTC/MSE or MJPEG fallback"
+    "sourceGo2rtc": "Go2RTC",
+    "sourceProcessorDetect": "Detection stream",
+    "streamSourceAria": "Video source: Go2RTC or processor MJPEG (detect pipeline)",
+    "streamGo2rtcProtocolAria": "Go2RTC transport: auto (MSE→MJPEG), WebRTC, MSE, or MJPEG",
+    "streamGo2rtcAuto": "Auto",
+    "streamGo2rtcWebrtc": "WebRTC",
+    "streamGo2rtcMse": "MSE",
+    "streamGo2rtcMjpeg": "MJPEG",
+    "streamTransport": {
+      "processor_detect": "Detection stream",
+      "go2rtc_mse": "MSE",
+      "go2rtc_mjpeg": "MJPEG",
+      "go2rtc_mjpeg_fallback": "MJPEG (fallback)",
+      "go2rtc_webrtc": "WebRTC"
+    },
+    "streamUnavailable": "Stream unavailable",
+    "openEditor": "Configure camera and overlays",
+    "editorTitle": "{{name}} — live view",
+    "overlaysSection": "Overlays on video",
+    "showOpencvMotion": "Trigger (OpenCV)",
+    "showYoloDetections": "Detection (YOLO)",
+    "overlaysHint": "Yellow rectangles: OpenCV trigger candidate boxes (outside red masks). Green: YOLO while recording. Browser and detect streams may differ.",
+    "overlaysHowTo": "1) Gear icon on the camera tile. 2) Enable «Trigger (OpenCV)». 3) Wait for motion — yellow boxes refresh about every 2s.",
+    "opencvNoContours": "no contours",
+    "opencvContourCount": "contours: {{count}}",
+    "opencvStatus": "OpenCV: {{reason}} — {{detail}}",
+    "saveClosePolygonFirst": "Close the polygon first («Close polygon»), then save.",
+    "masksSection": "Zone editor",
+    "layerTriggerMask": "Trigger masks",
+    "layerDetectorZone": "Detector zone",
+    "masksHint": "Red polygons: zones where OpenCV ignores motion. Edit: click frame → Close polygon → Save. Remove a mask via the list below or Clear layer and redraw.",
+    "detectorZonesHint": "Blue polygons: YOLO detector interest zone for this camera. Detections outside the zone are rejected.",
+    "maskItem": "Mask {{n}} ({{points}} points)",
+    "deleteMask": "Delete",
+    "noMasksYet": "No masks — click the frame to add a polygon.",
+    "closePolygon": "Close polygon",
+    "undoPoint": "Undo point",
+    "clearLayer": "Clear layer",
+    "saveLayer": "Save",
+    "saveFailed": "Could not save changes.",
+    "saveOk": "Layer saved.",
+    "overlayLoadFailed": "Could not load overlay (API error). Refresh the page.",
+    "overlayNoProcessorData": "Processor has not published live contours yet. Yellow outlines appear for motion outside red masks.",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "birdProfiles": {
+    "catalogTitle": "Bird nicknames (ReID)",
+    "catalogHint": "Deleting removes the nickname from the catalog and unlinks all visits. Unlink only affects the current recording.",
+    "manageButton": "Manage nicknames",
+    "empty": "No nicknames in the catalog yet.",
+    "deleteAction": "Delete nickname",
+    "deleteTooltip": "Delete nickname from catalog",
+    "deleteConfirm": "Delete \"{{name}}\" from the catalog? All visit links will be removed. This cannot be undone.",
+    "deleteFailed": "Failed to delete nickname",
+    "deletedSuccess": "Nickname \"{{name}}\" deleted ({{count}} detections unlinked)"
   },
   "timeline": {
     "intro": "Pick a day that has recordings, open a clip, then jump to a species page or review if you need to fix recognition.",
@@ -996,14 +1190,32 @@
     "timeEvening": "Evening (18–22)",
     "nicknameFilter": "Nickname",
     "nicknameFilterPlaceholder": "Filter by nickname",
+    "birdProfileFilter": "Bird",
+    "birdProfileFilterAll": "All birds",
     "behaviorFilter": "Behavior",
     "behaviorFilterPlaceholder": "Filter by behavior",
+    "behaviorFilterAll": "All behaviors",
+    "cameraFilter": "Camera",
+    "cameraFilterPlaceholder": "All cameras",
+    "triggerSource": "Trigger source",
+    "triggerSourceAll": "All triggers",
+    "triggerSourceOpencv": "OpenCV",
+    "triggerSourceFrigate": "Frigate",
+    "triggerSourceMotionSensor": "Motion sensor",
+    "triggerSourceScales": "Scales",
+    "triggerSourceUnknown": "Unknown",
     "sortBy": "Sort by",
     "sortDateDesc": "Date/time: newest first",
     "sortDateAsc": "Date/time: oldest first",
     "sortSpecies": "Species name",
     "sortNickname": "Nickname",
+    "sortConfidence": "Confidence: highest first",
+    "sortDuration": "Duration: longest first",
     "sortBehavior": "Behavior",
+    "runtimeCpu": "CPU {{value}}%",
+    "runtimeMemory": "RAM {{value}}%",
+    "runtimeGpu": "GPU {{value}}%",
+    "runtimeEncoding": "Encoding: {{value}}",
     "hourFilterChip": "Hour: {{from}}–{{to}}",
     "expandVisitDetails": "Expand visit details",
     "collapseVisitDetails": "Collapse visit details"
@@ -1207,8 +1419,10 @@
     "viewMode": "View mode",
     "simpleMode": "Simple",
     "advancedMode": "Advanced",
+    "expertMode": "Expert",
     "simpleModeHint": "Shows the main blocks without service noise.",
     "advancedModeHint": "Reveals diagnostics, maintenance, and dangerous operations.",
+    "expertModeHint": "Full YAML import/export and raw config tools for admins.",
     "iNaturalist": "Share to iNaturalist",
     "skipToContent": "Skip to main content",
     "pageNotFoundTitle": "Page not found",
@@ -1228,6 +1442,7 @@
     "catalogMenuHintObserved": "Only species with visits in the selected period.",
     "catalogMenuHintDataset": "Species present in the local dataset (train/ folders, etc.).",
     "catalogMenuHintFullEu": "Full EU allowlist — the grid may show zeros for many rows.",
+    "catalogMenuHintAll": "Full classifier catalog (allowlist), including species with no visits in the period.",
     "species": "Species",
     "startDate": "From date",
     "endDate": "To date",
@@ -1239,14 +1454,15 @@
     "noDataset": "No species from local dataset for the selected period.",
     "noSpeciesInDb": "No species in the catalog yet.",
     "catalogLabel": "Species scope",
-    "catalogObserved": "Observed (activity in selected range)",
+    "catalogObserved": "Observed",
+    "catalogAll": "All",
     "catalogDataset": "Present in local dataset",
     "catalogFullEu": "Full EU catalog (from allowlist)",
     "evidenceLabel": "Count visits",
     "evidenceAll": "All (camera + BirdNET in same sessions)",
     "evidenceCamera": "Camera only",
     "evidenceBirdnet": "BirdNET only",
-    "catalogEvidenceHint": "\"Observed\" lists only species with visits. \"Present in local dataset\" lists species found in data/dataset folders. \"Full EU catalog\" lists all allowlist classes, including zero rows.",
+    "catalogEvidenceHint": "\"Observed\" — species with visits in the selected period. \"All\" — full classifier catalog (allowlist); rows without visits show zeros.",
     "errorLoad": "Could not load the seasonality table.",
     "filterSectionTitle": "Period and catalog",
     "tableCaption": "Species by month: visit counts per cell; last column is the row total."
@@ -1254,16 +1470,34 @@
   "unknowns": {
     "title": "Recognition review",
     "intro": "Low-confidence detections: open the clip, then confirm or correct the species.",
+    "roleSplitTitle": "Review mode = fast operational triage",
+    "roleSplitHint": "Use this page to quickly triage and open recordings. Validate geometry in Labelling; edit semantics (species/profile/behavior) in Video Details.",
+    "openGeometryQueue": "Open geometry queue",
+    "guestBrowseTitle": "Review queue (browse only)",
+    "guestBrowseHint": "Open a clip to verify the detection. Corrections require operator sign-in.",
     "viewVideo": "View video",
     "correctSpecies": "Correct species",
     "reviewStatePending": "Pending review",
-    "reviewReasonLowConfidence": "Low confidence",
+    "reviewReasonLowConfidence": "Model unsure about species",
     "reviewReasonGenericBird": "Generic bird",
-    "reviewReasonClassifierUncertainty": "Classifier uncertain",
+    "reviewReasonClassifierUncertainty": "Conflicting model predictions",
+    "reviewReasonSemanticConflict": "Needs expert review",
+    "reviewReasonOperatorFlagged": "Flagged by operator",
+    "reviewReasonBboxRejected": "Incorrect detection box",
+    "reviewReasonReidNoMatch": "ReID: no matching individual",
+    "reviewReasonWelfareAnomaly": "Welfare screening: unusual vs healthy baseline",
+    "reviewReasonFilter": "Review reason",
+    "reviewReasonFilterAll": "All reasons",
+    "reviewReasonUnknownLabel": "Unresolved species label",
+    "reviewReasonDetectFirstAnchor": "Detect-first anchor (review)",
+    "reviewStateExpert": "Expert review",
+    "reviewStateReviewed": "Reviewed",
+    "expertTaskDone": "Task completed. Queue updated.",
     "confirmCorrect": "Correct",
     "confirmCorrectHelp": "Species is correct — remove from list",
     "confirmBlockedPendingApply": "A different species is selected — click Apply to save it, or clear the dropdown to confirm the current label.",
     "speciesSelectPlaceholder": "Choose species…",
+    "speciesSearchPlaceholder": "Search full catalog…",
     "apply": "Apply",
     "empty": "No low-confidence detections for the selected period. Try another day or hour. Bird species always appears here for verification.",
     "count": "{{count}} detection(s) to review",
@@ -1324,19 +1558,40 @@
     "spectrogram": "Spectrogram",
     "mediaViewTabs": "Switch between video and spectrogram",
     "speciesInVideo": "Species in This Video",
+    "guestCorrectionTitle": "Species correction requires operator sign-in",
+    "guestCorrectionHint": "Unlock with the station password to change species, merge detections, or link bird profiles.",
+    "unlockToCorrect": "Sign in to correct",
+    "welfareAnomalyChip": "Health anomaly flagged",
+    "welfareDistanceChip": "Health distance {{distance}}",
+    "welfareAnomalyHint": "Mahalanobis distance from healthy baseline; higher values need manual review (not a diagnosis).",
+    "welfareUnavailableChip": "Health not available",
+    "welfareUnavailableHint": "Health score is not available for this recording; usually an old clip, Frigate-only salvage, or a track without a usable crop. It appears after reprocessing or new sessions.",
+    "speciesEmptyTitle": "No species in this recording",
+    "speciesEmptyHint": "No video detections yet: still processing, Frigate-only salvage without a YOLO track, or species were not saved. Cards appear here after reprocessing.",
+    "speciesWithoutOverlayHint": "Species is listed but no bounding-box overlay is stored for this clip (often Frigate-only salvage or a rejected short YOLO track). The video still plays; operators can rebuild tracks from Service tools.",
     "mergeAllToSpecies": "Apply to all in video",
     "mergeAllHint": "Different neural networks or interruptions created multiple cards — select the correct species and merge all detections.",
     "detection": "detection",
     "detections": "detections",
+    "detectionTracksTitle": "Tracks on this clip",
+    "detectionTrackRow": "Track {{track}} · {{start}}–{{end}} · {{conf}}%",
+    "deleteDetection": "Delete bbox",
+    "deleteDetectionConfirm": "Delete detection (track {{track}}, {{start}}–{{end}})? The video file stays.",
+    "deleteDetectionSuccess": "Detection deleted",
+    "deleteDetectionHint": "Removes only this bbox/track; other detections on the clip are kept.",
     "detectionProviderYolo": "YOLO",
     "detectionProviderFrigate": "External MQTT",
     "detectionProviderBirdnetMqtt": "BirdNET",
+    "detectionProviderYoloPublic": "On-clip detection",
+    "detectionProviderFrigatePublic": "External MQTT",
+    "detectionProviderBirdnetPublic": "Sound recognition",
     "detectionSource": "Source",
     "nickname": "Nickname",
     "editNickname": "Set nickname",
     "nicknameSaved": "Nickname saved",
     "behavior": "Behavior",
     "timelineHint": "Colored bars = species. Hover to see source: YOLO, external MQTT, or BirdNET.",
+    "timelineHintPublic": "Colored bars = species. Hover a bar for how it was detected (clip analysis, external MQTT, or sound).",
     "noTrackFramesHint": "No YOLO bbox on this clip (overlay hidden). Defaults were tightened so birds stay in the recording; use Admin → “Rebuild tracks for this clip” or lower processor.min_track_duration / min_confidence_to_process in Settings.",
     "regenerateTracksThisVideo": "Rebuild tracks for this clip",
     "tracksMissingHint": "This clip has no per-frame boxes in the DB yet — rebuild tracks to make the overlay appear.",
@@ -1364,6 +1619,8 @@
     "regenerateSpectrogramThisVideoFailed": "Could not start spectrogram rebuild",
     "specRegenDone": "Spectrogram job finished.",
     "confidence": "Confidence",
+    "scoringWhySpecies": "Why this species?",
+    "scoringHintTooltip": "Provider: {{provider}}. Arbiter weights: {{weights}}. Full trace — Fusion in video details.",
     "learnMore": "Learn More",
     "correctedInVideos": "Species corrected in {{count}} videos",
     "speciesUnchanged": "This species is already selected — nothing to update.",
@@ -1378,9 +1635,26 @@
     "nicknameField": "Bird nickname",
     "nicknameFieldPlaceholder": "e.g. Sparrow Joe",
     "nicknameLabel": "Nickname",
+    "profileField": "Bird profile",
+    "profileFieldPlaceholder": "Search a profile or type a new one",
+    "profileLinkButton": "Link profile",
+    "unlinkBirdProfile": "Unlink bird",
+    "unlinkBirdProfileTooltip": "Remove bird profile link from this visit",
+    "unlinkBirdProfileConfirm": "Are you sure you want to unlink \"{{name}}\" from this visit? This cannot be undone.",
+    "unlinkBirdProfileAction": "Unlink",
+    "unlinkBirdProfileFailed": "Failed to unlink bird profile",
+    "profileCreateAndLinkButton": "Create and link",
+    "profileLinkedInVideo": "Profile linked to {{count}} detections in this video",
+    "profileMaybeSameBird": "Possibly the same bird",
+    "profileAutoLinkTier": "high confidence",
+    "profileMergeButton": "Merge",
+    "profileMergeSuccess": "Merged into «{{name}}» ({{count}} detections)",
+    "profileDismissSuggest": "Not the same",
+    "semanticReviewButton": "Flag semantic review",
+    "semanticReviewQueued": "Case added to expert queue",
+    "semanticConflictTitle": "Semantic conflict",
     "nicknameSaveButton": "Save nickname",
     "nicknameCancelButton": "Cancel",
-    "nicknameSaved": "Nickname saved",
     "possibleSameBird": "Possibly the same bird",
     "reidCrossCameraHint": "stricter cross-camera gate",
     "similarityPercent": "Similarity: {{value}}%",
@@ -1404,6 +1678,7 @@
     "scaleTareFail": "Tare failed",
     "supportTitle": "Support the project",
     "dispenseFeed": "Dispense Feed",
+    "dispenseViewOnly": "Feed dispensing is configured by the station administrator.",
     "dispensing": "Dispensing...",
     "feedDispensed": "Feed dispensed",
     "lastDispense": "Last dispense",
@@ -1460,7 +1735,17 @@
     "adminRegenTracksHelp": "Admin only. YOLO+ByteTrack for this file only; heavy CPU. Wait until the job finishes, then refresh.",
     "adminRegenSpectrogramHelp": "Admin only. Rebuilds the spectrogram image from the video file. Wait until the job finishes, then refresh.",
     "adminRegenRunning": "Running…",
-    "adminRegenFailed": "Could not start job"
+    "adminRegenFailed": "Could not start job",
+    "deleteVisit": "Delete visit",
+    "deleteVisitConfirm": "Delete the whole “{{name}}” visit? Videos stay, only visit detections are removed.",
+    "deleteVisitSuccess": "Visit deleted",
+    "deleteDetection": "Delete detection",
+    "deleteDetectionConfirm": "Delete this “{{name}}” detection from the recording?",
+    "deleteDetectionSuccess": "Detection deleted",
+    "bestConfidence": "Best: {{value}}%",
+    "detectionsCount": "Detections: {{count}}",
+    "sourceMix": "Video {{video}} · Audio {{audio}}",
+    "sourceVideoOnly": "Video: {{count}}"
   },
   "fusionTrace": {
     "openButton": "Fusion trace",
@@ -1537,18 +1822,37 @@
     "scalesEstimateTitle": "Scales (estimate)",
     "scalesEstimateValue": "{{value}} {{unit}}",
     "scalesEstimateHint": "Change in scale readings during the clip when a video detection exists; wind, noise, or multiple birds affect accuracy.",
+    "weightChangeTitle": "Weight change",
+    "weightChangeUnit": "g",
+    "weightChangeTooltip": "Weight difference during the visit (sensor data)",
+    "behaviorEditHint": "Behavior label for this clip; model training is in the operator area.",
     "visitSpeciesMismatch": "Some detections are linked to a visit of a different species — often after manual DB edits or track regeneration. The video labels show what is stored on this clip.",
-    "behaviorTitle": "Behavior (recognition)",
+    "behaviorTitle": "Behavior",
     "behaviorNone": "No behavior label is stored for this clip yet.",
     "behaviorEdit": "Edit behavior",
     "behaviorDialogTitle": "Behavior label",
     "behaviorLabelField": "Label",
-    "behaviorLabelHint": "Lowercase id (e.g. feeding, flying). Leave empty to clear stored behavior.",
+    "behaviorLabelHint": "Pick from the practical behavior vocabulary. Leave empty to clear stored behavior.",
+    "behaviorTagNone": "No label",
+    "behaviorTags": {
+      "feeding": "Feeding",
+      "food_handling": "Food handling",
+      "drinking": "Drinking",
+      "bathing": "Bathing",
+      "self_maintenance": "Self-maintenance",
+      "resting": "Resting",
+      "vigilance": "Vigilance",
+      "agonistic": "Agonistic / displacement",
+      "alarm_or_flee": "Alarm / flee",
+      "transport_food": "Transport food",
+      "parent_offspring": "Parent-offspring",
+      "pair_or_courtship": "Pair / courtship"
+    },
     "behaviorConfField": "Confidence (0–1)",
     "behaviorConfHint": "Optional manual confidence. Cleared when the label is cleared.",
     "behaviorSaving": "Saving…",
     "behaviorSave": "Save",
-    "behaviorTrainingNotInUi": "Training a new model or building a dataset is not done here — only this clip’s stored label. Settings → Processor → behavior baseline; offline CSV + Makefile on GitHub."
+    "behaviorTrainingNotInUi": "Behavior model is active. Edit only this clip's behavior label here."
   },
   "weather": {
     "title": "Weather",
@@ -1565,6 +1869,40 @@
     "noon": "Noon"
   },
   "system": {
+    "triggerGraph": {
+      "title": "Trigger graph",
+      "description": "Who started recording, who assigned species, FP/FN per source (Frigate, OpenCV, YOLO, BirdNET, Scale).",
+      "loadError": "Failed to load trigger graph metrics.",
+      "noData": "No sessions with trigger_graph in window — appear after recordings with updated processor.",
+      "bySource": "By source",
+      "sessions": "sessions",
+      "init": "init",
+      "species": "species",
+      "fpEmpty": "empty rec",
+      "fpReject": "noise",
+      "fnSilent": "silent det",
+      "fnNoSpecies": "no species",
+      "recentSessions": "Recent sessions",
+      "colTime": "Time",
+      "colCamera": "Camera",
+      "colInit": "Trigger",
+      "colSpecies": "Species"
+    },
+    "yoloDetector": {
+      "title": "YOLO detector",
+      "description": "Live detector status: blind when Frigate extends sessions without YOLO tracks. See runbook when Blind.",
+      "statusHealthy": "Healthy",
+      "statusDegraded": "Degraded",
+      "statusBlind": "Blind",
+      "phase": "phase",
+      "tracksSession": "frames with tracks",
+      "frigateOnly": "Frigate-only",
+      "alertActive": "yolo_blind_alert active: Frigate activity without YOLO longer than threshold.",
+      "noSnapshot": "No processor_runtime_stats.json — processor gauges missing or different DATA_DIR.",
+      "loadError": "Failed to load detector health.",
+      "reasons": "Reasons",
+      "runbookHint": "Runbook:"
+    },
     "pageDescription": "Health summary, catalog, and diagnostics. Advanced mode is for logs, maintenance, and rare operations.",
     "pageModeToggleHint": "You opened this from the hub «Service» entry. Tabs switch layout only: Overview (compact digest) or Workspace (diagnostics, automation, logs, and model tools).",
     "modeOverview": "Overview",
@@ -1619,6 +1957,9 @@
     "heroLoadError": "Could not assemble system summary",
     "heroHealthy": "Healthy",
     "heroNeedsAttention": "Needs attention",
+    "heroInfoDeprecated": "{{count}} deprecated keys in user_config — informational, safe to clean up later.",
+    "heroInfoDeprecated_one": "{{count}} deprecated key in user_config — informational.",
+    "heroInfoDeprecated_other": "{{count}} deprecated keys in user_config — informational.",
     "heroSummaryHealthy": "Core checks look healthy. Use this page to confirm trends, integrations, and admin workflows.",
     "heroSummaryDegraded": "One or more signals need review. Start with the warnings below before running maintenance actions.",
     "heroActionOverview": "Open overview",
@@ -1654,7 +1995,7 @@
     "processorWeightsTitle": "Processor weights (detection & classifier)",
     "processorWeightsIntro": "Paths are edited under Settings → Processor → Models. This card reflects real files (built-in vs data/custom_weights), uploads, SHA256, reset, and restart. Detection head (BRG .pt by default) and species classifier are two different .pt files. Upload writes under data/custom_weights and updates user_config with absolute paths. After each upload or reset the processor restart flag is set — use Restart processor or wait for the watchdog.",
     "processorWeightsBinary": "Binary detector",
-    "processorWeightsBinaryHint": "Default bundle: BRG three-class head—best.pt plus OpenVINO folder best_openvino_model (from the image / repo); optional last.pt as a rollback snapshot. Legacy COCO yolo11n.pt with class-14 allowlist is only for bespoke setups.",
+    "processorWeightsBinaryHint": "Orin: Trapper AI v02.2024 ONNX at models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx (CUDA EP).",
     "processorWeightsClassifier": "Species classifier",
     "processorWeightsClassifierHint": "Fine-grained species head (default: models/classification/weights/best.pt from Hugging Face gfermoto/birdlense-birds-eu). Pair with a matching class_names.txt when class count differs.",
     "processorWeightsAllowlist": "class_names.txt (allowlist)",
@@ -1711,11 +2052,10 @@
     "encoding": "Recording encoding",
     "encodingUsed": "In use",
     "encodingCpu": "CPU",
-    "encodingVaapi": "Intel GPU (VA-API)",
-    "encodingGpuUnavailable": "Intel GPU is selected in settings but the device is not available in the container. Add devices to compose (see docker-compose.intel.example.yml).",
+    "encodingGpuUnavailable": "Hardware encoder is selected but the device is not available in the container. Check runtime: nvidia and devices in compose.",
     "processorMqtt": "Processor MQTT (external events/BirdNET)",
     "gpu": "GPU",
-    "gpuNoData": "No GPU load data (sysfs and Intel probe unavailable). If Intel recording fails, switch to CPU in Settings → Video.",
+    "gpuNoData": "No GPU load data (nvidia-smi unavailable). If NVENC fails, switch to CPU in Settings → Video.",
     "uniqueVisitors": "Visitors",
     "speciesVisitSessions": "Visit Sessions",
     "uniqueVisitorsPeriod": "Metric period",
@@ -1735,7 +2075,19 @@
     "configAuditRuntimeDetectP95": "Detector p95 latency ≈ {{p95}} ms vs warn threshold {{warnMs}} ms — frames often exceed the slow-frame threshold.",
     "configAuditFrigateStandaloneOff": "External MQTT source is enabled, but detection.frigate_standalone_when_no_yolo=false: when YOLO returns zero tracks, MQTT events do not become final detections.",
     "configAuditNeedsReview": "Needs review",
+    "configAuditInfoOnly": "Info",
     "configAuditLoadError": "Failed to load configuration audit",
+    "tuningWorkbenchTitle": "Tuning workbench",
+    "tuningWorkbenchHint": "Safe presets, per-camera processor overrides, guardrails, auto-eval and rollback.",
+    "tuningWorkbenchLoadError": "Failed to load tuning workbench data",
+    "tuningWorkbenchGlobal": "Global profile",
+    "tuningWorkbenchPresets": "Safe presets",
+    "tuningWorkbenchPerCamera": "Per-camera profile overrides",
+    "tuningWorkbenchCameraHint": "Overrides inherit global processor settings and only replace selected keys.",
+    "tuningWorkbenchAutoEval": "Auto-eval after change",
+    "tuningWorkbenchRollback": "Rollback previous profile",
+    "tuningWorkbenchMutationError": "Tuning action failed",
+    "cameraLabel": "Camera",
     "configAuditWarningsTitle": "Warnings",
     "configAuditRecallHintsTitle": "Recall tuning (informational)",
     "configAuditRecallHintsHint": "These are sensitivity tips, not misconfiguration. Fix only if you need more motion recall.",
@@ -1762,9 +2114,19 @@
     "catalogFullEuCount": "Allowlist: {{n}}",
     "catalogTuningCandidates": "Tuning candidates: {{n}}",
     "catalogTuningHint": "Fine-tuning candidates are computed automatically: observed species absent in real local dataset folders.",
+    "catalogOpsHubTitle": "Catalog & detection",
+    "catalogOpsHubDescription": "Allowlist card completion, audio KPI, YOLO health, background jobs.",
+    "catalogOpsCompletion": "Cards: {{complete}}/{{total}} ({{pct}}%)",
+    "catalogOpsAudio": "Catalog audio: {{with}} / missing: {{missing}}",
+    "catalogOpsRunningJobs": "Running jobs: {{jobs}}",
+    "catalogOpsOpenCatalog": "Species catalog",
+    "catalogOpsOpenQuality": "Card quality",
+    "backpressureClassifierQueue": "Classifier queue: {{depth}}/{{max}}",
+    "backpressureFinalizeQueue": "Finalize queue: {{depth}}",
     "catalogRepairTitle": "Catalog cards polish",
     "catalogRepairLoadError": "Failed to load catalog polish status",
     "catalogRepairStart": "Start polish",
+    "catalogRepairOpenQualityList": "Problem cards list",
     "catalogRepairStartFailed": "Could not start catalog polish",
     "catalogRepairRunning": "Polish running",
     "catalogRepairReady": "Ready",
@@ -1887,6 +2249,23 @@
     "automationBirdnetFifoAgoMinutes": "{{n}} min ago",
     "automationBirdnetFifoAgoHoursOnly": "{{n}} h ago",
     "automationBirdnetFifoAgoHoursMinutes": "{{h}} h {{m}} min ago",
+    "birdnetFifoStatus": {
+      "disabled": "BirdNET MQTT is not configured — FIFO buffer is unused (expected).",
+      "reportingOff": "FIFO snapshot/persist is disabled in processor config.",
+      "unavailable": "BirdNET queue unavailable: no snapshot and no DB rows. Check processor and MQTT.",
+      "stale": "FIFO snapshot is stale — no recent updates (quiet site or MQTT issue).",
+      "mqttDown": "MQTT disconnected — BirdNET events are not arriving.",
+      "empty": "Queue is empty — no events in the TTL window (normal when quiet).",
+      "active": "BirdNET queue is active."
+    },
+    "processorLogsFilter": {
+      "all": "All",
+      "error": "Errors",
+      "warning": "Warn",
+      "info": "INFO",
+      "debug": "DEBUG"
+    },
+    "processorLogsFilterEmpty": "No «{{filter}}» lines in the last {{lines}} log lines (try All).",
     "processorActivityTitle": "Processor heartbeat",
     "processorActivityLoading": "Loading processor heartbeat...",
     "processorActivityLoadFailed": "Failed to load processor heartbeat activity.",
@@ -1930,6 +2309,18 @@
     "retentionMinAgeHoursHelper": "Keeps fresh recordings safe from immediate cleanup.",
     "retentionBatch": "Batch",
     "retentionBatchHelper": "How many recordings to process per run so disk work stays bounded.",
+    "retentionMaxDeletesPerRun": "Max deletes per run",
+    "retentionMaxDeletesPerRunHelper": "Upper bound on cascade deletes per scheduler or manual run (1–5000).",
+    "retentionAutoRunEnabled": "Scheduled auto-run",
+    "retentionAutoRunEnabledHelper": "Checks days/max_gb thresholds; when exceeded, deletes only expired or oldest sessions (per-run cap), not the whole archive.",
+    "retentionAutoRunIntervalHours": "Check interval (h)",
+    "retentionAutoRunIntervalHoursHelper": "Hours between checks; each run deletes at most max_deletes_per_run until thresholds are met again.",
+    "retentionOrphanFilesSummary": "Disk-only sessions without DB row: {{n}} (~{{gb}} GB). Scan/import does not auto-fix; purge is a separate admin action.",
+    "retentionOrphanPurgePreview": "Preview orphan purge",
+    "retentionOrphanPurgeApply": "Purge orphans (disk)",
+    "retentionOrphanPurgeConfirm": "Delete disk-only recording sessions without DB rows? Favorites/protected sessions are skipped. This cannot be undone.",
+    "retentionOrphanPurgePreviewResult": "Would delete {{n}} sessions, ~{{mb}} MB",
+    "retentionOrphanPurgeApplyResult": "Deleted {{n}} sessions, freed ~{{mb}} MB",
     "retentionResultCounts": "Items: {{n}}, freed ~{{mb}} MB",
     "retentionLastRun": "Last run",
     "retentionLastStats": "Mode: {{mode}}, deleted: {{n}}, ~{{mb}} MB",
@@ -2032,6 +2423,41 @@
       "warn": "warning",
       "error": "error"
     },
+    "readinessFunnelTitle": "Persist funnel (recent sessions)",
+    "readinessFunnelHint": "Rolling window: last {{hours}}h from session_runtime_metrics.",
+    "readinessFunnelStatus": "Pipeline funnel",
+    "readinessFunnelState": {
+      "ok": "Healthy",
+      "degraded": "Degraded — inspect failure modes below",
+      "unknown": "Unknown"
+    },
+    "readinessFunnelSessions": "Sessions: {{total}} · healthy persist: {{healthy}} · fusion drop: {{fusionDrop}}",
+    "readinessFunnelTopCauses": "Top failure modes",
+    "readinessFunnelByCamera": "Dominant mode per camera",
+    "readinessFunnelFailureMode": {
+      "detector_silent_raw0": "YOLO blind — no raw boxes",
+      "confidence_gate_collapse_raw_gt_0_accepted_0": "Confidence gate — raw boxes but none accepted",
+      "quality_filter_collapse_raw_gt_0_tracks_0": "Quality filter — boxes accepted but no tracks",
+      "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion drop — tracks present, nothing persisted",
+      "healthy_persisted_gt_0": "Healthy — rows persisted"
+    },
+    "readinessOperatorTitle": "Operator snapshot (disk · quota · orphans)",
+    "readinessOperatorHint": "Host disk, indexed recordings size, retention quota headroom, and orphan files on disk — no SSH needed.",
+    "readinessOperator": {
+      "disk": "Host disk",
+      "diskValue": "{{used}} / {{total}} GB ({{percent}}%)",
+      "recordings": "Indexed recordings",
+      "recordingsValue": "{{size}} · {{files}} files",
+      "quota": "Retention quota",
+      "quotaValue": "Cap {{maxGb}} GB · headroom {{headroom}}",
+      "quotaUnlimited": "No max_gb cap configured",
+      "orphan": "Orphan files on disk",
+      "orphanValue": "{{count}} sessions · {{size}}",
+      "unavailable": "Unavailable",
+      "linkStorage": "Library → storage & retention",
+      "linkCatalogReconcile": "Catalog ops & reconcile",
+      "linkYoloBlind": "YOLO blind runbook"
+    },
     "domainTrustTitle": "Data quality & release gate (24h)",
     "domainTrustHint": "Explains why automated deploy may exit non‑zero while the hub stays online: strict_quality checks recent recordings and detection rows, not liveness.",
     "domainTrustLoadError": "Could not load domain health snapshot",
@@ -2041,11 +2467,17 @@
     "domainTrustStatusDegraded": "Snapshot failed",
     "domainTrustSnapshotDegraded": "The snapshot could not be built ({{err}}). Retry later or check DB/logs.",
     "domainTrustChipPass": "pass",
+    "domainTrustChipSkipped": "no 24h sample",
     "domainTrustChipFail": "review",
     "domainTrustMetricsHeading": "Key counters (rolling window)",
     "domainTrustMetricDupClipCandidates": "Near-duplicate clip pairs: {{n}}",
     "domainTrustMetricYoloPrimary": "YOLO-primary rows: {{pct}}%",
     "domainTrustMetricFramesCoverage": "Rows with frame evidence: {{pct}}%",
+    "domainTrustMetricTrackStability": "Track stability score: {{pct}}%",
+    "domainTrustMetricTrackFragmentation": "Fragmented tracks: {{pct}}%",
+    "domainTrustMetricLifecycleEnterRate": "Lifecycle entered windows: {{pct}}%",
+    "domainTrustMetricLifecycleRejectedRate": "Lifecycle rejected-only windows: {{pct}}%",
+    "domainTrustTrackRegressionAlert": "Track quality regression vs previous 24h window detected. Review unstable examples and tracker profile.",
     "domainTrustAttentionHeading": "What failed and why it matters",
     "domainTrustThresholdsLine": "Gate reference: clip spacing ≤ {{gap}}s counts as duplicate pair; YOLO-primary share gate ≥ {{yolo}}%; frame-evidence share gate ≥ {{frames}}%.",
     "domainTrustGateFailGeneric": "This check failed — see metrics above or recent clips in Timeline.",
@@ -2124,6 +2556,9 @@
     "food": "Food",
     "description": "Which food is in the feeder now; visits are linked to it for your records.",
     "active": "Active",
+    "activeYes": "In feeder",
+    "activeNo": "Not in use",
+    "activeToggle": "Active: {{name}}",
     "tableAria": "Bird foods for the feeder — toggle which are active",
     "noDescription": "No description available",
     "loginRequired": "Sign in to change food in the feeder"
@@ -2189,211 +2624,803 @@
   },
   "help": {
     "overview": {
-      "title": "Bird Activity Overview",
-      "description": "View real-time and daily statistics about bird activity at your feeder. This dashboard provides key metrics, current weather conditions, and a 24-hour activity pattern visualization.",
-      "details": [
-        {
-          "title": "Activity Statistics",
-          "content": "Track unique bird species visits, total detections, and last hour activity. The system counts both video and audio detections, distinguishing between different species using computer vision and audio analysis."
-        },
-        {
-          "title": "Visit Metrics",
-          "content": "Monitor average visit duration and identify the busiest hour of bird activity. The system considers a continuous period of detections as a single visit, helping understand bird feeding patterns."
-        },
-        {
-          "title": "Audio/Video Ratio",
-          "content": "Shows the proportion of birds detected through audio versus video. A ratio less than 1 means more video detections, while greater than 1 indicates more audio detections. This helps evaluate detector performance."
-        },
-        {
-          "title": "Weather Information",
-          "content": "Current weather conditions that may affect bird activity, including temperature, cloud cover, humidity, and wind speed. Weather data is automatically updated and stored with each detection."
-        },
-        {
-          "title": "Daily Activity Pattern",
-          "content": "A 24-hour circular visualization showing when different species visit the feeder. The chart uses color-coding to distinguish between species, with the length of each segment indicating the number of detections."
-        },
-        {
-          "title": "Date Selection",
-          "content": "Use the date picker to view historical data for any specific day. This allows you to track patterns over time and compare activity levels across different dates."
-        }
-      ]
+      "guest": {
+        "title": "Bird Activity Overview",
+        "description": "Feeder activity summary for the day: species, visits, weather, daily pattern.",
+        "details": [
+          {
+            "title": "Activity Statistics",
+            "content": "Track unique bird species visits, total detections, and last hour activity. The system counts both video and audio detections, distinguishing between different species using computer vision and audio analysis."
+          },
+          {
+            "title": "Visit Metrics",
+            "content": "Monitor average visit duration and identify the busiest hour of bird activity. The system considers a continuous period of detections as a single visit, helping understand bird feeding patterns."
+          },
+          {
+            "title": "Audio/Video Ratio",
+            "content": "Shows the proportion of birds detected through audio versus video. A ratio less than 1 means more video detections, while greater than 1 indicates more audio detections. This helps evaluate detector performance."
+          },
+          {
+            "title": "Weather Information",
+            "content": "Current weather conditions that may affect bird activity, including temperature, cloud cover, humidity, and wind speed. Weather data is automatically updated and stored with each detection."
+          },
+          {
+            "title": "Daily Activity Pattern",
+            "content": "A 24-hour circular visualization showing when different species visit the feeder. The chart uses color-coding to distinguish between species, with the length of each segment indicating the number of detections."
+          },
+          {
+            "title": "Date Selection",
+            "content": "Use the date picker to view historical data for any specific day. This allows you to track patterns over time and compare activity levels across different dates."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Bird Activity Overview",
+        "description": "Activity dashboard for daily data-quality checks.",
+        "details": [
+          {
+            "title": "Activity Statistics",
+            "content": "Track unique bird species visits, total detections, and last hour activity. The system counts both video and audio detections, distinguishing between different species using computer vision and audio analysis."
+          },
+          {
+            "title": "Visit Metrics",
+            "content": "Monitor average visit duration and identify the busiest hour of bird activity. The system considers a continuous period of detections as a single visit, helping understand bird feeding patterns."
+          },
+          {
+            "title": "Audio/Video Ratio",
+            "content": "Shows the proportion of birds detected through audio versus video. A ratio less than 1 means more video detections, while greater than 1 indicates more audio detections. This helps evaluate detector performance."
+          },
+          {
+            "title": "Weather Information",
+            "content": "Current weather conditions that may affect bird activity, including temperature, cloud cover, humidity, and wind speed. Weather data is automatically updated and stored with each detection."
+          },
+          {
+            "title": "Daily Activity Pattern",
+            "content": "A 24-hour circular visualization showing when different species visit the feeder. The chart uses color-coding to distinguish between species, with the length of each segment indicating the number of detections."
+          },
+          {
+            "title": "Date Selection",
+            "content": "Use the date picker to view historical data for any specific day. This allows you to track patterns over time and compare activity levels across different dates."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Bird Activity Overview",
+        "description": "Station overview; anomalies — Service logs and Station settings.",
+        "details": [
+          {
+            "title": "Activity Statistics",
+            "content": "Track unique bird species visits, total detections, and last hour activity. The system counts both video and audio detections, distinguishing between different species using computer vision and audio analysis."
+          },
+          {
+            "title": "Visit Metrics",
+            "content": "Monitor average visit duration and identify the busiest hour of bird activity. The system considers a continuous period of detections as a single visit, helping understand bird feeding patterns."
+          },
+          {
+            "title": "Audio/Video Ratio",
+            "content": "Shows the proportion of birds detected through audio versus video. A ratio less than 1 means more video detections, while greater than 1 indicates more audio detections. This helps evaluate detector performance."
+          },
+          {
+            "title": "Weather Information",
+            "content": "Current weather conditions that may affect bird activity, including temperature, cloud cover, humidity, and wind speed. Weather data is automatically updated and stored with each detection."
+          },
+          {
+            "title": "Daily Activity Pattern",
+            "content": "A 24-hour circular visualization showing when different species visit the feeder. The chart uses color-coding to distinguish between species, with the length of each segment indicating the number of detections."
+          },
+          {
+            "title": "Date Selection",
+            "content": "Use the date picker to view historical data for any specific day. This allows you to track patterns over time and compare activity levels across different dates."
+          }
+        ]
+      }
     },
     "food": {
-      "title": "Bird Food Management",
-      "description": "Manage and track different types of food available in your bird feeder. The system uses this information to analyze which foods attract specific bird species.",
-      "details": [
-        {
-          "title": "Food Selection",
-          "content": "Toggle which types of food are currently available in your feeder. Active foods will be associated with bird visits and help build feeding pattern data."
-        },
-        {
-          "title": "Food Catalog",
-          "content": "A comprehensive list of common bird foods with details about which species they typically attract. Each food type includes an image, description, and recommended usage."
-        },
-        {
-          "title": "Usage Analytics",
-          "content": "The system tracks which foods are present during bird visits, helping you understand which foods are most effective at attracting specific species."
-        },
-        {
-          "title": "Active Status",
-          "content": "Use the checkboxes to indicate which foods are currently in your feeder. Only active foods will be associated with new bird detections."
-        },
-        {
-          "title": "Food Information",
-          "content": "Each food entry includes:\n- Name and image for easy identification\n- Detailed description of the food type\n- List of bird species commonly attracted to this food\n- Special handling or storage recommendations"
-        },
-        {
-          "title": "Food Effectiveness",
-          "content": "Through the bird detection system, you can track which foods are most successful at attracting your target species. This data helps optimize your feeding strategy."
-        }
-      ]
+      "guest": {
+        "title": "Bird Food Management",
+        "description": "Which feed types are marked active for visit context.",
+        "details": [
+          {
+            "title": "Food Selection",
+            "content": "Toggle which types of food are currently available in your feeder. Active foods will be associated with bird visits and help build feeding pattern data."
+          },
+          {
+            "title": "Food Catalog",
+            "content": "A comprehensive list of common bird foods with details about which species they typically attract. Each food type includes an image, description, and recommended usage."
+          },
+          {
+            "title": "Usage Analytics",
+            "content": "The system tracks which foods are present during bird visits, helping you understand which foods are most effective at attracting specific species."
+          },
+          {
+            "title": "Active Status",
+            "content": "Use the checkboxes to indicate which foods are currently in your feeder. Only active foods will be associated with new bird detections."
+          },
+          {
+            "title": "Food Information",
+            "content": "Each food entry includes:\n- Name and image for easy identification\n- Detailed description of the food type\n- List of bird species commonly attracted to this food\n- Special handling or storage recommendations"
+          },
+          {
+            "title": "Food Effectiveness",
+            "content": "Through the bird detection system, you can track which foods are most successful at attracting your target species. This data helps optimize your feeding strategy."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Bird Food Management",
+        "description": "Manage feed types; active feed is linked to new visits.",
+        "details": [
+          {
+            "title": "Food Selection",
+            "content": "Toggle which types of food are currently available in your feeder. Active foods will be associated with bird visits and help build feeding pattern data."
+          },
+          {
+            "title": "Food Catalog",
+            "content": "A comprehensive list of common bird foods with details about which species they typically attract. Each food type includes an image, description, and recommended usage."
+          },
+          {
+            "title": "Usage Analytics",
+            "content": "The system tracks which foods are present during bird visits, helping you understand which foods are most effective at attracting specific species."
+          },
+          {
+            "title": "Active Status",
+            "content": "Use the checkboxes to indicate which foods are currently in your feeder. Only active foods will be associated with new bird detections."
+          },
+          {
+            "title": "Food Information",
+            "content": "Each food entry includes:\n- Name and image for easy identification\n- Detailed description of the food type\n- List of bird species commonly attracted to this food\n- Special handling or storage recommendations"
+          },
+          {
+            "title": "Food Effectiveness",
+            "content": "Through the bird detection system, you can track which foods are most successful at attracting your target species. This data helps optimize your feeding strategy."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Bird Food Management",
+        "description": "Feed catalog and species attraction analytics.",
+        "details": [
+          {
+            "title": "Food Selection",
+            "content": "Toggle which types of food are currently available in your feeder. Active foods will be associated with bird visits and help build feeding pattern data."
+          },
+          {
+            "title": "Food Catalog",
+            "content": "A comprehensive list of common bird foods with details about which species they typically attract. Each food type includes an image, description, and recommended usage."
+          },
+          {
+            "title": "Usage Analytics",
+            "content": "The system tracks which foods are present during bird visits, helping you understand which foods are most effective at attracting specific species."
+          },
+          {
+            "title": "Active Status",
+            "content": "Use the checkboxes to indicate which foods are currently in your feeder. Only active foods will be associated with new bird detections."
+          },
+          {
+            "title": "Food Information",
+            "content": "Each food entry includes:\n- Name and image for easy identification\n- Detailed description of the food type\n- List of bird species commonly attracted to this food\n- Special handling or storage recommendations"
+          },
+          {
+            "title": "Food Effectiveness",
+            "content": "Through the bird detection system, you can track which foods are most successful at attracting your target species. This data helps optimize your feeding strategy."
+          }
+        ]
+      }
     },
     "library": {
-      "title": "Data and archive",
-      "description": "Disk archive calendar, training exports, and storage maintenance. Open Recordings to watch clips.",
-      "details": [
-        {
-          "title": "What the calendar means",
-          "content": "The calendar is built from real files under data/recordings, so highlighted days mean recordings exist on disk for that date."
-        },
-        {
-          "title": "Why this matters",
-          "content": "This helps separate archive problems from detection problems. If a day is highlighted here but Overview or Timeline is empty, recordings exist but detections or visits are missing."
-        },
-        {
-          "title": "What you can do here",
-          "content": "Browse the archive, scan/import from disk, export datasets, backups, and storage overview—all under the Data menu item."
-        },
-        {
-          "title": "How this relates to Service",
-          "content": "Service is for monitoring, processor logs, and deep diagnostics. File-based archive work is concentrated here."
-        },
-        {
-          "title": "About maintenance",
-          "content": "Heavy tasks (import, rebuild, cleanup) are easier when you already know which days exist in the archive; the calendar reflects files on disk."
-        }
-      ]
+      "guest": {
+        "title": "Data and archive",
+        "description": "Calendar of days with recording files on disk.",
+        "details": [
+          {
+            "title": "What the calendar means",
+            "content": "The calendar is built from real files under data/recordings, so highlighted days mean recordings exist on disk for that date."
+          },
+          {
+            "title": "Why this matters",
+            "content": "This helps separate archive problems from detection problems. If a day is highlighted here but Overview or Timeline is empty, recordings exist but detections or visits are missing."
+          },
+          {
+            "title": "What you can do here",
+            "content": "Browse the archive, scan/import from disk, export datasets, backups, and storage overview—all under the Data menu item."
+          },
+          {
+            "title": "How this relates to Service",
+            "content": "Service is for monitoring, processor logs, and deep diagnostics. File-based archive work is concentrated here."
+          },
+          {
+            "title": "About maintenance",
+            "content": "Heavy tasks (import, rebuild, cleanup) are easier when you already know which days exist in the archive; the calendar reflects files on disk."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Data and archive",
+        "description": "Archive, disk import, dataset export. Watch clips under Timeline.",
+        "details": [
+          {
+            "title": "What the calendar means",
+            "content": "The calendar is built from real files under data/recordings, so highlighted days mean recordings exist on disk for that date."
+          },
+          {
+            "title": "Why this matters",
+            "content": "This helps separate archive problems from detection problems. If a day is highlighted here but Overview or Timeline is empty, recordings exist but detections or visits are missing."
+          },
+          {
+            "title": "What you can do here",
+            "content": "Browse the archive, scan/import from disk, export datasets, backups, and storage overview—all under the Data menu item."
+          },
+          {
+            "title": "How this relates to Service",
+            "content": "Service is for monitoring, processor logs, and deep diagnostics. File-based archive work is concentrated here."
+          },
+          {
+            "title": "About maintenance",
+            "content": "Heavy tasks (import, rebuild, cleanup) are easier when you already know which days exist in the archive; the calendar reflects files on disk."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Data and archive",
+        "description": "Storage maintenance and backups; heavy jobs — check disk usage on the calendar first.",
+        "details": [
+          {
+            "title": "What the calendar means",
+            "content": "The calendar is built from real files under data/recordings, so highlighted days mean recordings exist on disk for that date."
+          },
+          {
+            "title": "Why this matters",
+            "content": "This helps separate archive problems from detection problems. If a day is highlighted here but Overview or Timeline is empty, recordings exist but detections or visits are missing."
+          },
+          {
+            "title": "What you can do here",
+            "content": "Browse the archive, scan/import from disk, export datasets, backups, and storage overview—all under the Data menu item."
+          },
+          {
+            "title": "How this relates to Service",
+            "content": "Service is for monitoring, processor logs, and deep diagnostics. File-based archive work is concentrated here."
+          },
+          {
+            "title": "About maintenance",
+            "content": "Heavy tasks (import, rebuild, cleanup) are easier when you already know which days exist in the archive; the calendar reflects files on disk."
+          }
+        ]
+      }
     },
     "timeline": {
-      "title": "Recordings",
-      "description": "Choose a day, filter visits, open clips—jump to a species page or review when fixing recognition.",
-      "details": [
-        {
-          "title": "Visit Controls",
-          "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- Species dropdown to filter by specific bird types\n- Summary statistics showing unique species count, total visits, and total duration"
-        },
-        {
-          "title": "Day navigation",
-          "content": "Chevrons next to the date jump to the nearest day that has files in your recordings archive on disk (empty days are skipped). Choosing a date in the picker still opens that exact day."
-        },
-        {
-          "title": "Visit Information",
-          "content": "Each visit card displays:\n- Bird species with image and name\n- Number of birds seen simultaneously (shown with person icon)\n- Visit duration in seconds (shown with clock icon)\n- Temperature during the visit (shown with thermometer icon)\n- Expandable view for detailed detection timeline"
-        },
-        {
-          "title": "Detection Types",
-          "content": "Within each visit, detections are shown with:\n- Video detections (camera icon) - Visual confirmation of birds\n- Audio detections (microphone icon) - Bird calls and songs\n- Confidence percentage for each detection\n- Precise timestamp for every observation\n- Duration in seconds for each detection"
-        },
-        {
-          "title": "Visual Timeline",
-          "content": "The vertical timeline shows:\n- Chronological sequence of visits with time markers\n- Connected dots indicating continuous monitoring\n- Expandable/collapsible visit details\n- Clear separation between different visits"
-        },
-        {
-          "title": "Detection Confidence",
-          "content": "Each detection shows confidence levels:\n- Video detections typically show 95-100% confidence\n- Audio detections may have varying confidence levels\n- Green indicators for high confidence (100%)\n- Blue indicators for good confidence (95% and above)"
-        },
-        {
-          "title": "Weather Context",
-          "content": "Temperature data is recorded for each visit to help correlate bird activity with weather conditions. This helps identify patterns in bird behavior related to environmental factors."
-        }
-      ]
+      "guest": {
+        "title": "Recordings",
+        "description": "Visit feed for the selected day: species, duration, weather, weight on the card.",
+        "details": [
+          {
+            "title": "Visit Controls",
+            "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- Species dropdown to filter by specific bird types\n- Summary statistics showing unique species count, total visits, and total duration"
+          },
+          {
+            "title": "Day navigation",
+            "content": "Chevrons next to the date jump to the nearest day that has files in your recordings archive on disk (empty days are skipped). Choosing a date in the picker still opens that exact day."
+          },
+          {
+            "title": "Visit Information",
+            "content": "Each visit card displays:\n- Bird species with image and name\n- Number of birds seen simultaneously (shown with person icon)\n- Visit duration in seconds (shown with clock icon)\n- Temperature during the visit (shown with thermometer icon)\n- Expandable view for detailed detection timeline"
+          },
+          {
+            "title": "Detection Types",
+            "content": "Within each visit, detections are shown with:\n- Video detections (camera icon) - Visual confirmation of birds\n- Audio detections (microphone icon) - Bird calls and songs\n- Confidence percentage for each detection\n- Precise timestamp for every observation\n- Duration in seconds for each detection"
+          },
+          {
+            "title": "Visual Timeline",
+            "content": "The vertical timeline shows:\n- Chronological sequence of visits with time markers\n- Connected dots indicating continuous monitoring\n- Expandable/collapsible visit details\n- Clear separation between different visits"
+          },
+          {
+            "title": "Detection Confidence",
+            "content": "Each detection shows confidence levels:\n- Video detections typically show 95-100% confidence\n- Audio detections may have varying confidence levels\n- Green indicators for high confidence (100%)\n- Blue indicators for good confidence (95% and above)"
+          },
+          {
+            "title": "Weather Context",
+            "content": "Temperature data is recorded for each visit to help correlate bird activity with weather conditions. This helps identify patterns in bird behavior related to environmental factors."
+          },
+          {
+            "title": "Visit card",
+            "content": "Species, duration, temperature. Expand for detections over time. Open a clip for details."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Recordings",
+        "description": "Daily visits: filters by species and behavior; fixes and Re-ID nicknames on the visit card.",
+        "details": [
+          {
+            "title": "Visit Controls",
+            "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- Species dropdown to filter by specific bird types\n- Summary statistics showing unique species count, total visits, and total duration"
+          },
+          {
+            "title": "Day navigation",
+            "content": "Chevrons next to the date jump to the nearest day that has files in your recordings archive on disk (empty days are skipped). Choosing a date in the picker still opens that exact day."
+          },
+          {
+            "title": "Visit Information",
+            "content": "Each visit card displays:\n- Bird species with image and name\n- Number of birds seen simultaneously (shown with person icon)\n- Visit duration in seconds (shown with clock icon)\n- Temperature during the visit (shown with thermometer icon)\n- Expandable view for detailed detection timeline"
+          },
+          {
+            "title": "Detection Types",
+            "content": "Within each visit, detections are shown with:\n- Video detections (camera icon) - Visual confirmation of birds\n- Audio detections (microphone icon) - Bird calls and songs\n- Confidence percentage for each detection\n- Precise timestamp for every observation\n- Duration in seconds for each detection"
+          },
+          {
+            "title": "Visual Timeline",
+            "content": "The vertical timeline shows:\n- Chronological sequence of visits with time markers\n- Connected dots indicating continuous monitoring\n- Expandable/collapsible visit details\n- Clear separation between different visits"
+          },
+          {
+            "title": "Detection Confidence",
+            "content": "Each detection shows confidence levels:\n- Video detections typically show 95-100% confidence\n- Audio detections may have varying confidence levels\n- Green indicators for high confidence (100%)\n- Blue indicators for good confidence (95% and above)"
+          },
+          {
+            "title": "Weather Context",
+            "content": "Temperature data is recorded for each visit to help correlate bird activity with weather conditions. This helps identify patterns in bird behavior related to environmental factors."
+          },
+          {
+            "title": "Re-ID",
+            "content": "Link or unlink a bird profile (nickname) on the visit card when Re-ID is enabled."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Recordings",
+        "description": "Visit timeline; if a day is empty, check Library (on-disk archive) and processor status.",
+        "details": [
+          {
+            "title": "Visit Controls",
+            "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- Species dropdown to filter by specific bird types\n- Summary statistics showing unique species count, total visits, and total duration"
+          },
+          {
+            "title": "Day navigation",
+            "content": "Chevrons next to the date jump to the nearest day that has files in your recordings archive on disk (empty days are skipped). Choosing a date in the picker still opens that exact day."
+          },
+          {
+            "title": "Visit Information",
+            "content": "Each visit card displays:\n- Bird species with image and name\n- Number of birds seen simultaneously (shown with person icon)\n- Visit duration in seconds (shown with clock icon)\n- Temperature during the visit (shown with thermometer icon)\n- Expandable view for detailed detection timeline"
+          },
+          {
+            "title": "Detection Types",
+            "content": "Within each visit, detections are shown with:\n- Video detections (camera icon) - Visual confirmation of birds\n- Audio detections (microphone icon) - Bird calls and songs\n- Confidence percentage for each detection\n- Precise timestamp for every observation\n- Duration in seconds for each detection"
+          },
+          {
+            "title": "Visual Timeline",
+            "content": "The vertical timeline shows:\n- Chronological sequence of visits with time markers\n- Connected dots indicating continuous monitoring\n- Expandable/collapsible visit details\n- Clear separation between different visits"
+          },
+          {
+            "title": "Detection Confidence",
+            "content": "Each detection shows confidence levels:\n- Video detections typically show 95-100% confidence\n- Audio detections may have varying confidence levels\n- Green indicators for high confidence (100%)\n- Blue indicators for good confidence (95% and above)"
+          },
+          {
+            "title": "Weather Context",
+            "content": "Temperature data is recorded for each visit to help correlate bird activity with weather conditions. This helps identify patterns in bird behavior related to environmental factors."
+          }
+        ]
+      }
     },
     "unknowns": {
-      "title": "Review queue",
-      "description": "Review low-confidence or generic detections, confirm the bird, and feed corrections back into recognition improvement.",
-      "details": [
-        {
-          "title": "Purpose",
-          "content": "Low-confidence detections may be misidentified. This page lets you verify and correct the species before they affect statistics."
-        },
-        {
-          "title": "Threshold",
-          "content": "The threshold is set under Station → processor / recognition (uncertain detections). The shipped default is often around 0.48—candidates below that land here."
-        },
-        {
-          "title": "Correcting Species",
-          "content": "Select the correct species from the dropdown and click Apply. Requires settings password if configured."
-        },
-        {
-          "title": "View Video",
-          "content": "Click \"View video\" to open the recording and verify the detection visually before correcting."
-        },
-        {
-          "title": "Same correction as video page",
-          "content": "Apply here updates the same detection record as correcting under Video details → Detected species (one underlying API). Use View video when you want to see the clip first."
-        },
-        {
-          "title": "Period Selection",
-          "content": "By default, the full day is shown. When you select a time (not 00:00), only detections for that hour are displayed — useful when there are many records."
-        }
-      ]
+      "guest": {
+        "title": "Review queue",
+        "description": "Review queue for uncertain detections. Browse recordings under Timeline and video details.",
+        "details": [
+          {
+            "title": "Purpose",
+            "content": "Low-confidence detections may be misidentified. This page lets you verify and correct the species before they affect statistics."
+          },
+          {
+            "title": "Threshold",
+            "content": "The threshold is set under Station → processor / recognition (uncertain detections). The shipped default is often around 0.48—candidates below that land here."
+          },
+          {
+            "title": "Correcting Species",
+            "content": "Select the correct species from the dropdown and click Apply. Requires settings password if configured."
+          },
+          {
+            "title": "View Video",
+            "content": "Click \"View video\" to open the recording and verify the detection visually before correcting."
+          },
+          {
+            "title": "Same correction as video page",
+            "content": "Apply here updates the same detection record as correcting under Video details → Detected species (one underlying API). Use View video when you want to see the clip first."
+          },
+          {
+            "title": "Period Selection",
+            "content": "By default, the full day is shown. When you select a time (not 00:00), only detections for that hour are displayed — useful when there are many records."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Review queue",
+        "description": "Low-confidence detections: pick species and Apply. Same API as Correct species on the video page.",
+        "details": [
+          {
+            "title": "Purpose",
+            "content": "Low-confidence detections may be misidentified. This page lets you verify and correct the species before they affect statistics."
+          },
+          {
+            "title": "Threshold",
+            "content": "The threshold is set under Station → processor / recognition (uncertain detections). The shipped default is often around 0.48—candidates below that land here."
+          },
+          {
+            "title": "Correcting Species",
+            "content": "Select the correct species from the dropdown and click Apply. Requires settings password if configured."
+          },
+          {
+            "title": "View Video",
+            "content": "Click \"View video\" to open the recording and verify the detection visually before correcting."
+          },
+          {
+            "title": "Same correction as video page",
+            "content": "Apply here updates the same detection record as correcting under Video details → Detected species (one underlying API). Use View video when you want to see the clip first."
+          },
+          {
+            "title": "Period Selection",
+            "content": "By default, the full day is shown. When you select a time (not 00:00), only detections for that hour are displayed — useful when there are many records."
+          },
+          {
+            "title": "Expert queue",
+            "content": "Semantic cases go to labelling; this page is for quick species fixes."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Review queue",
+        "description": "Queue threshold on Station. Pipeline issues — processor logs and behavior/detector metrics.",
+        "details": [
+          {
+            "title": "Purpose",
+            "content": "Low-confidence detections may be misidentified. This page lets you verify and correct the species before they affect statistics."
+          },
+          {
+            "title": "Threshold",
+            "content": "The threshold is set under Station → processor / recognition (uncertain detections). The shipped default is often around 0.48—candidates below that land here."
+          },
+          {
+            "title": "Correcting Species",
+            "content": "Select the correct species from the dropdown and click Apply. Requires settings password if configured."
+          },
+          {
+            "title": "View Video",
+            "content": "Click \"View video\" to open the recording and verify the detection visually before correcting."
+          },
+          {
+            "title": "Same correction as video page",
+            "content": "Apply here updates the same detection record as correcting under Video details → Detected species (one underlying API). Use View video when you want to see the clip first."
+          },
+          {
+            "title": "Period Selection",
+            "content": "By default, the full day is shown. When you select a time (not 00:00), only detections for that hour are displayed — useful when there are many records."
+          }
+        ]
+      }
     },
     "migrationCalendar": {
-      "title": "Seasonality",
-      "description": "Month by month: how often each species showed up at your feeder in your data.",
-      "details": [
-        {
-          "title": "Monthly Pattern",
-          "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month. The Σ column is the species total for your selected year range — that is your life-list style summary; there is no separate duplicate checklist."
-        },
-        {
-          "title": "Data Source",
-          "content": "Uses all historical SpeciesVisit data. More data over multiple years gives a clearer migration pattern."
-        },
-        {
-          "title": "Species link",
-          "content": "Click a species name to open its summary page with statistics and recent visits."
-        }
-      ]
+      "guest": {
+        "title": "Seasonality",
+        "description": "Seasonality: which months a species visited most.",
+        "details": [
+          {
+            "title": "Monthly Pattern",
+            "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month. The Σ column is the species total for your selected year range — that is your life-list style summary; there is no separate duplicate checklist."
+          },
+          {
+            "title": "Data Source",
+            "content": "Uses all historical SpeciesVisit data. More data over multiple years gives a clearer migration pattern."
+          },
+          {
+            "title": "Species link",
+            "content": "Click a species name to open its summary page with statistics and recent visits."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Seasonality",
+        "description": "Monthly visit heatmap; click a species for its summary page.",
+        "details": [
+          {
+            "title": "Monthly Pattern",
+            "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month. The Σ column is the species total for your selected year range — that is your life-list style summary; there is no separate duplicate checklist."
+          },
+          {
+            "title": "Data Source",
+            "content": "Uses all historical SpeciesVisit data. More data over multiple years gives a clearer migration pattern."
+          },
+          {
+            "title": "Species link",
+            "content": "Click a species name to open its summary page with statistics and recent visits."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Seasonality",
+        "description": "All SpeciesVisit history; export summaries separately for reports.",
+        "details": [
+          {
+            "title": "Monthly Pattern",
+            "content": "Each row shows a species; columns are months (Jan–Dec). Numbers indicate visit counts. Darker cells = more activity in that month. The Σ column is the species total for your selected year range — that is your life-list style summary; there is no separate duplicate checklist."
+          },
+          {
+            "title": "Data Source",
+            "content": "Uses all historical SpeciesVisit data. More data over multiple years gives a clearer migration pattern."
+          },
+          {
+            "title": "Species link",
+            "content": "Click a species name to open its summary page with statistics and recent visits."
+          }
+        ]
+      }
     },
     "videoDetails": {
-      "title": "Recording details",
-      "description": "Use the recording as the evidence page: watch the clip, inspect detections, and correct species if needed.",
-      "details": [
-        {
-          "title": "Media Player",
-          "content": "Above the player: arrows move between recordings for your browser’s local calendar day (ordered by start time). Past midnight, navigation can continue on the next or previous day.\n\nWhen you open a clip from a Timeline visit card, previous/next step through sibling visits for that day (one step per visit card), using each visit’s primary clip — so the counter matches what you saw on the Timeline.\n\nTwo viewing modes:\n- Video tab: recorded footage\n- Audio tab: spectrogram\nTimeline slider for precise navigation within the clip."
-        },
-        {
-          "title": "Detection Timeline",
-          "content": "Above the player:\n- Current detections shown with bird thumbnail and confidence level\n- Green badge (100%) indicates highest confidence detection\n- Blue badge (95%+) shows high confidence detection\n- Label indicates detection source (video/audio)"
-        },
-        {
-          "title": "Detected Species",
-          "content": "Detected species: hit counts, confidence, duration, link to the species page. Correcting a species here is the same action as on the review page for that detection."
-        },
-        {
-          "title": "General Information",
-          "content": "Technical details about the recording:\n- Processor version used for analysis\n- Start and end timestamps\n- Total recording duration\n- Processing details and settings"
-        },
-        {
-          "title": "Weather Context",
-          "content": "Weather conditions during recording:\n- Temperature in Celsius\n- Cloud cover percentage\n- Humidity level\n- Wind speed\n- Weather description (e.g., Mist)\nHelps correlate bird activity with environmental conditions"
-        },
-        {
-          "title": "Audio Analysis",
-          "content": "Spectrogram visualization shows:\n- Bird calls and songs as color patterns\n- Frequency range on vertical axis\n- Time progression on horizontal axis\n- Identified species labeled on the visualization\nHelps verify audio-based species identification"
-        }
-      ]
+      "guest": {
+        "title": "Recording details",
+        "description": "Automatic visit record: clip, species seen, behavior, and feeder weight change when available.",
+        "details": [
+          {
+            "title": "Media Player",
+            "content": "Above the player: arrows move between recordings for your browser’s local calendar day (ordered by start time). Past midnight, navigation can continue on the next or previous day.\n\nWhen you open a clip from a Timeline visit card, previous/next step through sibling visits for that day (one step per visit card), using each visit’s primary clip — so the counter matches what you saw on the Timeline.\n\nTwo viewing modes:\n- Video tab: recorded footage\n- Audio tab: spectrogram\nTimeline slider for precise navigation within the clip."
+          },
+          {
+            "title": "Detection Timeline",
+            "content": "Colored bars under the progress track show species over time. Hover for species, time range, and how it was detected (clip analysis, external MQTT, or sound).\n\nAbove the player: current detections with thumbnail and confidence; green badge (100%) and blue (95%+)."
+          },
+          {
+            "title": "Detected Species",
+            "content": "Species the system found on this clip: how often, confidence, and duration. Link opens the species page."
+          },
+          {
+            "title": "General Information",
+            "content": "Start and end time, recording duration. Weight change appears when feeder scale data is available."
+          },
+          {
+            "title": "Weather Context",
+            "content": "Weather conditions during recording:\n- Temperature in Celsius\n- Cloud cover percentage\n- Humidity level\n- Wind speed\n- Weather description (e.g., Mist)\nHelps correlate bird activity with environmental conditions"
+          },
+          {
+            "title": "Audio Analysis",
+            "content": "Spectrogram visualization shows:\n- Bird calls and songs as color patterns\n- Frequency range on vertical axis\n- Time progression on horizontal axis\n- Identified species labeled on the visualization\nHelps verify audio-based species identification"
+          },
+          {
+            "title": "Species",
+            "content": "Species name estimated by the system from the video."
+          },
+          {
+            "title": "Behavior",
+            "content": "Short activity label (feeding, resting, flying, etc.) when recognized."
+          },
+          {
+            "title": "Weight change",
+            "content": "Green up — bird gained weight on the scale during the visit; red down — lost. Changes under ~5 g are hidden as noise."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Recording details",
+        "description": "Review the clip, species, behavior, and weight. Fix species here; nicknames (Re-ID) from the visit card.",
+        "details": [
+          {
+            "title": "Media Player",
+            "content": "Above the player: arrows move between recordings for your browser’s local calendar day (ordered by start time). Past midnight, navigation can continue on the next or previous day.\n\nWhen you open a clip from a Timeline visit card, previous/next step through sibling visits for that day (one step per visit card), using each visit’s primary clip — so the counter matches what you saw on the Timeline.\n\nTwo viewing modes:\n- Video tab: recorded footage\n- Audio tab: spectrogram\nTimeline slider for precise navigation within the clip."
+          },
+          {
+            "title": "Detection Timeline",
+            "content": "Above the player:\n- Current detections shown with bird thumbnail and confidence level\n- Green badge (100%) indicates highest confidence detection\n- Blue badge (95%+) shows high confidence detection\n- Label indicates detection source (video/audio)"
+          },
+          {
+            "title": "Detected Species",
+            "content": "Detected species: hit counts, confidence, duration, link to the species page. Correcting a species here is the same action as on the review page for that detection."
+          },
+          {
+            "title": "General Information",
+            "content": "Start and end time, recording duration. Weight change appears when feeder scale data is available."
+          },
+          {
+            "title": "Weather Context",
+            "content": "Weather conditions during recording:\n- Temperature in Celsius\n- Cloud cover percentage\n- Humidity level\n- Wind speed\n- Weather description (e.g., Mist)\nHelps correlate bird activity with environmental conditions"
+          },
+          {
+            "title": "Audio Analysis",
+            "content": "Spectrogram visualization shows:\n- Bird calls and songs as color patterns\n- Frequency range on vertical axis\n- Time progression on horizontal axis\n- Identified species labeled on the visualization\nHelps verify audio-based species identification"
+          },
+          {
+            "title": "Correct species",
+            "content": "In Detected species — Correct species. Same as the Review page. Operator access required."
+          },
+          {
+            "title": "Behavior v2.1",
+            "content": "Edit behavior on the clip. v2.1 in auto mode sets labels at processing time; operators can override."
+          },
+          {
+            "title": "Expert queue",
+            "content": "Hard cases go to labelling / expert review. Box geometry in Labelling; species/behavior here."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Recording details",
+        "description": "Full recording card plus admin fields: processor version, fusion trace, thresholds under Station.",
+        "details": [
+          {
+            "title": "Media Player",
+            "content": "Above the player: arrows move between recordings for your browser’s local calendar day (ordered by start time). Past midnight, navigation can continue on the next or previous day.\n\nWhen you open a clip from a Timeline visit card, previous/next step through sibling visits for that day (one step per visit card), using each visit’s primary clip — so the counter matches what you saw on the Timeline.\n\nTwo viewing modes:\n- Video tab: recorded footage\n- Audio tab: spectrogram\nTimeline slider for precise navigation within the clip."
+          },
+          {
+            "title": "Detection Timeline",
+            "content": "Above the player:\n- Current detections shown with bird thumbnail and confidence level\n- Green badge (100%) indicates highest confidence detection\n- Blue badge (95%+) shows high confidence detection\n- Label indicates detection source (video/audio)"
+          },
+          {
+            "title": "Detected Species",
+            "content": "Detected species: hit counts, confidence, duration, link to the species page. Correcting a species here is the same action as on the review page for that detection."
+          },
+          {
+            "title": "General Information",
+            "content": "Start and end time, recording duration. Weight change appears when feeder scale data is available."
+          },
+          {
+            "title": "Weather Context",
+            "content": "Weather conditions during recording:\n- Temperature in Celsius\n- Cloud cover percentage\n- Humidity level\n- Wind speed\n- Weather description (e.g., Mist)\nHelps correlate bird activity with environmental conditions"
+          },
+          {
+            "title": "Audio Analysis",
+            "content": "Spectrogram visualization shows:\n- Bird calls and songs as color patterns\n- Frequency range on vertical axis\n- Time progression on horizontal axis\n- Identified species labeled on the visualization\nHelps verify audio-based species identification"
+          },
+          {
+            "title": "Station & models",
+            "content": "Detection thresholds, behavior engine (auto/shadow/canary), ONNX backends — Station → recognition & processor."
+          },
+          {
+            "title": "Fusion trace",
+            "content": "Track-merge debug trace for the detector pipeline. Admin only."
+          }
+        ]
+      }
+    }
+  },
+  "labelling": {
+    "title": "Labelling",
+    "description": "Review bbox geometry only. Semantics (species/nickname/behavior) is edited in Video Details.",
+    "language": "Language",
+    "progressLabel": "Reviewed {{done}} of {{total}}",
+    "caseTitle": "Case #{{id}}",
+    "minerResult": "Miner: created {{created}}, skipped {{skipped}}",
+    "exportDone": "Export done: {{format}} {{version}} ({{path}})",
+    "status": {
+      "pending": "In review",
+      "approved": "Done",
+      "rejected": "Error",
+      "semantic_review_required": "Needs expert review",
+      "preApproved": "Pre-approved"
+    },
+    "filters": {
+      "status": "Status",
+      "workflow": "Workflow",
+      "camera": "Camera",
+      "all": "All",
+      "onlyNew": "Only new",
+      "onlyError": "Detection errors only"
+    },
+    "view": {
+      "snapshot": "Snapshot",
+      "video": "Video"
+    },
+    "meta": {
+      "time": "Time",
+      "camera": "Camera",
+      "reason": "Reason",
+      "species": "Species",
+      "nickname": "Nickname",
+      "behavior": "Behavior"
+    },
+    "predictions": {
+      "main": "Main model",
+      "shadow": "Shadow model"
+    },
+    "fields": {
+      "behaviorTag": "Behavior",
+      "speciesTag": "Species",
+      "empty": "(empty)",
+      "current": "(current)"
+    },
+    "actions": {
+      "runMiner": "Run miner",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "skip": "Skip",
+      "prev": "Previous",
+      "next": "Next",
+      "tagSpecies": "Tag species",
+      "approveAll": "Approve all",
+      "approveAndNext": "Approve and next",
+      "rejectAndNext": "Reject and next",
+      "flagSemanticError": "Flag semantic error"
+    },
+    "export": {
+      "title": "Export",
+      "approved": "Export approved"
+    },
+    "states": {
+      "loading": "Loading...",
+      "error": "Queue unavailable. Please sign in with contributor/admin access.",
+      "empty": "No data. Run miner or seed queue.",
+      "noFiltered": "No cases for current filters."
+    },
+    "media": {
+      "noMedia": "No media available for this case.",
+      "noOverlayData": "No overlay geometry available.",
+      "unavailable": "Media is unavailable for this case. Use Skip."
+    },
+    "box": {
+      "main": "Main",
+      "shadow": "Shadow",
+      "groundTruth": "Ground Truth",
+      "rejected": "Rejected",
+      "detection": "Detection"
+    },
+    "shortcuts": {
+      "confirm": "Enter / Space",
+      "reject": "Backspace",
+      "quickSpecies": "Quick species select (1/2/3)",
+      "behavior": "Toggle behavior (B)"
+    },
+    "labels": {
+      "species": "Species",
+      "behavior": "Behavior",
+      "speciesUnknown": "Unknown species"
+    },
+    "panels": {
+      "boxActions": "Actions for selected object",
+      "sessionActions": "Geometry review"
+    },
+    "hints": {
+      "trainingPurpose": "This workspace validates bbox geometry only. Set species, nickname, and behavior in Video Details."
+    },
+    "reasons": {
+      "blind": "YOLO blindness",
+      "fallback": "Frigate fallback",
+      "lowConfidence": "Low confidence"
+    },
+    "help": {
+      "guest": {
+        "title": "Labelling",
+        "step1": "This area is for detection box review. Browse clips under Timeline and video details.",
+        "step2": "",
+        "step3": ""
+      },
+      "operator": {
+        "title": "How to use labelling",
+        "step1": "Check bbox geometry only. Species, nickname, and behavior — in Video Details.",
+        "step2": "Confirm if the box is correct; Reject if not. Semantic cases go to the Expert Queue.",
+        "step3": "Arrow keys move between cases when focus is not in an input field."
+      },
+      "admin": {
+        "title": "Labelling & queues",
+        "step1": "Operators fix boxes; admins watch semantic_review_required and dataset export.",
+        "step2": "Detection thresholds and Behavior v2.1 — Station. Bulk case mining — header actions.",
+        "step3": "If the queue grows, check processor logs and behavior mode (auto/shadow)."
+      },
+      "gotIt": "Got it"
     }
   },
   "speciesDirectory": {
-    "title": "Species",
-    "description": "Species already seen at this station: counts from recordings, species page, and links back to clips.",
+    "title": "Card quality",
+    "description": "System tool for polishing species card photos, descriptions, and audio coverage. The normal species view is under “Species”.",
+    "scopeHint": "Model classes: {{engine}}, {{classCount}}. Arbitration vocabulary: ~{{arbCount}} keys. SQLite Species rows: {{db}}. Incomplete allowlist cards: {{incomplete}}.",
+    "scopeProject": "Project (classifier + arbitration)",
+    "scopeAllowlist": "Classifier only",
+    "scopeObserved": "Observed",
+    "scopeAllDb": "Full DB (admin)",
+    "allowlistModelCount": "Model: {{count}}",
+    "incompleteAllowlistCount": "Incomplete (allowlist): {{count}}",
+    "badgeIncomplete": "Incomplete card",
+    "backToCatalog": "← Back to Species",
+    "backToSystem": "Back to System",
+    "colSpecies": "Species",
+    "colStatus": "Status",
+    "colActions": "Actions",
     "search": "Search species",
     "searchPlaceholder": "Type a species name or note",
     "loadError": "Could not load the species directory",
-    "totalCount": "{{count}} species in directory",
+    "totalCount": "{{count}} in list",
     "filteredCount": "{{count}} shown",
     "empty": "No species match this search yet.",
     "activeNow": "Seen recently",
@@ -2402,6 +3429,14 @@
     "openSpecies": "Open species card",
     "openRecordingsForSpecies": "Open recordings",
     "openSpeciesTooltip": "Species detail: notes, frequency, related recordings.",
-    "openRecordingsTooltip": "Recordings view filtered to this species only."
+    "openRecordingsTooltip": "Recordings view filtered to this species only.",
+    "filterAll": "All",
+    "filterNoImage": "No photo",
+    "filterNoDescription": "No description",
+    "filterIncomplete": "Incomplete",
+    "filterMissingAudio": "No catalog audio",
+    "audioKpi": "Audio: {{withAudio}} with source, {{missing}} missing",
+    "badgeNoImage": "No photo",
+    "badgeNoDescription": "No description"
   }
 }

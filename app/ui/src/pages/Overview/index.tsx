@@ -32,10 +32,10 @@ import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import { BirdIcon } from '../../components/icons/BirdIcon';
 import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
+import { overviewLastDetectionLabel } from './overviewSpeciesLabel';
 import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import Tooltip from '@mui/material/Tooltip';
 import type { Weather } from '../../types';
 
 const formatHour = (hour: number) => {
@@ -45,12 +45,10 @@ const formatHour = (hour: number) => {
 export const Overview = () => {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.dashboard'));
-  const { canEdit, unlocked, requiresPassword, role } = useProtectedArea();
+  const { canEdit, requiresPassword } = useProtectedArea();
   /** Подсказка про волонтёров — только для гостей, не после входа админа/оператора. */
-  const showVolunteerDataLabelingHint =
-    !unlocked ||
-    !requiresPassword ||
-    (role !== 'admin' && role !== 'contributor');
+  /** Не обещаем «разметку» гостям на закрытом хабе — пункт меню им недоступен. */
+  const showVolunteerDataLabelingHint = !canEdit && !requiresPassword;
   const [selectedDay, setSelectedDay] = useState<Dayjs>(dayjs());
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -112,9 +110,38 @@ export const Overview = () => {
   };
 
   const stats = overviewData?.stats;
+  const activityTotal = stats?.totalActivity ?? stats?.totalDetections ?? 0;
+  const visitsHint =
+    (stats?.unidentifiedBirdDetections ?? 0) > 0 ||
+    (stats?.rodentDetections ?? 0) > 0
+      ? t('overview.totalVisitsBreakdown', {
+          named: stats?.totalDetections ?? 0,
+          bird: stats?.unidentifiedBirdDetections ?? 0,
+          rodent: stats?.rodentDetections ?? 0,
+        })
+      : t('overview.totalVisitsHint');
   const topSpecies = overviewData?.topSpecies ?? [];
+  const triggerBySource = stats?.triggerBySource ?? {};
+  const hasTriggerBySource = Object.keys(triggerBySource).length > 0;
   const detectionByProvider = stats?.detectionByProvider ?? {};
   const hasDetectionByProvider = Object.keys(detectionByProvider).length > 0;
+  const triggerSourceLabel = (source: string): string => {
+    const key = String(source || '').trim().toLowerCase();
+    if (key === 'opencv') return t('timeline.triggerSourceOpencv');
+    if (key === 'frigate') return t('timeline.triggerSourceFrigate');
+    if (key === 'motion_sensor') return t('timeline.triggerSourceMotionSensor');
+    if (key === 'scales') return t('timeline.triggerSourceScales');
+    if (key === 'all') return t('timeline.triggerSourceAll');
+    return key || t('timeline.triggerSourceUnknown');
+  };
+  const detectionProviderLabel = (provider: string): string => {
+    const key = String(provider || '').trim().toLowerCase();
+    if (key === 'yolo') return 'YOLO';
+    if (key === 'frigate') return 'Frigate';
+    if (key === 'birdnet_mqtt') return 'BirdNET MQTT';
+    if (key === 'legacy') return t('overview.detectionProviderLegacy');
+    return key || t('overview.detectionProviderUnknown');
+  };
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -144,33 +171,26 @@ export const Overview = () => {
                   }}
                 />
               </LocalizationProvider>
-              <Tooltip
-                title={
-                  !canEdit ? t('common.loginRequiredForExport') : undefined
-                }
-              >
-                <span>
-                  <Button
-                    variant="outlined"
-                    size="medium"
-                    startIcon={<DownloadIcon />}
-                    disabled={downloadingPdf || !canEdit}
-                    onClick={async () => {
-                      if (!canEdit) return;
-                      setDownloadingPdf(true);
-                      try {
-                        await downloadReportPdf(selectedDay.format('YYYY-MM'));
-                      } catch (err) {
-                        console.error('PDF download failed:', err);
-                      } finally {
-                        setDownloadingPdf(false);
-                      }
-                    }}
-                  >
-                    {downloadingPdf ? '...' : t('overview.downloadPdf')}
-                  </Button>
-                </span>
-              </Tooltip>
+              {canEdit && (
+                <Button
+                  variant="outlined"
+                  size="medium"
+                  startIcon={<DownloadIcon />}
+                  disabled={downloadingPdf}
+                  onClick={async () => {
+                    setDownloadingPdf(true);
+                    try {
+                      await downloadReportPdf(selectedDay.format('YYYY-MM'));
+                    } catch (err) {
+                      console.error('PDF download failed:', err);
+                    } finally {
+                      setDownloadingPdf(false);
+                    }
+                  }}
+                >
+                  {downloadingPdf ? '...' : t('overview.downloadPdf')}
+                </Button>
+              )}
             </Box>
           }
         />
@@ -212,9 +232,11 @@ export const Overview = () => {
                       )
                     : '—'}{' '}
                   —{' '}
-                  {overviewData.lastDetection.species_name === 'Bird'
-                    ? t('overview.lastBirdUnknown')
-                    : overviewData.lastDetection.species_name}
+                  {overviewLastDetectionLabel(
+                    t,
+                    overviewData.lastDetection.species_name,
+                    overviewData.lastDetection.unidentified,
+                  )}
                 </Typography>
               </Box>
             </Paper>
@@ -236,8 +258,8 @@ export const Overview = () => {
               <StatCard
                 icon={VisibilityOutlined}
                 title={t('overview.totalVisits')}
-                value={stats?.totalDetections || 0}
-                hint={t('overview.totalVisitsHint')}
+                value={activityTotal}
+                hint={visitsHint}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -261,7 +283,7 @@ export const Overview = () => {
                 icon={WbSunnyOutlined}
                 title={t('overview.busiestHour')}
                 value={
-                  (stats?.totalDetections ?? 0) > 0
+                  activityTotal > 0
                     ? formatHour(stats?.busiestHour ?? 0)
                     : t('common.na')
                 }
@@ -279,7 +301,7 @@ export const Overview = () => {
               />
             </Grid>
           </Grid>
-          {hasDetectionByProvider && (
+          {hasTriggerBySource && (
             <Paper sx={{ p: 2, mt: 2 }}>
               <Typography
                 component="p"
@@ -319,22 +341,38 @@ export const Overview = () => {
                 </Typography>
               )}
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                {Object.entries(detectionByProvider).map(
-                  ([provider, count]) => (
-                    <Typography key={provider} variant="body2">
-                      <strong>
-                        {provider === 'yolo'
-                          ? 'YOLO'
-                          : provider === 'frigate'
-                            ? 'Frigate'
-                            : provider === 'birdnet_mqtt'
-                              ? 'BirdNET (MQTT)'
-                              : provider}
-                      </strong>
-                      : {count}
-                    </Typography>
-                  ),
-                )}
+                {Object.entries(triggerBySource).map(([source, count]) => (
+                  <Typography key={source} variant="body2">
+                    <strong>{triggerSourceLabel(source)}</strong>: {count}
+                  </Typography>
+                ))}
+              </Box>
+            </Paper>
+          )}
+          {hasDetectionByProvider && (
+            <Paper sx={{ p: 2, mt: 2 }}>
+              <Typography
+                component="p"
+                variant="subtitle2"
+                gutterBottom
+                color="text.secondary"
+              >
+                {t('overview.byDetectionProvider')}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mb: 1 }}
+              >
+                {t('overview.byDetectionProviderHint')}
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                {Object.entries(detectionByProvider).map(([provider, count]) => (
+                  <Typography key={provider} variant="body2">
+                    <strong>{detectionProviderLabel(provider)}</strong>: {count}
+                  </Typography>
+                ))}
               </Box>
             </Paper>
           )}

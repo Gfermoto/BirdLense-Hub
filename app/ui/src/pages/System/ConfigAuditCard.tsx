@@ -60,11 +60,12 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
     ? data.processor_runtime_hints
     : [];
   const sm = data.scales_mqtt as Record<string, unknown> | undefined;
-  const statusTone =
-    configWarnings.length > 0 ||
-    deprecatedKeys.length > 0 ||
-    processorRuntimeHints.length > 0
-      ? 'warning'
+  const needsReview =
+    configWarnings.length > 0 || processorRuntimeHints.length > 0;
+  const statusTone = needsReview
+    ? 'warning'
+    : deprecatedKeys.length > 0
+      ? 'info'
       : 'success';
 
   return (
@@ -72,11 +73,11 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
       title={t('system.configAuditTitle')}
       description={t('system.configAuditHint')}
       statusLabel={
-        configWarnings.length > 0 ||
-        deprecatedKeys.length > 0 ||
-        processorRuntimeHints.length > 0
+        needsReview
           ? t('system.configAuditNeedsReview')
-          : t('system.readinessReady')
+          : deprecatedKeys.length > 0
+            ? t('system.configAuditInfoOnly')
+            : t('system.readinessReady')
       }
       statusTone={statusTone}
     >

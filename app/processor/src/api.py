@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import time
 
 import requests
@@ -23,11 +24,9 @@ class API:
             headers["X-Processor-Token"] = self._processor_secret
         return headers
 
-    def _send_request(self, method, endpoint, json_data):
+    def _send_request(self, method, endpoint, json_data, *, timeout=30, max_retries=3):
         """Helper function to send HTTP requests with timeout and retry on 5xx."""
         url = f"{self.api_url_base}/{endpoint}"
-        timeout = 30
-        max_retries = 3
         last_exc = None
         for attempt in range(max_retries):
             st = time.time()
@@ -102,10 +101,9 @@ class API:
         start_time,
         end_time,
         video_path,
-        spectrogram_path,
+        trigger_source=None,
         scales_weight_delta_kg=None,
-        behavior_label=None,
-        behavior_confidence=None,
+        camera_id=None,
     ):
         # Fields to exclude from API payload (non-serializable or internal)
         exclude_fields = {"best_frame"}
@@ -121,18 +119,20 @@ class API:
             "start_time": start_time.isoformat(),
             "end_time": end_time.isoformat(),
             "video_path": video_path,
-            "spectrogram_path": spectrogram_path,
         }
+        if trigger_source is not None and str(trigger_source).strip():
+            video_data["trigger_source"] = str(trigger_source).strip().lower()
+        if camera_id is not None and str(camera_id).strip():
+            video_data["camera_id"] = str(camera_id).strip()[:64]
         if scales_weight_delta_kg is not None:
             video_data["scales_weight_delta_kg"] = float(scales_weight_delta_kg)
-        if behavior_label is not None and str(behavior_label).strip():
-            video_data["behavior_label"] = str(behavior_label).strip()[:32]
-            if behavior_confidence is not None:
-                try:
-                    video_data["behavior_confidence"] = float(behavior_confidence)
-                except (TypeError, ValueError):
-                    pass
-        response = self._send_request("POST", "videos", video_data)
+        response = self._send_request(
+            "POST",
+            "videos",
+            video_data,
+            timeout=90,
+            max_retries=1,
+        )
         return response.json()
 
     def set_active_species(self, active_names):
@@ -142,7 +142,30 @@ class API:
 
     def activity_log(self, type, data, id=None):
         log_data = {"type": type, "data": data, "id": id}
-        response = self._send_request("POST", "activity_log", log_data)
+        timeout = 30 if type == "heartbeat" else 5
+        max_retries = 2 if type == "heartbeat" else 1
+        response = self._send_request(
+            "POST",
+            "activity_log",
+            log_data,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
         response_data = response.json()
         # Capture the returned 'id' from the response
         return response_data.get("id")
+
+    def activity_log_async(self, type, data, id=None):
+        """Non-blocking activity_log for finalize tail (#597)."""
+
+        def _run() -> None:
+            try:
+                self.activity_log(type, data, id=id)
+            except Exception:
+                self.logger.debug("async activity_log failed type=%s", type, exc_info=True)
+
+        threading.Thread(
+            target=_run,
+            daemon=True,
+            name=f"birdlense-activity-log-{type}",
+        ).start()

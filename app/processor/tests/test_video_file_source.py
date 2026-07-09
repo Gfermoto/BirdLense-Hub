@@ -49,8 +49,16 @@ class TestVideoFileSource(unittest.TestCase):
         with patch(
             'sources.video_file_source.cv2.VideoCapture',
             fake_video_capture,
+        ), patch(
+            'sources.video_file_source.VideoFileSource._init_fps_from_probe',
+            lambda self: setattr(self, 'source_fps', 25.0),
         ), patch('sources.video_file_source.cv2.resize', lambda frm, _size: frm):
-            src = VideoFileSource('/tmp/test.mp4', loop=False)
+            src = VideoFileSource(
+                '/tmp/test.mp4',
+                main_size=(640, 480),
+                lores_size=(640, 480),
+                loop=False,
+            )
             self.assertIsNotNone(src.capture())
             self.assertIsNone(src.capture())
 
@@ -67,8 +75,16 @@ class TestVideoFileSource(unittest.TestCase):
         with patch(
             'sources.video_file_source.cv2.VideoCapture',
             fake_video_capture,
+        ), patch(
+            'sources.video_file_source.VideoFileSource._init_fps_from_probe',
+            lambda self: setattr(self, 'source_fps', 25.0),
         ), patch('sources.video_file_source.cv2.resize', lambda frm, _size: frm):
-            src = VideoFileSource('/tmp/test.mp4', loop=True)
+            src = VideoFileSource(
+                '/tmp/test.mp4',
+                main_size=(640, 480),
+                lores_size=(640, 480),
+                loop=True,
+            )
             self.assertIsNotNone(src.capture())
             self.assertIsNotNone(src.capture())
             self.assertGreaterEqual(len(open_calls), 2)

@@ -1,10 +1,19 @@
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useSystemReadinessQuery } from '../../hooks/useSystemQueries';
+import { sumStorageStats } from '../../api/storageStats';
+import { formatBytes } from '../Library/libraryShared';
+import {
+  useRetentionConfigQuery,
+  useStorageStatsQuery,
+  useSystemMetricsLiveQuery,
+  useSystemReadinessQuery,
+} from '../../hooks/useSystemQueries';
 import { SystemCardShell } from './SystemCardShell';
 
 type CheckStatus = 'ok' | 'error';
@@ -40,9 +49,50 @@ function gateTextColor(
   return 'error.main';
 }
 
+
+type PipelineFunnelView = {
+  status?: string;
+  window_hours?: number;
+  sessions_total?: number | null;
+  healthy_persist_rate?: number | null;
+  fusion_drop_rate?: number | null;
+  top_root_causes?: string[];
+  alerts?: string[];
+  by_camera?: Record<string, Record<string, number>>;
+};
+
+function formatRate(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatGiBFromGb(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  return `${value.toFixed(1)} GB`;
+}
+
+function operatorTileBorder(
+  tone: 'ok' | 'warn' | 'error',
+): 'success.dark' | 'warning.dark' | 'error.dark' {
+  if (tone === 'ok') return 'success.dark';
+  if (tone === 'warn') return 'warning.dark';
+  return 'error.dark';
+}
+
+function operatorTileText(
+  tone: 'ok' | 'warn' | 'error',
+): 'success.main' | 'warning.main' | 'error.main' {
+  if (tone === 'ok') return 'success.main';
+  if (tone === 'warn') return 'warning.main';
+  return 'error.main';
+}
+
 export function SystemReadinessCard() {
   const { t } = useTranslation();
   const { data, isLoading, error } = useSystemReadinessQuery();
+  const metricsQ = useSystemMetricsLiveQuery();
+  const retentionQ = useRetentionConfigQuery();
+  const storageQ = useStorageStatsQuery();
 
   if (isLoading) return <LinearProgress />;
   if (error || !data)
@@ -67,6 +117,140 @@ export function SystemReadinessCard() {
   const runtimeLabel = sg?.runtime
     ? t(`system.readinessRuntime.${sg.runtime}`)
     : '';
+
+  const funnelCheck = data.checks.pipeline_funnel;
+  const funnelRaw = data.pipeline_funnel;
+  const funnel: PipelineFunnelView | undefined = funnelRaw
+    ? {
+        status:
+          typeof funnelRaw.status === 'string' ? funnelRaw.status : undefined,
+        window_hours:
+          typeof funnelRaw.window_hours === 'number'
+            ? funnelRaw.window_hours
+            : undefined,
+        sessions_total:
+          typeof funnelRaw.sessions_total === 'number'
+            ? funnelRaw.sessions_total
+            : null,
+        healthy_persist_rate:
+          typeof funnelRaw.healthy_persist_rate === 'number'
+            ? funnelRaw.healthy_persist_rate
+            : funnelCheck?.healthy_persist_rate,
+        fusion_drop_rate:
+          typeof funnelRaw.fusion_drop_rate === 'number'
+            ? funnelRaw.fusion_drop_rate
+            : funnelCheck?.fusion_drop_rate,
+        top_root_causes: Array.isArray(funnelRaw.top_root_causes)
+          ? (funnelRaw.top_root_causes as string[])
+          : funnelCheck?.top_root_causes,
+        alerts: Array.isArray(funnelRaw.alerts)
+          ? (funnelRaw.alerts as string[])
+          : funnelCheck?.alerts,
+        by_camera:
+          funnelRaw.by_camera &&
+          typeof funnelRaw.by_camera === 'object' &&
+          !Array.isArray(funnelRaw.by_camera)
+            ? (funnelRaw.by_camera as Record<string, Record<string, number>>)
+            : undefined,
+      }
+    : funnelCheck
+      ? {
+          status: funnelCheck.status,
+          sessions_total: funnelCheck.sessions_total,
+          healthy_persist_rate: funnelCheck.healthy_persist_rate,
+          fusion_drop_rate: funnelCheck.fusion_drop_rate,
+          top_root_causes: funnelCheck.top_root_causes,
+          alerts: funnelCheck.alerts,
+        }
+      : undefined;
+  const funnelStatus = String(funnelCheck?.status ?? funnel?.status ?? 'unknown');
+  const funnelDegraded = funnelStatus === 'degraded';
+  const topCauses = funnel?.top_root_causes ?? funnelCheck?.top_root_causes ?? [];
+  const funnelAlerts = funnel?.alerts ?? funnelCheck?.alerts ?? [];
+  const byCamera = funnel?.by_camera ?? {};
+  const cameraIds = Object.keys(byCamera);
+
+  const disk = metricsQ.data?.disk;
+  const diskPercent =
+    typeof disk?.percent === 'number' && Number.isFinite(disk.percent)
+      ? disk.percent
+      : null;
+  const diskTone: 'ok' | 'warn' | 'error' =
+    diskPercent == null ? 'warn' : diskPercent >= 90 ? 'error' : diskPercent >= 80 ? 'warn' : 'ok';
+
+  const storageTotals = sumStorageStats(storageQ.data ?? []);
+  const recordingsGb = storageTotals.totalBytes / 1024 ** 3;
+  const maxGb = retentionQ.data?.max_gb;
+  const maxGbNum =
+    typeof maxGb === 'number' && Number.isFinite(maxGb) && maxGb > 0
+      ? maxGb
+      : null;
+  const quotaHeadroomGb =
+    maxGbNum != null ? maxGbNum - recordingsGb : null;
+  const quotaTone: 'ok' | 'warn' | 'error' =
+    quotaHeadroomGb == null
+      ? 'ok'
+      : quotaHeadroomGb <= 0
+        ? 'error'
+        : quotaHeadroomGb <= maxGbNum! * 0.1
+          ? 'warn'
+          : 'ok';
+
+  const orphan = retentionQ.data?.orphan_recording_files;
+  const orphanCount = orphan?.orphan_session_count ?? 0;
+  const orphanBytes = orphan?.orphan_bytes ?? 0;
+  const orphanTone: 'ok' | 'warn' | 'error' =
+    orphanCount <= 0 ? 'ok' : orphanBytes >= 1024 ** 3 ? 'error' : 'warn';
+
+  const operatorTiles = [
+    {
+      key: 'disk',
+      label: t('system.readinessOperator.disk'),
+      value:
+        diskPercent != null && disk
+          ? t('system.readinessOperator.diskValue', {
+              used: disk.used.toFixed(1),
+              total: disk.total.toFixed(1),
+              percent: diskPercent.toFixed(0),
+            })
+          : t('system.readinessOperator.unavailable'),
+      tone: diskTone,
+    },
+    {
+      key: 'recordings',
+      label: t('system.readinessOperator.recordings'),
+      value: storageQ.isLoading
+        ? t('common.loading')
+        : t('system.readinessOperator.recordingsValue', {
+            size: formatBytes(storageTotals.totalBytes),
+            files: storageTotals.totalFiles,
+          }),
+      tone: storageQ.isError ? 'warn' : 'ok',
+    },
+    {
+      key: 'quota',
+      label: t('system.readinessOperator.quota'),
+      value:
+        maxGbNum != null
+          ? t('system.readinessOperator.quotaValue', {
+              maxGb: maxGbNum.toFixed(1),
+              headroom: formatGiBFromGb(quotaHeadroomGb),
+            })
+          : t('system.readinessOperator.quotaUnlimited'),
+      tone: quotaTone,
+    },
+    {
+      key: 'orphan',
+      label: t('system.readinessOperator.orphan'),
+      value: retentionQ.isLoading
+        ? t('common.loading')
+        : t('system.readinessOperator.orphanValue', {
+            count: orphanCount,
+            size: formatBytes(orphanBytes),
+          }),
+      tone: orphanTone,
+    },
+  ] as const;
 
   return (
     <SystemCardShell
@@ -122,6 +306,168 @@ export function SystemReadinessCard() {
             </Box>
           ))}
         </Box>
+
+        {funnel ? (
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">
+              {t('system.readinessFunnelTitle')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t('system.readinessFunnelHint', {
+                hours: funnel.window_hours ?? 24,
+              })}
+            </Typography>
+            <Box
+              sx={{
+                p: 1.25,
+                borderRadius: 2,
+                bgcolor: 'background.default',
+                border: '1px solid',
+                borderColor: funnelDegraded ? 'warning.dark' : 'success.dark',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" display="block">
+                {t('system.readinessFunnelStatus')}
+              </Typography>
+              <Typography
+                variant="subtitle2"
+                color={funnelDegraded ? 'warning.main' : 'success.main'}
+                sx={{ mt: 0.5 }}
+              >
+                {t(`system.readinessFunnelState.${funnelStatus}`, {
+                  defaultValue: funnelStatus,
+                })}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                {t('system.readinessFunnelSessions', {
+                  total: funnel.sessions_total ?? 0,
+                  healthy: formatRate(funnel.healthy_persist_rate),
+                  fusionDrop: formatRate(funnel.fusion_drop_rate),
+                })}
+              </Typography>
+            </Box>
+            {topCauses.length > 0 ? (
+              <Stack spacing={0.5}>
+                <Typography variant="caption" color="text.secondary">
+                  {t('system.readinessFunnelTopCauses')}
+                </Typography>
+                {topCauses.map((mode) => (
+                  <Typography key={mode} variant="body2">
+                    {t(`system.readinessFunnelFailureMode.${mode}`, {
+                      defaultValue: mode,
+                    })}
+                  </Typography>
+                ))}
+              </Stack>
+            ) : null}
+            {funnelAlerts.length > 0 ? (
+              <Alert severity="warning" variant="outlined">
+                {funnelAlerts.map((alert) => (
+                  <Typography key={alert} variant="body2">
+                    {alert}
+                  </Typography>
+                ))}
+              </Alert>
+            ) : null}
+            {cameraIds.length > 0 ? (
+              <Stack spacing={0.75}>
+                <Typography variant="caption" color="text.secondary">
+                  {t('system.readinessFunnelByCamera')}
+                </Typography>
+                {cameraIds.map((cameraId) => {
+                  const modes = byCamera[cameraId] ?? {};
+                  const dominant = Object.entries(modes).sort(
+                    (a, b) => b[1] - a[1],
+                  )[0];
+                  if (!dominant) return null;
+                  const [mode, count] = dominant;
+                  return (
+                    <Typography key={cameraId} variant="body2">
+                      {cameraId}:{' '}
+                      {t(`system.readinessFunnelFailureMode.${mode}`, {
+                        defaultValue: mode,
+                      })}{' '}
+                      ({count})
+                    </Typography>
+                  );
+                })}
+              </Stack>
+            ) : null}
+          </Stack>
+        ) : null}
+
+        <Stack spacing={1}>
+          <Typography variant="subtitle2">
+            {t('system.readinessOperatorTitle')}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {t('system.readinessOperatorHint')}
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 1,
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+            }}
+          >
+            {operatorTiles.map(({ key, label, value, tone }) => (
+              <Box
+                key={key}
+                sx={{
+                  p: 1.25,
+                  borderRadius: 2,
+                  bgcolor: 'background.default',
+                  border: '1px solid',
+                  borderColor: operatorTileBorder(tone),
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                >
+                  {label}
+                </Typography>
+                <Typography
+                  variant="subtitle2"
+                  color={operatorTileText(tone)}
+                  sx={{ mt: 0.5 }}
+                >
+                  {value}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+          <Stack direction="row" flexWrap="wrap" gap={1}>
+            <Button
+              component={RouterLink}
+              to="/library"
+              variant="outlined"
+              size="small"
+            >
+              {t('system.readinessOperator.linkStorage')}
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/system#catalog-ops-hub"
+              variant="outlined"
+              size="small"
+            >
+              {t('system.readinessOperator.linkCatalogReconcile')}
+            </Button>
+            {topCauses.includes('detector_silent_raw0') ? (
+              <Button
+                component={RouterLink}
+                to="/system#catalog-ops-hub"
+                variant="outlined"
+                size="small"
+                color="warning"
+              >
+                {t('system.readinessOperator.linkYoloBlind')}
+              </Button>
+            ) : null}
+          </Stack>
+        </Stack>
 
         {gateItems.length > 0 ? (
           <Stack spacing={1}>

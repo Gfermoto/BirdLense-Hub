@@ -35,16 +35,19 @@ def get_recording_mqtt_events(
             lambda: None,
         )()
     scope_cam_l = str(scope_camera_id or "").strip().lower()
-    if yolo_tracks_count == 0:
-        if lookback_cam:
-            # Long lookback tends to resurrect stale Frigate events and create empty clips.
-            # Keep a short recovery window only.
-            lookback = max(merge_window, 15)
-            logging.info(
-                "Frigate trigger (camera=%s), 0 YOLO: extended MQTT lookback to %ds",
-                lookback_cam,
-                lookback,
-            )
+    trig_src = str(trigger_source or "").strip().lower()
+    extended_frigate_lookback = bool(lookback_cam) and (yolo_tracks_count == 0 or trig_src == "frigate")
+    if extended_frigate_lookback:
+        # Short default lookback misses Frigate MQTT when YOLO tracks exist later in the clip.
+        # Keep a bounded recovery window (same cap as zero-YOLO Frigate sessions).
+        lookback = max(merge_window, 15)
+        logging.info(
+            "Frigate MQTT lookback %ds (camera=%s, yolo_tracks=%s, trigger=%s)",
+            lookback,
+            lookback_cam,
+            yolo_tracks_count,
+            trig_src or "unknown",
+        )
     events = mqtt_aggregator.get_events_in_window(
         start_time,
         end_time,
@@ -78,7 +81,6 @@ def get_recording_mqtt_events(
             )
         scoped_events = out
 
-    trig_src = str(trigger_source or "").strip().lower()
     has_frigate_event = any(str((ev or {}).get("source") or "").strip().lower() == "frigate" for ev in scoped_events)
     if trig_src == "frigate" and not has_frigate_event:
         ev: dict | None = None

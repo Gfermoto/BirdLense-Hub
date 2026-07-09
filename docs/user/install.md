@@ -1,59 +1,57 @@
-# Installation and Deployment — BirdLense Hub
+# Установка на Jetson Orin
 
-BirdLense Hub — bird feeder monitoring: video and audio detection, recordings, analytics. Docker on **x86_64** (Intel or AMD).
+## Требования
 
-**New here?** Read [OVERVIEW](./overview.md) (what it is, who it’s for). **Recipes:** [SCENARIOS](./scenarios.md).
+- Jetson Orin NX 16GB или Orin NANO 8GB
+- JetPack 6+ (L4T r36+), NVIDIA drivers
+- Docker + NVIDIA Container Toolkit
+- ~20GB свободного места (образ + модели)
 
-[Русский](../ru/install.ru.md)
-
-## Requirements
-
-| Component | Description |
-|-----------|-------------|
-| **Docker** | **x86_64 / amd64** (Intel or AMD), Compose v2 — ARM/aarch64 not supported |
-| **Go2RTC** | Video streams from IP cameras (standalone or Frigate) |
-| **MQTT** (optional) | Frigate events; BirdNET (any compatible JSON publisher, often BirdNET-Go or BirdNET-Pi) |
-
----
-
-## Option 1: One-step Docker install (recommended)
-
-From the **repository root** — **no `make` required** for bootstrap:
+## Шаг 1: Системные зависимости
 
 ```bash
-git clone https://github.com/Gfermoto/BirdLense-Hub.git
-cd BirdLense-Hub
-./install.sh
+# Docker
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+
+# NVIDIA Container Toolkit
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
 ```
 
-The script checks Docker, installs it if needed, runs `app/scripts/setup-env.sh` (creates `app/.env` with secrets), builds and starts the stack, then runs **`scripts/verify-stack.sh`** (health, readiness, status).
-
-**Pre-built image** (skip local `docker compose build`):
+## Шаг 2: Репозиторий
 
 ```bash
-./install.sh --pull
+git clone <url> /home/birdlense/hub
+cd /home/birdlense/hub
+git checkout dev
 ```
 
-Same as `make install` / `make install-pull` from the repo root.
+## Шаг 3: Модели
 
-Image: `ghcr.io/gfermoto/birdlense-hub:latest`. UI: `http://127.0.0.1:8085` (or `BIRDLENSE_PORT`).
-
-## Option 2: Make-only (same as Option 1)
+Создать структуру директорий и разместить ONNX файлы:
 
 ```bash
-cd BirdLense-Hub
-make install          # build locally
-# or
-make install-pull     # ghcr image
+mkdir -p app/processor/models/detection/trapper_ai_v02_2024
+mkdir -p app/processor/models/classification/convnext_v2_tiny_eu-common256px
+mkdir -p app/processor/models/reid/ornimetrics
+mkdir -p app/processor/models/welfare/ornimetrics
 ```
 
-Equivalent to `./install.sh` / `./install.sh --pull`.
-
-## Option 3: Build from source
+## Шаг 4: Сборка и запуск
 
 ```bash
-cd BirdLense-Hub/app
-make build && make start
+cp app/.env.example app/.env
+# отредактировать .env
+
+cp app/app_config/user_config.orin.example.yaml app/app_config/user_config.yaml
+# отредактировать под свою камеру
+
+cd app && make build && make start
 ```
 
 Then verify from the repository root:
@@ -77,7 +75,7 @@ cp .env.example .env
 docker compose -f docker-compose.image.yml up -d
 ```
 
-Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`. **Intel GPU:** from `app/` run `bash scripts/docker-compose-intel-override-gen.sh` (all `card*`/`renderD*`, host `group_add` for video/render, `CAP_PERFMON`) or edit `docker-compose.intel.example.yml` manually (set GIDs). If logs show **`Failed to initialize PMU`** while `PERFMON` is already in compose, lower **`kernel.perf_event_paranoid` on the host** (not in the container): `make deploy` and CI write **`/etc/sysctl.d/99-birdlense-perf.conf`** with **0** when `docker-compose.override.yml` exists (many VPS images default to **3**). If **0** is not enough, try **`sudo sysctl kernel.perf_event_paranoid=-1`** or add **`privileged: true`** to the Intel override.
+Image: `ghcr.io/gfermoto/birdlense-hub:latest`. Files: `docker-compose.image.yml`, `.env`, `app_config/`, `data/`.
 
 ---
 
@@ -113,7 +111,7 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST` / optional **`DEPLOY_S
 
 **Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
 
-**What it does:** stops/removes container **`birdlense`** (leaves **`birdlense-redis`** if present), runs **local** UI `npm ci && npm run build`, **rsync** with excludes aligned to `scripts/deploy.sh` (among others: **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, **`.venv-ci`** / **`.venv-docs`**, `app/.venv`, `site/`, `node_modules`, ruff/pytest caches), merges secrets into **`app/.env`** on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./configuration.md), [SECRETS_ROTATION.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), **`make build && make start`** in `app/` on the server, then **`scripts/verify-stack.sh`** against **`DEPLOY_URL`** (health, readiness, status, cameras when reachable).
+**What it does:** stops/removes container **`birdlense`** (leaves **`birdlense-redis`** if present), runs **local** UI `npm ci && npm run build`, **rsync** with excludes (among others: **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, `node_modules`, ruff/pytest caches), merges secrets into **`app/.env`** on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./configuration.md)), **`make build && make start`** in `app/` on the server, then **`scripts/verify-stack.sh`** against **`DEPLOY_URL`** (health, readiness, status, cameras when reachable).
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
 

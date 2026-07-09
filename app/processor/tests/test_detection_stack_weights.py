@@ -75,19 +75,10 @@ class TestDetectorWeightsAvailable(unittest.TestCase):
         finally:
             os.unlink(path)
 
-    def test_openvino_dir_with_xml(self):
+    def test_onnx_file(self):
         from inference.binary_paths import detector_weights_available
 
-        with tempfile.TemporaryDirectory() as d:
-            xm = os.path.join(d, 'model.xml')
-            with open(xm, 'w', encoding='utf-8') as f:
-                f.write('<xml />')
-            self.assertTrue(detector_weights_available(d))
-
-    def test_openvino_xml_file(self):
-        from inference.binary_paths import detector_weights_available
-
-        with tempfile.NamedTemporaryFile(suffix='.xml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.onnx', delete=False) as f:
             path = f.name
         try:
             self.assertTrue(detector_weights_available(path))

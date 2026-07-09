@@ -1,4 +1,4 @@
-# x86/Docker only
+# Orin GPU runtime: Ultralytics YOLO + ByteTrack/BoT-SORT + Birder classifier + ONNX Runtime
 ultralytics==8.4.33
 # ByteTrack / BoT-SORT: без lap у boxes.id часто None — нестабильные тесты и пустая детекция.
 lap>=0.5.12
@@ -8,10 +8,11 @@ paho-mqtt==2.1.0
 requests==2.33.0
 paramiko>=4,<5
 
-# numpy 2.x — совместим с opencv, librosa, ultralytics
+# numpy 2.x — совместим с opencv, ultralytics
 numpy>=2.0,<3
-librosa==0.11.0
-matplotlib==3.8.4
 
-# OpenVINO runtime для processor.inference_backend=openvino (Ultralytics IR).
-openvino>=2024.0
+# ONNX Runtime — GPU версия ставится отдельно (CUDA 13 EP)
+onnxruntime>=1.17,<2
+
+# Birder EU-common 707-species classifier (processor.classifier_engine=birder_eu).
+birder>=0.5.2,<0.6

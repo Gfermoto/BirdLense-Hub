@@ -78,7 +78,7 @@ def get_migration_calendar(
     selected_metric = "visits" if requested_metric in {"encounters", "visits"} else "max_simultaneous"
     if catalog == "active":
         catalog = "observed"
-    elif catalog == "full":
+    elif catalog in ("full", "all"):
         catalog = "full_eu"
     if catalog not in ("observed", "dataset", "full_eu"):
         catalog = "observed"

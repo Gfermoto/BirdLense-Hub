@@ -10,6 +10,7 @@ _ALLOWED_CATALOGS = frozenset(
         "observed",
         "dataset",
         "full_eu",
+        "all",
         "active",
         "full",
     }
@@ -25,7 +26,7 @@ def validate_migration_calendar_params(
 ) -> str | None:
     """None если ок, иначе текст error для API."""
     if catalog not in _ALLOWED_CATALOGS:
-        return "catalog must be observed, dataset or full_eu"
+        return "catalog must be observed, all (full catalog), or dataset"
     if metric not in _ALLOWED_METRICS:
         return "metric must be encounters, visits or max_simultaneous"
     if start_date and not _ISO_DATE.match(start_date):

@@ -8,6 +8,7 @@ import { ObservabilityCard } from './ObservabilityCard';
 import { MlRuntimeCard } from './MlRuntimeCard';
 import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { CatalogRepairCard } from './CatalogRepairCard';
+import { CatalogOpsHubCard } from './CatalogOpsHubCard';
 import { AutomationCard } from './AutomationCard';
 import { AutomationDangerZoneCard } from './AutomationPanels';
 import { ProcessorLogs } from './ProcessorLogs';
@@ -15,7 +16,12 @@ import { SystemReadinessCard } from './SystemReadinessCard';
 import { DomainTrustCard } from './DomainTrustCard';
 import { SystemHero } from './SystemHero';
 import { RecognitionImprovementCard } from './RecognitionImprovementCard';
-import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
+import { DetectionQualityDashboardCard } from './DetectionQualityDashboardCard';
+import { YoloDetectorHealthCard } from './YoloDetectorHealthCard';
+import { TriggerGraphDashboardCard } from './TriggerGraphDashboardCard';
+import { DatasetStreamsCard } from './DatasetStreamsCard';
+import { ClassifierCalibrationCard } from './ClassifierCalibrationCard';
+import { TuningWorkbenchCard } from './TuningWorkbenchCard';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -30,7 +36,7 @@ export const System: React.FC = () => {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.system'));
   const location = useLocation();
-  const [mode, setMode] = useState<PageMode>('simple');
+  const [mode, setMode] = useState<PageMode>('basic');
   const isAdvanced = mode === 'advanced';
 
   React.useEffect(() => {
@@ -74,8 +80,8 @@ export const System: React.FC = () => {
   }, [location.hash]);
 
   React.useEffect(() => {
-    if (location.hash !== '#behavior-baseline-retrain') return;
-    const node = document.getElementById('behavior-baseline-retrain');
+    if (location.hash !== '#catalog-diagnostics') return;
+    const node = document.getElementById('catalog-diagnostics');
     if (!node) return;
     requestAnimationFrame(() => {
       node.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -120,17 +126,17 @@ export const System: React.FC = () => {
                 <DomainTrustCard />
               </Box>
               <SystemMonitor showVisitors={isAdvanced} />
+              <DetectionQualityDashboardCard />
+              <ClassifierCalibrationCard />
+              <TuningWorkbenchCard />
+              <YoloDetectorHealthCard />
+              <TriggerGraphDashboardCard />
+              <DatasetStreamsCard />
               <Box
                 id="recognition-improvement"
                 sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
               >
                 <RecognitionImprovementCard />
-              </Box>
-              <Box
-                id="behavior-baseline-retrain"
-                sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
-              >
-                <BehaviorBaselineRetrainCard />
               </Box>
               <MlRuntimeCard />
               <ConfigAuditCard simple={!isAdvanced} />
@@ -146,6 +152,7 @@ export const System: React.FC = () => {
             dividerTop
           >
             <Stack spacing={2} sx={systemStackSx}>
+              <CatalogOpsHubCard />
               <CatalogRepairCard />
               {isAdvanced ? <CatalogDiagnosticsAccordion /> : null}
             </Stack>

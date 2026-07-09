@@ -1,0 +1,32 @@
+# Dual-stream (Frigate-style): detect lores + main record
+# Merge into user_config.yaml on VPS; backup first.
+
+processor:
+  notify_preview_source: auto  # record_hires from main MP4, fallback lores best_frame
+  detect_record_time_offset_sec: 0
+  scoring_moving_roi_review_enabled: true
+  scoring_moving_roi_min_motion_score: 0.32
+  inference_lores_wh: [704, 576]
+  min_confidence_binary_bird: 0.12
+  linear_live_scoring_engine_enabled: true
+
+  camera_tuning_by_role:
+    feeder_close:
+      # Tune per site if TG hires crop lags/leads vs bird on main video (seconds).
+      detect_record_time_offset_sec: 0
+    feeder_far:
+      detect_record_time_offset_sec: 0
+      track_static_reject_enabled: true
+
+video:
+  video_width: 1920
+  video_height: 1080
+  cameras:
+    - id: BirdBox
+      stream_name: BirdBox
+      # MUST be lores substream (subtype=1), NOT main record URL
+      detect_stream_name: BirdBox_detect
+      tuning_role: feeder_close
+
+detection:
+  bbox_iou_gate_action: reject

@@ -154,6 +154,12 @@ def _fetch_esphome_scale() -> dict | None:
     return out
 
 
+def _weight_trend_from_grams(grams: float, *, noise_threshold_g: float = 5.0) -> str:
+    if abs(grams) <= float(noise_threshold_g):
+        return "stable"
+    return "up" if grams > 0 else "down"
+
+
 def video_scales_estimate_payload(video) -> dict | None:
     """Блок для карточки записи: дельта массы в единицах из настроек (#167)."""
     val = getattr(video, "scales_weight_delta_kg", None)
@@ -163,19 +169,25 @@ def video_scales_estimate_payload(video) -> dict | None:
         kg = float(val)
     except (TypeError, ValueError):
         return None
-    if kg < 0 or kg > 50:
+    if abs(kg) > 50:
         return None
     unit = (app_config.get("integrations.scales.unit") or "g").strip().lower() or "g"
+    grams = round(kg * 1000.0, 1) if unit == "g" else round(kg * 1000.0, 1)
+    trend = _weight_trend_from_grams(grams)
     if unit == "g":
         return {
             "delta_kg": kg,
-            "display_value": round(kg * 1000.0, 1),
+            "display_value": round(abs(kg * 1000.0), 1),
             "display_unit": "g",
+            "weight_change_grams": round(kg * 1000.0, 1),
+            "weight_trend": trend,
         }
     return {
         "delta_kg": kg,
-        "display_value": round(kg, 4),
+        "display_value": round(abs(kg), 4),
         "display_unit": "kg",
+        "weight_change_grams": grams,
+        "weight_trend": trend,
     }
 
 

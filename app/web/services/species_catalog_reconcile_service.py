@@ -5,6 +5,14 @@
 
 from __future__ import annotations
 
-from services.species_catalog.reconcile import reconcile_species_catalog
+from services.species_catalog.reconcile import (
+    deep_reconcile_species_catalog,
+    reconcile_catalog_display_names,
+    reconcile_species_catalog,
+)
 
-__all__ = ["reconcile_species_catalog"]
+__all__ = [
+    "deep_reconcile_species_catalog",
+    "reconcile_catalog_display_names",
+    "reconcile_species_catalog",
+]

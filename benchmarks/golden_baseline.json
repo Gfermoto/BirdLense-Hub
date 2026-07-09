@@ -1,0 +1,45 @@
+{
+  "schema": "sota_golden_baseline@v1",
+  "updated_at": "2026-05-26",
+  "notes": "Baseline from hub golden clips 1816 (noise) / 1819 (birds). Update via: python3 scripts/benchmark_sota.py --update-baseline",
+  "thresholds": {
+    "1816": {
+      "max_fused_track_count": 0,
+      "max_yolo_accepted_boxes_total": 0,
+      "max_species_detected_count": 0
+    },
+    "1819": {
+      "min_fused_track_count": 1,
+      "min_frames_with_tracks": 1,
+      "min_recall_ratio": 0.9,
+      "min_species_detected_count": 1,
+      "max_track_id_switches": 8,
+      "min_avg_track_duration_sec": 0.2,
+      "require_tracking_unified_with_live": true
+    }
+  },
+  "metrics": {
+    "1816": {
+      "total_frames": 0,
+      "yolo_frames_ran": 0,
+      "yolo_raw_boxes_total": 0,
+      "yolo_accepted_boxes_total": 0,
+      "fused_track_count": 0,
+      "species_detected_count": 0,
+      "frames_with_tracks": 0,
+      "processing_fps": 0.0
+    },
+    "1819": {
+      "total_frames": 0,
+      "yolo_frames_ran": 0,
+      "yolo_raw_boxes_total": 0,
+      "yolo_accepted_boxes_total": 0,
+      "fused_track_count": 1,
+      "species_detected_count": 1,
+      "frames_with_tracks": 1,
+      "processing_fps": 0.0,
+      "track_id_switches_count": 0,
+      "avg_track_duration_sec": 0.5
+    }
+  }
+}

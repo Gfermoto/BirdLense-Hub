@@ -1,0 +1,66 @@
+{
+  "schema": "dataset_contract_registry@v1",
+  "required_streams": ["detector", "classifier", "reid"],
+  "contracts": [
+    {
+      "stream": "detector",
+      "contract_schema": "birdlense_detector@v1",
+      "required_fields": ["image_path", "bbox", "label"],
+      "split_policy": {
+        "required_keys": ["train", "val"],
+        "cross_split_leakage_forbidden": true
+      },
+      "versioning": {
+        "strategy": "semver",
+        "minimum_major": 1
+      },
+      "provenance": {
+        "required_keys": ["source_system", "collected_at", "license"]
+      },
+      "export_policy": {
+        "community_export_allowed": true,
+        "private_backup_only": false
+      }
+    },
+    {
+      "stream": "classifier",
+      "contract_schema": "birdlense_classifier@v1",
+      "required_fields": ["image_path", "species_label"],
+      "split_policy": {
+        "required_keys": ["train", "val"],
+        "cross_split_leakage_forbidden": true
+      },
+      "versioning": {
+        "strategy": "semver",
+        "minimum_major": 1
+      },
+      "provenance": {
+        "required_keys": ["source_system", "collected_at", "license"]
+      },
+      "export_policy": {
+        "community_export_allowed": true,
+        "private_backup_only": false
+      }
+    },
+    {
+      "stream": "reid",
+      "contract_schema": "birdlense_reid@v1",
+      "required_fields": ["crop_path", "embedding", "species_label"],
+      "split_policy": {
+        "required_keys": ["train", "val"],
+        "cross_split_leakage_forbidden": true
+      },
+      "versioning": {
+        "strategy": "semver",
+        "minimum_major": 1
+      },
+      "provenance": {
+        "required_keys": ["source_system", "collected_at", "license"]
+      },
+      "export_policy": {
+        "community_export_allowed": false,
+        "private_backup_only": true
+      }
+    }
+  ]
+}

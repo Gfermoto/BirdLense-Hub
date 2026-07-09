@@ -35,5 +35,18 @@ export const useVideoControl = (
     }
   }, [playing, videoRef]);
 
+  // timeupdate fires ~4 Hz; rAF keeps bbox overlay aligned during playback.
+  useEffect(() => {
+    if (!playing) return;
+    let rafId = 0;
+    const tick = () => {
+      const video = videoRef.current;
+      if (video) setProgress(video.currentTime);
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [playing, videoRef]);
+
   return { playing, progress, handleProgress, handleSeek, togglePlayPause };
 };

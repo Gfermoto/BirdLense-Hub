@@ -1,25 +1,28 @@
 """
-Go2RTC stream source for x86/Docker deployment.
-Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg.
-Encoding: cpu (copy) or intel (VA-API on any Intel integrated GPU, including Celeron).
+Go2RTC stream source for Orin (ARM64 Docker).
+Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg/GStreamer.
+Encoding: jetson (GStreamer NVDEC/NVENC on Orin) or cpu (software fallback).
 """
 
+import glob
 import logging
 import os
 import re
+import shlex
+import shutil
+import signal
 import subprocess
 import threading
 import time
+from collections import deque
+
 import cv2
 import numpy as np
 
-from yolo_geometry import letterbox_bgr_to_wh
 
 from .streaming_server import start_streaming_server
 
 logger = logging.getLogger(__name__)
-
-VAAPI_DEVICE = "/dev/dri/renderD128"
 
 
 def _set_runtime_gauge(name: str, value) -> None:
@@ -70,80 +73,106 @@ def _sanitize_ffmpeg_stderr_line(line: str) -> str:
     return _RTSP_URL_AUTH_RE.sub(r"\1***:***@", line)
 
 
-def _normalize_capture_backend(value: str | None) -> str:
-    """Normalize live frame capture backend."""
-    backend = (value or "auto").strip().lower()
-    if backend in ("auto", "opencv", "ffmpeg_vaapi"):
-        return backend
-    return "auto"
+from encoding_utils import normalize_capture_backend as _normalize_capture_backend
 
 
 def _capture_fallback_reason(
     *,
     requested_backend: str,
     encoding_mode: str,
-    vaapi_available: bool,
+    nvmpi_available: bool = False,
 ) -> str:
     """Classify fallback reason for capture backend telemetry."""
     rb = _normalize_capture_backend(requested_backend)
     enc = (encoding_mode or "cpu").strip().lower()
     if rb == "opencv":
         return "requested_opencv"
-    if rb == "ffmpeg_vaapi" and not vaapi_available:
-        return "vaapi_unavailable"
-    if rb == "auto" and enc != "intel":
-        return "auto_prefers_opencv_for_non_intel_encoding"
-    if rb == "auto" and not vaapi_available:
-        return "auto_vaapi_probe_failed"
+    if rb == "ffmpeg_nvmpi" and not nvmpi_available:
+        return "nvmpi_unavailable"
+    if rb == "auto" and enc == "jetson" and not nvmpi_available:
+        return "auto_nvmpi_probe_failed"
+    if rb == "auto" and enc == "cpu":
+        return "auto_prefers_opencv_for_cpu_encoding"
     return "fallback_to_opencv"
 
 
-def _ffmpeg_vaapi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list[str]:
-    """FFmpeg rawvideo command for VA-API live inference capture."""
-    width, height = int(lores_size[0]), int(lores_size[1])
-    # Preserve source aspect ratio and pad to inference canvas (letterbox),
-    # matching OpenCV capture path semantics.
-    vf = (
-        f"scale_vaapi=w={width}:h={height}:force_original_aspect_ratio=decrease,"
-        f"hwdownload,format=nv12,pad=w={width}:h={height}:x=(ow-iw)/2:y=(oh-ih)/2,"
-        "format=bgr24"
-    )
+def _ffmpeg_has_nvenc() -> bool:
+    """Check if ffmpeg has h264_nvenc (NVIDIA NVENC, Orin Docker / desktop)."""
+    try:
+        out = subprocess.run(
+            ["ffmpeg", "-encoders"], capture_output=True, timeout=5,
+        ).stdout.decode()
+        return "h264_nvenc" in out
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def _gst_jetson_h264_encoder() -> str | None:
+    """GStreamer HW H.264 encoder for this Jetson generation (JP7: nvv4l2h264enc)."""
+    for enc in ("nvv4l2h264enc", "omxh264enc"):
+        try:
+            out = subprocess.run(
+                ["gst-inspect-1.0", enc],
+                capture_output=True, timeout=5,
+            )
+            if out.returncode == 0:
+                return enc
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            return None
+    return None
+
+
+def _gst_jetson_record_available() -> bool:
+    """GStreamer NVMM record path (L4T native Jetson, not generic CUDA Docker)."""
+    try:
+        out = subprocess.run(
+            ["gst-inspect-1.0", "nvv4l2decoder"],
+            capture_output=True, timeout=5,
+        )
+        if out.returncode != 0:
+            return False
+        return _gst_jetson_h264_encoder() is not None
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def _libx264_record_args() -> list[str]:
+    """Standard libx264 recording args (CPU)."""
     return [
-        "ffmpeg",
-        "-hide_banner",
-        "-loglevel",
-        "warning",
-        "-fflags",
-        "+genpts",
-        "-use_wallclock_as_timestamps",
-        "1",
-        "-rtsp_transport",
-        "tcp",
-        "-hwaccel",
-        "vaapi",
-        "-hwaccel_device",
-        VAAPI_DEVICE,
-        "-hwaccel_output_format",
-        "vaapi",
-        "-i",
-        stream_url,
-        "-an",
-        "-vf",
-        vf,
-        "-pix_fmt",
-        "bgr24",
-        "-f",
-        "rawvideo",
-        "pipe:1",
+        "-analyzeduration", "10M",
+        "-probesize", "10M",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
     ]
+
+
+def _gst_record_cmd(stream_url: str, output: str) -> list[str]:
+    """GStreamer pipeline: NVDEC decode + L4T HW re-encode → MP4 (qtmux — official NVIDIA)."""
+    enc = _gst_jetson_h264_encoder() or "nvv4l2h264enc"
+    # GStreamer pipeline parser treats bare & as pad separator even inside
+    # quoted rtspsrc location.  URL-encode & → %26 to keep the query string intact.
+    safe_url = stream_url.replace("&", "%26")
+    pipeline = (
+        f'rtspsrc location="{safe_url}" latency=2000 protocols=tcp ! '
+        "rtph264depay ! h264parse ! "
+        "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=4 ! "
+        "nvvidconv ! video/x-raw(memory:NVMM),format=I420 ! "
+        f"{enc} ! h264parse ! qtmux ! "
+        f"filesink location={output}"
+    )
+    # gst-launch parses "!" only when argv is tokenized; a single pipeline string fails.
+    return ["gst-launch-1.0", "-e", *shlex.split(pipeline)]
 
 
 def _ffmpeg_record_cmd(
     *,
     stream_url: str,
     output: str,
-    use_vaapi: bool,
+    use_jetson_hw_encode: bool,
     record_stream_codec: str,
+    encoding_mode: str = "cpu",
 ) -> list[str]:
     """Build FFmpeg recording command with robust timestamp/audio handling."""
     cmd = [
@@ -157,15 +186,6 @@ def _ffmpeg_record_cmd(
         "make_zero",
         "-max_interleave_delta",
         "0",
-    ]
-    if use_vaapi:
-        # More stable than mixed hw decode+encode on some iGPU/driver combos:
-        # decode in software and upload NV12 frames for VA-API encoder explicitly.
-        cmd += [
-            "-vaapi_device",
-            VAAPI_DEVICE,
-        ]
-    cmd += [
         "-rtsp_transport",
         "tcp",
         "-i",
@@ -177,15 +197,26 @@ def _ffmpeg_record_cmd(
         "-map",
         "0:a:0?",
     ]
-    if use_vaapi:
-        cmd += [
-            "-vf",
-            "format=nv12,hwupload",
-            "-c:v",
-            "h264_vaapi",
-            "-b:v",
-            "2M",
-        ]
+    if (
+        encoding_mode == "jetson"
+        and use_jetson_hw_encode
+        and (record_stream_codec or "h264").strip().lower() == "h264"
+    ):
+        if _ffmpeg_has_nvenc():  # defined below
+            cmd += [
+                "-hwaccel",
+                "cuda",
+                "-hwaccel_output_format",
+                "cuda",
+                "-c:v",
+                "h264_nvenc",
+                "-b:v",
+                "2M",
+                "-preset",
+                "p4",
+            ]
+        else:
+            cmd += _libx264_record_args()
     elif (record_stream_codec or "h264").strip().lower() == "h264":
         cmd += [
             "-analyzeduration",
@@ -223,8 +254,9 @@ def _ffmpeg_record_cmd(
 # Reconnect backoff: 1, 2, 4, 8, 16, max 30 sec
 MAX_RECONNECT_DELAY = 30
 INITIAL_RECONNECT_DELAY = 1
-FFMPEG_CAPTURE_FAILURE_THRESHOLD = 3
-FFMPEG_CAPTURE_COOLDOWN_SEC = 60
+FFMPEG_CAPTURE_FAILURE_THRESHOLD = 3  # fdsink async=false даёт стабильные кадры
+CLASSIFIER_RECORD_BUFFER_SIZE = 8
+DEFAULT_CLASSIFIER_RECORD_MAX_SKEW_SEC = 0.35
 
 
 def _build_stream_url(
@@ -261,8 +293,8 @@ class Go2RTCStreamSource:
     def __init__(
         self,
         stream_url: str,
-        main_size=(1280, 720),
-        lores_size=(640, 640),
+        main_size: tuple[int, int],
+        lores_size: tuple[int, int] | None,
         auto_reconnect=True,
         pre_record_seconds=0,
         mjpeg_port=8082,
@@ -271,19 +303,32 @@ class Go2RTCStreamSource:
         capture_backend="auto",
         capture_stream_url: str | None = None,
         *,
-        record_with_vaapi: bool | None = None,
+        record_hw_encode: bool | None = None,
+        single_rtsp_read: bool = False,
     ):
         self.logger = logging.getLogger(__name__)
         # Main/high stream: FFmpeg recording only.
         self.stream_url = stream_url
-        # Optional second RTSP (e.g. Go2RTC name for camera sub / Frigate detect) — lower res & FPS.
-        self._capture_stream_url = (capture_stream_url or "").strip() or stream_url
+        # Detect substream (lores): motion, YOLO, ByteTrack — never fallback to main.
+        capture_url = (capture_stream_url or "").strip()
+        if not capture_url:
+            raise ValueError(
+                "Go2RTC detect substream URL required: set video.cameras[].detect_stream_name "
+                "(main stream_url is record-only)"
+            )
+        if capture_url == (stream_url or "").strip():
+            raise ValueError(
+                "Go2RTC capture stream must differ from main record stream (detect_stream_name ≠ stream_name)"
+            )
+        self._capture_stream_url = capture_url
+        self._single_rtsp_read = bool(single_rtsp_read)
         self.main_size = main_size
-        self.lores_size = lores_size
+        self.lores_size = lores_size  # None = native RTSP resolution for detect/YOLO
+        self._detect_native = lores_size is None
         self.auto_reconnect = auto_reconnect
-        self._encoding_mode = (encoding_mode or "cpu").strip().lower()
-        if self._encoding_mode not in ("cpu", "intel"):
-            self._encoding_mode = "cpu"
+        from encoding_utils import normalize_video_encoding
+
+        self._encoding_mode = normalize_video_encoding(encoding_mode, "jetson")
         rsc = (record_stream_codec or "h264").strip().lower()
         self._record_stream_codec = rsc if rsc in ("h264", "copy") else "h264"
         self._capture_backend = _normalize_capture_backend(capture_backend)
@@ -298,117 +343,276 @@ class Go2RTCStreamSource:
         self._streaming_output = None
         self._streaming_thread = None
         self._recording = False
+        self._recording_t0: float | None = None
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self._last_frame_time = 0
         self._frame_count = 0
-        self._source_fps = 15.0
+        self._source_fps = 0.0
+        self.stream_capabilities = None
         self._read_lock = threading.Lock()
-        self._vaapi_checked = False
-        self._vaapi_available = True
-        self._vaapi_record_available = True
-        # When encoding=intel: still use VA-API for ffmpeg capture (auto) unless capture falls back;
-        # recording can use libx264 only if record_with_vaapi is false (avoids flaky h264_vaapi on some iGPU drivers).
-        if record_with_vaapi is None:
-            self._record_with_vaapi = True
-        elif isinstance(record_with_vaapi, bool):
-            self._record_with_vaapi = record_with_vaapi
+        # API compat name: on jetson, True → NVENC/v4l2m2m/OMX; False → libx264.
+        if record_hw_encode is None:
+            self._record_hw_encode = True
+        elif isinstance(record_hw_encode, bool):
+            self._record_hw_encode = record_hw_encode
         else:
-            s = str(record_with_vaapi).strip().lower()
-            self._record_with_vaapi = s not in ("0", "false", "no", "off")
-        self._recording_used_vaapi = False
+            from encoding_utils import parse_bool_config_flag
+
+            self._record_hw_encode = parse_bool_config_flag(record_hw_encode, default=True)
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
+        self._last_classifier_source_frame = None
+        self._record_cap = None
+        self.record_stream_capabilities = None
+        self._dual_stream = self._capture_stream_url != self.stream_url
+        self._record_frame_buffer: deque[tuple[float, np.ndarray]] = deque(
+            maxlen=CLASSIFIER_RECORD_BUFFER_SIZE,
+        )
+        self._last_detect_capture_ts: float | None = None
+        self._last_classifier_crop_skew_sec: float = 0.0
+        self._last_classifier_crop_mismatch: bool = False
 
-        if self._capture_stream_url != self.stream_url:
+        if self._single_rtsp_read:
+            self.logger.info(
+                "Go2RTC single RTSP read: main/record stream once per cycle; "
+                "software lores for motion/YOLO/MJPEG (detect_stream_name kept for geometry config)."
+            )
+        elif self._dual_stream:
             self.logger.info(
                 "Go2RTC dual-stream: capture (motion/YOLO/MJPEG) ≠ record (main RTSP). "
-                "YOLO still gets letterbox to inference size after decode."
+                "YOLO uses inference_lores_wh / letterbox only when decode size differs."
             )
 
+        self._capture_url_connected: str | None = None
         self._connect()
+        self._capture_url_connected = self._live_capture_url()
+        self.refresh_record_stream_geometry()
 
         # Start MJPEG streaming server for live view
         self._streaming_output, self._streaming_thread = start_streaming_server(port=mjpeg_port)
 
-    def _connect(self) -> bool:
-        """Open RTSP connection. Returns True if successful."""
-        self._disconnect()
-        if self._should_use_ffmpeg_vaapi_capture() and self._connect_ffmpeg_vaapi_capture():
-            return True
-        if self._should_use_ffmpeg_vaapi_capture():
-            reason = _capture_fallback_reason(
-                requested_backend=self._capture_backend,
-                encoding_mode=self._encoding_mode,
-                vaapi_available=self._vaapi_available,
+    def _single_read_idle(self) -> bool:
+        """Single main-stream read only when FFmpeg is not also pulling record RTSP."""
+        return bool(self._single_rtsp_read and not self._recording)
+
+    def _live_capture_url(self) -> str:
+        """RTSP URL for live frame reads (main when single-read idle, else detect substream)."""
+        if self._single_read_idle():
+            return self.stream_url
+        return self._capture_stream_url
+
+    def _reconnect_capture_if_url_changed(self) -> None:
+        """Reconnect capture when idle↔recording toggles capture URL."""
+        with self._read_lock:
+            expected = self._live_capture_url()
+            current = getattr(self, "_capture_url_connected", None)
+            if current == expected:
+                return
+            self.logger.info(
+                "Capture URL switch: %s → %s (recording=%s single_rtsp_read=%s)",
+                current or "?",
+                expected,
+                self._recording,
+                self._single_rtsp_read,
             )
-            _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
-            _inc_runtime_counter("video_capture_backend_fallback_total", 1)
-        # Не логировать поля из URL (в т.ч. учётка в stream_url) — CodeQL sensitive logging
+            if self._connect():
+                self._capture_url_connected = expected
+                self.refresh_record_stream_geometry()
+
+    def _derive_detect_frame(self, main_frame: np.ndarray) -> np.ndarray:
+        """Software lores from main frame (Frigate-style single read)."""
+        if main_frame is None:
+            return main_frame
+        if self._detect_native or not self.lores_size:
+            return np.ascontiguousarray(main_frame)
+        from frame_geometry import frame_matches_target_wh, letterbox_bgr_to_wh
+
+        out_wh = (int(self.lores_size[0]), int(self.lores_size[1]))
+        if frame_matches_target_wh(main_frame, out_wh):
+            return np.ascontiguousarray(main_frame)
+        return letterbox_bgr_to_wh(main_frame, out_wh)
+
+    def _connect(self) -> bool:
+        """Open RTSP connection via OpenCV FFMPEG. Returns True if successful."""
+        self._disconnect()
         self.logger.info("Connecting to video stream (OpenCV, capture/detect)")
-        # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
-        cap = cv2.VideoCapture(self._capture_stream_url, cv2.CAP_FFMPEG)
+        cap = cv2.VideoCapture(self._live_capture_url(), cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         if not cap.isOpened():
             self.logger.error("Failed to open stream")
             return False
-        # Probe FPS
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps and fps > 0:
-            self._source_fps = fps
         self._cap = cap
+        self._apply_stream_probe()
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps and fps > 0 and (self._source_fps or 0) <= 0.5:
+            self._source_fps = float(fps)
         self._capture_backend_used = "opencv"
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
-        self.logger.info(f"Connected. FPS: {self._source_fps}")
+        self.logger.info("Connected. FPS: %s", self._source_fps)
         return True
 
-    def _should_use_ffmpeg_vaapi_capture(self) -> bool:
-        """Whether live inference capture should try FFmpeg VA-API."""
-        if time.time() < float(self._force_opencv_until_ts or 0.0):
-            return False
-        if self._capture_backend == "ffmpeg_vaapi":
-            return True
-        return self._capture_backend == "auto" and self._encoding_mode == "intel"
-
-    def _connect_ffmpeg_vaapi_capture(self) -> bool:
-        """Open FFmpeg rawvideo pipe for live inference frames."""
-        if not self._use_intel_vaapi():
-            if self._capture_backend == "ffmpeg_vaapi":
-                self.logger.warning("FFmpeg VA-API capture requested but VA-API is unavailable; falling back to OpenCV")
-            return False
-        cmd = _ffmpeg_vaapi_capture_cmd(self._capture_stream_url, self.lores_size)
+    def _apply_stream_probe(self) -> None:
+        """Probe detect/capture stream and attach StreamCapabilities."""
         try:
-            self._capture_process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-            )
-        except (FileNotFoundError, OSError) as e:
-            self.logger.warning("Failed to start FFmpeg VA-API capture: %s", e)
-            self._capture_process = None
+            from stream_probe import attach_stream_capabilities, probe_stream_url, publish_probe_gauges
+
+            caps = probe_stream_url(self._live_capture_url())
+            if caps is not None:
+                attach_stream_capabilities(self, caps)
+                if caps.fps > 0.5:
+                    self._source_fps = float(caps.fps)
+                publish_probe_gauges(caps)
+                self.logger.info(
+                    "Detect stream probe: %sx%s @ %.2f fps (%s)",
+                    caps.width,
+                    caps.height,
+                    caps.fps or self._source_fps,
+                    caps.source,
+                )
+        except Exception as exc:
+            from processor_exception_handling import reraise_if_critical
+
+            reraise_if_critical(exc)
+            self.logger.debug("stream probe skipped: %s", exc)
+
+    def refresh_record_stream_geometry(self) -> tuple[int, int] | None:
+        """Probe main/record RTSP and refresh ``main_size`` for bbox remap + playback."""
+        if not self._dual_stream:
+            return self.main_size
+        try:
+            from app_config.app_config import app_config
+            from stream_probe import force_recording_resolution, probe_stream_url, publish_probe_gauges
+
+            if force_recording_resolution(app_config):
+                return self.main_size
+
+            caps = probe_stream_url(self.stream_url)
+        except Exception as exc:
+            from processor_exception_handling import reraise_if_critical
+
+            reraise_if_critical(exc)
+            self.logger.debug("record stream probe skipped: %s", exc)
+            return self.main_size
+        if caps is None or caps.width <= 0 or caps.height <= 0:
+            return self.main_size
+        self.record_stream_capabilities = caps
+        probed = (int(caps.width), int(caps.height))
+        prev = tuple(self.main_size) if self.main_size and len(self.main_size) >= 2 else None
+        if prev != probed:
+            if prev is not None:
+                _inc_runtime_counter("bbox_remap_mismatch_total")
+                self.logger.warning(
+                    "record stream geometry: config/main_size=%sx%s probed=%sx%s source=%s",
+                    prev[0],
+                    prev[1],
+                    probed[0],
+                    probed[1],
+                    caps.source,
+                )
+            else:
+                self.logger.info(
+                    "record stream probe: %sx%s @ %.2f fps (%s)",
+                    caps.width,
+                    caps.height,
+                    caps.fps or 0.0,
+                    caps.source,
+                )
+        self.main_size = probed
+        try:
+            publish_probe_gauges(caps)
+            _set_runtime_gauge("record_stream_probe_width", int(caps.width))
+            _set_runtime_gauge("record_stream_probe_height", int(caps.height))
+        except Exception:
+            self.logger.debug("record stream probe gauges failed", exc_info=True)
+        return self.main_size
+
+    def _disconnect_record_cap(self) -> None:
+        if self._record_cap is not None:
+            try:
+                self._record_cap.release()
+            except Exception:
+                self.logger.debug("record cap release failed", exc_info=True)
+            self._record_cap = None
+
+    def _connect_record_cap(self) -> bool:
+        """Open main/record RTSP for hi-res classifier crops (dual-read idle only).
+
+        While FFmpeg records, main RTSP is already open — skip second VideoCapture.
+        Classifier crops use the ring buffer seeded before/during idle single-read.
+        """
+        if not self._dual_stream:
             return False
-        self._capture_backend_used = "ffmpeg_vaapi"
-        _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
-        self._reconnect_delay = INITIAL_RECONNECT_DELAY
-        self.logger.info("Connected. Capture backend: FFmpeg VA-API")
+        if self._single_rtsp_read and not self._recording:
+            return False
+        if self._recording:
+            return False
+        self._disconnect_record_cap()
+        cap = cv2.VideoCapture(self.stream_url, cv2.CAP_FFMPEG)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        if not cap.isOpened():
+            self.logger.warning("Failed to open record stream for classifier crops")
+            return False
+        self._record_cap = cap
         return True
+
+    def _classifier_record_max_skew_sec(self) -> float:
+        try:
+            from app_config.app_config import app_config
+
+            raw = app_config.get("processor.classifier_record_max_skew_sec")
+            if raw is not None:
+                v = float(raw)
+                if v > 0:
+                    return v
+        except (TypeError, ValueError):
+            pass
+        return DEFAULT_CLASSIFIER_RECORD_MAX_SKEW_SEC
+
+    def _select_nearest_record_frame(self, detect_ts: float) -> tuple[np.ndarray | None, float]:
+        if not self._record_frame_buffer:
+            return None, 0.0
+        best_ts, best_frame = min(
+            self._record_frame_buffer,
+            key=lambda item: abs(item[0] - detect_ts),
+        )
+        return best_frame, abs(best_ts - detect_ts)
+
+    def get_last_detect_capture_ts(self) -> float | None:
+        return self._last_detect_capture_ts
+
+    def get_classifier_crop_skew_sec(self) -> float:
+        return float(self._last_classifier_crop_skew_sec)
+
+    def classifier_crop_source_mismatch(self) -> bool:
+        return bool(self._last_classifier_crop_mismatch)
+
+    def _read_record_classifier_frame(self) -> np.ndarray | None:
+        """Best-effort hi-res frame from main/record RTSP (dual-read / recording fallback)."""
+        if not self._dual_stream:
+            return None
+        if self._single_rtsp_read and not self._recording:
+            return None
+        with self._read_lock:
+            cap = self._record_cap
+            if cap is None or not cap.isOpened():
+                if not self._connect_record_cap():
+                    return None
+                cap = self._record_cap
+            if cap is None:
+                return None
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                self._disconnect_record_cap()
+                return None
+            return frame
 
     def _disconnect(self):
         """Close RTSP connection."""
+        self._disconnect_record_cap()
         if self._cap:
             self._cap.release()
             self._cap = None
-        if self._capture_process:
-            try:
-                self._capture_process.terminate()
-                self._capture_process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self._capture_process.kill()
-                self._capture_process.wait(timeout=2)
-            except Exception:
-                logger.debug("ffmpeg capture process shutdown cleanup failed", exc_info=True)
-            self._capture_process = None
         self._capture_backend_used = "opencv"
 
     def _reconnect_if_needed(self) -> bool:
@@ -421,40 +625,17 @@ class Go2RTCStreamSource:
             _inc_runtime_counter("video_capture_reconnect_total", 1)
             time.sleep(self._reconnect_delay)
             if self._connect():
+                self.refresh_record_stream_geometry()
                 return True
             self._reconnect_delay = min(self._reconnect_delay * 2, MAX_RECONNECT_DELAY)
 
     def _read_frame(self):
-        """Read one frame. Returns (frame_bgr, success)."""
-        if self._capture_backend_used == "ffmpeg_vaapi":
-            return self._read_ffmpeg_vaapi_frame()
+        """Read one frame via OpenCV. Returns (frame_bgr, success)."""
         if not self._cap or not self._cap.isOpened():
             return None, False
         ret, frame = self._cap.read()
         if not ret or frame is None:
             return None, False
-        return frame, True
-
-    def _read_ffmpeg_vaapi_frame(self):
-        """Read one BGR lores frame from FFmpeg rawvideo stdout."""
-        proc = self._capture_process
-        if not proc or proc.poll() is not None or not proc.stdout:
-            self._ffmpeg_capture_failures += 1
-            return None, False
-        width, height = int(self.lores_size[0]), int(self.lores_size[1])
-        need = width * height * 3
-        chunks = []
-        remaining = need
-        while remaining > 0:
-            chunk = proc.stdout.read(remaining)
-            if not chunk:
-                self._ffmpeg_capture_failures += 1
-                return None, False
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        data = b"".join(chunks)
-        frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
-        self._ffmpeg_capture_failures = 0
         return frame, True
 
     def _update_streaming_output(self, frame):
@@ -463,102 +644,55 @@ class Go2RTCStreamSource:
             _, jpeg = cv2.imencode(".jpg", frame)
             if jpeg is not None:
                 self._streaming_output.write(jpeg.tobytes())
-
-    def _probe_vaapi(self) -> bool:
-        """Check if VA-API encode path works in this container."""
-        probe_out = "/tmp/birdlense_vaapi_probe.mp4"
-        try:
-            r = subprocess.run(
-                [
-                    "ffmpeg",
-                    "-y",
-                    "-loglevel",
-                    "error",
-                    "-vaapi_device",
-                    VAAPI_DEVICE,
-                    "-f",
-                    "lavfi",
-                    "-i",
-                    "testsrc2=size=640x360:rate=5:duration=1",
-                    "-vf",
-                    "format=nv12,hwupload",
-                    "-c:v",
-                    "h264_vaapi",
-                    "-frames:v",
-                    "5",
-                    "-an",
-                    probe_out,
-                ],
-                capture_output=True,
-                timeout=10,
-            )
-            if r.returncode != 0 and r.stderr:
-                self.logger.debug("VA-API probe stderr: %s", r.stderr.decode("utf-8", errors="replace")[:300])
-            ok = r.returncode == 0 and os.path.exists(probe_out) and os.path.getsize(probe_out) > 1024
-            try:
-                if os.path.exists(probe_out):
-                    os.remove(probe_out)
-            except OSError:
-                pass
-            return ok
-        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
-            self.logger.debug("VA-API probe failed: %s", e)
-            return False
-
-    def _use_intel_vaapi(self) -> bool:
-        """True if encoding_mode is intel and VA-API device works (device + libva init)."""
-        if self._encoding_mode != "intel":
-            return False
-        if not os.path.exists(VAAPI_DEVICE):
-            self.logger.warning(
-                "video.encoding=intel but %s not found — recording with CPU. "
-                "Для GPU: добавьте devices в compose (см. docker-compose.intel.example.yml).",
-                VAAPI_DEVICE,
-            )
-            return False
-        if not self._vaapi_checked:
-            self._vaapi_checked = True
-            self._vaapi_available = self._probe_vaapi()
-            if not self._vaapi_available:
-                self.logger.warning(
-                    "VA-API: %s есть, но init не прошёл — запись на CPU. "
-                    "Частая причина: нет group_add групп video/render хоста в compose. "
-                    "На сервере: bash scripts/docker-compose-intel-override-gen.sh и пересоздайте контейнер.",
-                    VAAPI_DEVICE,
-                )
-        return self._vaapi_available
-
     def start_recording(self, output: str):
-        """Start recording via FFmpeg (video+audio from RTSP). CPU or Intel VA-API."""
+        """Start recording: GStreamer on Jetson, FFmpeg otherwise."""
         self._recording = True
-        self._recording_used_vaapi = False
+        self._reconnect_capture_if_url_changed()
+        self._recording_t0 = time.monotonic()
         self._video_output = output
         os.makedirs(os.path.dirname(output), exist_ok=True)
-        use_vaapi = self._encoding_mode == "intel" and self._record_with_vaapi and self._use_intel_vaapi()
-        if use_vaapi and not self._vaapi_record_available:
-            use_vaapi = False
-        cmd = _ffmpeg_record_cmd(
-            stream_url=self.stream_url,
-            output=output,
-            use_vaapi=bool(use_vaapi),
-            record_stream_codec=self._record_stream_codec,
-        )
+        use_jetson = self._encoding_mode == "jetson"
+        use_jetson_hw = use_jetson and self._record_hw_encode
+        if (
+            use_jetson_hw
+            and self._record_stream_codec == "h264"
+            and _gst_jetson_record_available()
+        ):
+            cmd = _gst_record_cmd(self.stream_url, output)
+            enc = _gst_jetson_h264_encoder() or "nvv4l2h264enc"
+            backend_label = f"GStreamer {enc} (Jetson HW)"
+        else:
+            cmd = _ffmpeg_record_cmd(
+                stream_url=self.stream_url,
+                output=output,
+                use_jetson_hw_encode=bool(use_jetson_hw),
+                record_stream_codec=self._record_stream_codec,
+                encoding_mode=self._encoding_mode,
+            )
+            if use_jetson_hw and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
+                backend_label = "FFmpeg NVENC (CUDA)"
+            elif use_jetson_hw and self._record_stream_codec == "h264":
+                backend_label = "Jetson HW"
+            else:
+                backend_label = "CPU (libx264)"
         try:
             from encoding_status import set_last_encoding_used
 
-            if use_vaapi:
-                self._recording_used_vaapi = True
-                set_last_encoding_used("vaapi")
-            elif self._record_stream_codec == "h264" and not use_vaapi:
+            if use_jetson_hw and self._record_stream_codec == "h264" and _gst_jetson_record_available():
+                enc = _gst_jetson_h264_encoder() or ""
+                set_last_encoding_used("v4l2m2m" if enc == "nvv4l2h264enc" else "omx")
+            elif use_jetson_hw and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
+                set_last_encoding_used("nvenc")
+            elif self._record_stream_codec == "h264":
                 set_last_encoding_used("x264_cpu")
             else:
                 set_last_encoding_used("cpu")
         except Exception:
             self.logger.debug("encoding_status recording path failed", exc_info=True)
         self.logger.info(
-            "Starting FFmpeg recording to %s (%s)",
+            "Starting recording to %s (%s)",
             output,
-            "VA-API" if use_vaapi else "CPU",
+            backend_label,
         )
         self._ffmpeg_process = subprocess.Popen(
             cmd,
@@ -572,12 +706,25 @@ class Go2RTCStreamSource:
     def stop_recording(self):
         """Stop FFmpeg recording."""
         self._recording = False
+        self._disconnect_record_cap()
+        self._reconnect_capture_if_url_changed()
+        self._recording_t0 = None
         if self._ffmpeg_process:
             return_code = None
             stderr_text = ""
             try:
-                self._ffmpeg_process.terminate()
-                return_code = self._ffmpeg_process.wait(timeout=5)
+                # gst-launch -e finalizes qtmux/mp4 on SIGINT; SIGTERM drops the file.
+                proc_args = self._ffmpeg_process.args
+                uses_gst = (
+                    isinstance(proc_args, (list, tuple))
+                    and proc_args
+                    and os.path.basename(str(proc_args[0])) == "gst-launch-1.0"
+                )
+                if uses_gst:
+                    self._ffmpeg_process.send_signal(signal.SIGINT)
+                else:
+                    self._ffmpeg_process.terminate()
+                return_code = self._ffmpeg_process.wait(timeout=10 if uses_gst else 5)
             except subprocess.TimeoutExpired:
                 self._ffmpeg_process.kill()
                 return_code = self._ffmpeg_process.wait(timeout=2)
@@ -594,25 +741,14 @@ class Go2RTCStreamSource:
                             self.logger.log(lvl, "FFmpeg: %s", safe)
                 except Exception:
                     self.logger.debug("FFmpeg stderr drain failed", exc_info=True)
-            graceful_sigterm = int(return_code or 0) == 255 and ("Exiting normally, received signal 15." in stderr_text)
-            if self._recording_used_vaapi and (return_code is None or (int(return_code) != 0 and not graceful_sigterm)):
-                # Quarantine only VA-API recording path after encode failure.
-                # Keep capture path independent (it may remain healthy).
-                self._vaapi_record_available = False
-                _inc_runtime_counter("video_recording_vaapi_fail_total", 1)
-                self.logger.error(
-                    "VA-API recording failed (ffmpeg rc=%s). Fallback to CPU recording for next clips "
-                    "until processor restart/reprobe.",
-                    return_code,
-                )
             self._ffmpeg_process = None
-        self._recording_used_vaapi = False
         self.logger.info("Recording stopped")
 
     def capture(self):
         """
-        Get next frame for processing.
-        Returns BGR frame resized to lores_size, or None on error.
+        Get next frame for processing (native BGR from stream).
+
+        Letterbox/resize for YOLO runs in ``detection_strategy`` via ``prepare_yolo_detector_frame``.
         """
         # One reconnect attempt per capture call: avoid recursive stack growth
         # and keep motion loop responsive when stream stays unavailable.
@@ -621,30 +757,54 @@ class Go2RTCStreamSource:
                 frame, ok = self._read_frame()
             if ok and frame is not None:
                 break
-            if (
-                self._capture_backend_used == "ffmpeg_vaapi"
-                and self._ffmpeg_capture_failures >= FFMPEG_CAPTURE_FAILURE_THRESHOLD
-            ):
-                self._force_opencv_until_ts = time.time() + float(FFMPEG_CAPTURE_COOLDOWN_SEC)
-                self._ffmpeg_capture_failures = 0
-                self.logger.warning(
-                    "FFmpeg VA-API capture is unstable, forcing OpenCV fallback for %ss",
-                    FFMPEG_CAPTURE_COOLDOWN_SEC,
-                )
             if attempt == 0 and self._reconnect_if_needed():
                 continue
             return None
         self._frame_count += 1
         self._last_frame_time = time.time()
-        if self._capture_backend_used == "ffmpeg_vaapi":
-            frame_lores = frame
+        detect_ts = time.monotonic()
+        self._last_detect_capture_ts = detect_ts
+        if self._single_read_idle():
+            main_frame = frame
+            self._last_classifier_crop_skew_sec = 0.0
+            self._last_classifier_crop_mismatch = False
+            self._last_classifier_source_frame = main_frame
+            self._record_frame_buffer.append((detect_ts, main_frame))
+            frame = self._derive_detect_frame(main_frame)
+        elif self._dual_stream:
+            record_frame = self._read_record_classifier_frame()
+            if record_frame is not None:
+                self._record_frame_buffer.append((detect_ts, record_frame))
+            selected, skew = self._select_nearest_record_frame(detect_ts)
+            self._last_classifier_crop_skew_sec = skew
+            max_skew = self._classifier_record_max_skew_sec()
+            mismatch = selected is None or skew > max_skew
+            self._last_classifier_crop_mismatch = mismatch
+            self._last_classifier_source_frame = None if mismatch else selected
         else:
-            frame_lores = letterbox_bgr_to_wh(
-                frame,
-                (int(self.lores_size[0]), int(self.lores_size[1])),
-            )
+            self._last_classifier_crop_skew_sec = 0.0
+            self._last_classifier_crop_mismatch = False
+            self._last_classifier_source_frame = frame
         self._update_streaming_output(frame)
-        return frame_lores
+        return frame
+
+    def get_classifier_source_frame(self, detect_ts: float | None = None):
+        """Best-effort hi-res (record) or detect frame for classifier/ReID crops."""
+        if self._last_classifier_crop_mismatch:
+            return None
+        ts = detect_ts if detect_ts is not None else self._last_detect_capture_ts
+        if (not self._single_read_idle()) and self._dual_stream and ts is not None:
+            selected, skew = self._select_nearest_record_frame(ts)
+            if selected is not None and skew <= self._classifier_record_max_skew_sec():
+                return selected
+            return None
+        return self._last_classifier_source_frame
+
+    def get_frame_time(self):
+        """Seconds on main MP4 timeline (monotonic elapsed since FFmpeg record start)."""
+        if self._recording and self._recording_t0 is not None:
+            return round(time.monotonic() - self._recording_t0, 2)
+        return None
 
     def push_one_frame_to_mjpeg(self):
         """Read one frame and push to MJPEG (for live view). Skips if main thread is reading."""
@@ -655,6 +815,8 @@ class Go2RTCStreamSource:
         try:
             frame, ok = self._read_frame()
             if ok and frame is not None:
+                if self._single_read_idle():
+                    frame = self._derive_detect_frame(frame)
                 self._update_streaming_output(frame)
         finally:
             self._read_lock.release()

@@ -59,7 +59,7 @@ def test_processor_videos_missing_species_400(client, proc_headers, monkeypatch,
     from routes import processor_routes
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     body = _base_video_payload("090010")
     _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
     body["species"] = []
@@ -73,7 +73,7 @@ def test_processor_videos_all_below_threshold_400(client, proc_headers, monkeypa
     from routes import processor_routes
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
         "min_confidence_to_store",
@@ -97,6 +97,99 @@ def test_processor_videos_all_below_threshold_400(client, proc_headers, monkeypa
     assert "threshold" in err.lower() or "below" in err.lower()
 
 
+def test_processor_videos_rejects_empty_yolo_bbox_rows(
+    client,
+    proc_headers,
+    monkeypatch,
+    tmp_path,
+):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
+    monkeypatch.setitem(
+        app_config.config.setdefault("detection", {}),
+        "min_confidence_to_store",
+        0.05,
+    )
+    body = _base_video_payload("090012")
+    _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
+    body["species"] = [
+        {
+            "species_name": "Great Tit",
+            "confidence": 0.9,
+            "start_time": 0,
+            "end_time": 1,
+            "source": "video",
+            "detection_provider": "yolo",
+            "frames": [],
+        }
+    ]
+    r = client.post("/api/processor/videos", json=body, headers=proc_headers)
+    assert r.status_code == 400
+    payload = r.get_json() or {}
+    assert payload.get("reason") == "video_bbox_track_contract_empty"
+
+
+def test_processor_videos_prunes_invalid_yolo_rows_but_keeps_valid(
+    app,
+    client,
+    proc_headers,
+    monkeypatch,
+    tmp_path,
+):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Species, Video, VideoSpecies, db
+    import services.visit_processor as vp_mod
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
+    monkeypatch.setattr(
+        vp_mod,
+        "update_species_info_from_wiki",
+        lambda *_a, **_k: None,
+        raising=False,
+    )
+    monkeypatch.setitem(
+        app_config.config.setdefault("detection", {}),
+        "min_confidence_to_store",
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(f"{(int(token) + 1) % 1000000:06d}")
+    _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
+    body["species"] = [
+        {
+            "species_name": f"Pytest Invalid {token}",
+            "confidence": 0.9,
+            "start_time": 0,
+            "end_time": 1,
+            "source": "video",
+            "detection_provider": "yolo",
+            "frames": [{"t": 0.1, "bbox": [0.2, 0.2, 0.2, 0.4]}],
+        },
+        {
+            "species_name": "Great Tit",
+            "confidence": 0.9,
+            "start_time": 0,
+            "end_time": 1,
+            "source": "video",
+            "detection_provider": "yolo",
+            "frames": [{"t": 0.1, "bbox": [0.1, 0.1, 0.3, 0.3]}],
+        },
+    ]
+    r = client.post("/api/processor/videos", json=body, headers=proc_headers)
+    assert r.status_code == 201, r.get_data(as_text=True)
+    with app.app_context():
+        assert db.session.query(Video).count() == 1
+        assert db.session.query(VideoSpecies).count() == 1
+        species_name = db.session.query(Species.name).join(VideoSpecies, VideoSpecies.species_id == Species.id).scalar()
+        assert species_name == "Great Tit"
+
+
 def test_processor_videos_rejects_missing_video_file(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
@@ -104,7 +197,7 @@ def test_processor_videos_rejects_missing_video_file(app, client, proc_headers, 
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -141,7 +234,7 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tm
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -174,14 +267,14 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tm
         assert db.session.get(Video, vid) is not None
 
 
-def test_processor_videos_persists_behavior_label_optional(app, client, proc_headers, monkeypatch, tmp_path):
+def test_processor_videos_persists_favorite_optional(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
     from models import Video, db
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -195,7 +288,7 @@ def test_processor_videos_persists_behavior_label_optional(app, client, proc_hea
     _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
     body["species"] = [
         {
-            "species_name": f"Pytest Behavior {token}",
+            "species_name": f"Pytest Favorites {token}",
             "confidence": 0.95,
             "start_time": 0,
             "end_time": 2,
@@ -203,8 +296,6 @@ def test_processor_videos_persists_behavior_label_optional(app, client, proc_hea
             "frames": [],
         }
     ]
-    body["behavior_label"] = "feeding"
-    body["behavior_confidence"] = 0.72
 
     r = client.post("/api/processor/videos", json=body, headers=proc_headers)
     assert r.status_code == 201, r.get_data(as_text=True)
@@ -212,8 +303,6 @@ def test_processor_videos_persists_behavior_label_optional(app, client, proc_hea
     with app.app_context():
         v = db.session.get(Video, vid)
         assert v is not None
-        assert v.behavior_label == "feeding"
-        assert abs(float(v.behavior_confidence or 0) - 0.72) < 1e-6
 
 
 def test_processor_videos_idempotent_same_payload_returns_existing(
@@ -229,7 +318,7 @@ def test_processor_videos_idempotent_same_payload_returns_existing(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -280,7 +369,7 @@ def test_processor_videos_same_clip_key_but_payload_changed_returns_409(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -339,7 +428,7 @@ def test_processor_videos_same_clip_conflict_detected_when_legacy_hash_missing(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -405,7 +494,7 @@ def test_processor_videos_idempotent_ignores_non_persisted_flags(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -458,7 +547,7 @@ def test_processor_videos_hot_path_skips_species_metadata_enrichment(app, client
     import services.species_metadata_enrichment_service as meta_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(
         meta_mod,
         "enrich_species_metadata",
@@ -500,7 +589,7 @@ def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -547,7 +636,7 @@ def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -583,7 +672,7 @@ def test_processor_videos_invalid_iso_400(client, proc_headers, monkeypatch, tmp
     from routes import processor_routes
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     _touch_video_file("data/recordings/2026/04/04/090012/video.mp4", data_root=str(tmp_path / "data"))
     body = {
         "processor_version": "x",
@@ -621,7 +710,7 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -643,7 +732,7 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
             "frames": [],
             "track_id": 7,
             "individual_nickname": "Рыжик",
-            "reid_model": "dinov2_vits14",
+            "reid_model": "ornimetrics_reid",
             "reid_dim": 4,
             "reid_embedding": [0.1, 0.2, 0.3, 0.4],
             "reid_crop_key": f"runtime://pytest/{token}/track/7",
@@ -651,7 +740,12 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
     ]
     r = client.post("/api/processor/videos", json=body, headers=proc_headers)
     assert r.status_code == 201, r.get_data(as_text=True)
-    vid = r.get_json()["video_id"]
+    payload = r.get_json() or {}
+    timing = payload.get("ingest_timing_ms") or {}
+    assert timing.get("total_ms", 0) >= 0
+    assert "visit_processor_ms" in timing
+    assert "commit_ms" in timing
+    vid = payload["video_id"]
     with app.app_context():
         vs = db.session.query(VideoSpecies).filter_by(video_id=vid).first()
         assert vs is not None
@@ -659,7 +753,8 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
         row = (
             db.session.execute(
                 text(
-                    "SELECT model, dim, individual_label "
+                    "SELECT model, dim, individual_label, embedding_schema, embedding_model_id, "
+                    "embedding_model_sha16, crop_fingerprint_sha16, jsonl_created_at_utc "
                     "FROM reid_embedding WHERE video_species_id=:vs_id "
                     "ORDER BY id DESC LIMIT 1"
                 ),
@@ -669,6 +764,11 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
             .first()
         )
         assert row is not None
-        assert row["model"] == "dinov2_vits14"
+        assert row["model"] == "ornimetrics_reid"
         assert int(row["dim"]) == 4
         assert row["individual_label"] == "Рыжик"
+        assert row["embedding_schema"] == "embedding_schema@v1"
+        assert row["embedding_model_id"] == "ornimetrics_reid"
+        assert row["embedding_model_sha16"]
+        assert row["crop_fingerprint_sha16"]
+        assert row["jsonl_created_at_utc"]

@@ -1,0 +1,7 @@
+{
+  "schema": "champion_challenger@v1",
+  "ok": true,
+  "checks": {
+    "safe_promotion_only_ok": true
+  }
+}

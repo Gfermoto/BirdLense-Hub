@@ -12,27 +12,18 @@ import Tooltip from '@mui/material/Tooltip';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import Chip from '@mui/material/Chip';
 import Fade from '@mui/material/Fade';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { Video, VideoSpecies } from '../../../types';
-import { resolveImageUrl } from '../../../api/api';
-import { BASE_API_URL, BASE_URL } from '../../../api/client';
+import { BASE_API_URL } from '../../../api/client';
 import { ProgressBar } from './ProgressBar';
-import { SpectrogramPlayer } from './SpectrogramPlayer';
 import { useTranslation } from 'react-i18next';
 import { useVideoControl } from './useVideoControl';
-import { TrackOverlay } from './TrackOverlay';
+import { AnnotationViewer } from '../../../components/AnnotationViewer';
 import { SpeciesIcon } from '../../../components/SpeciesIcon';
 import { useProtectedArea } from '../../../contexts/ProtectedAreaContext';
-
-interface ViewToggleProps {
-  view: 'video' | 'audio';
-  onChange: (view: 'video' | 'audio') => void;
-}
 
 interface VideoPlayerProps {
   video: Video;
@@ -40,50 +31,6 @@ interface VideoPlayerProps {
   showTracksRegenHint?: boolean;
 }
 
-const ViewToggle: React.FC<ViewToggleProps> = ({ view, onChange }) => {
-  const { t } = useTranslation();
-  return (
-    <Box
-      sx={{
-        position: 'absolute',
-        top: 16,
-        left: 16,
-        zIndex: 10,
-        bgcolor: 'rgba(0, 0, 0, 0.6)',
-        borderRadius: 1,
-        backdropFilter: 'blur(4px)',
-      }}
-    >
-      <Tabs
-        value={view}
-        onChange={(_, newView) => onChange(newView)}
-        aria-label={t('video.mediaViewTabs')}
-        sx={{
-          minHeight: 'auto',
-          '& .MuiTab-root': {
-            minHeight: 32,
-            color: 'rgba(255, 255, 255, 0.7)',
-            '&.Mui-selected': {
-              color: 'white',
-            },
-          },
-          '& .MuiTabs-indicator': {
-            backgroundColor: 'primary.main',
-          },
-        }}
-      >
-        <Tab label={t('video.video')} value="video" sx={{ py: 0.5, px: 2 }} />
-        <Tab
-          label={t('video.spectrogram')}
-          value="audio"
-          sx={{ py: 0.5, px: 2 }}
-        />
-      </Tabs>
-    </Box>
-  );
-};
-
-// Compact overlay for active species detection
 interface CompactDetectionOverlayProps {
   species: VideoSpecies[];
 }
@@ -164,13 +111,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showTracksRegenHint = false,
 }) => {
   const { t } = useTranslation();
-  const { isAdmin } = useProtectedArea();
+  const { isAdmin, canEdit } = useProtectedArea();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const timeoutRef = useRef<number | undefined>(undefined);
-  const [view, setView] = useState<'video' | 'audio'>('video');
   const [error, setError] = useState<string | null>(null);
 
-  // Reset error when video changes to avoid showing a stale error for a new video
   useEffect(() => {
     setError(null);
   }, [video.id]);
@@ -196,24 +141,49 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const filteredDetections = useMemo(
     () =>
-      video.species
-        .filter((s) => s.source === view)
-        .sort((a, b) => a.start_time - b.start_time),
-    [video.species, view],
-  );
-
-  const spectrogramDetections = useMemo(
-    () => [...video.species].sort((a, b) => a.start_time - b.start_time),
+      [...video.species].sort((a, b) => a.start_time - b.start_time),
     [video.species],
   );
 
-  // Get video detections that have track frames data
   const trackDetections = useMemo(
     () =>
       video.species.filter(
         (s) => s.source === 'video' && s.frames && s.frames.length > 0,
       ),
     [video.species],
+  );
+  const trackAnnotations = useMemo(
+    () =>
+      trackDetections
+        .map((s, idx) => {
+          const frames =
+            s.frames?.map((f) => {
+              const [x1, y1, x2, y2] = f.bbox;
+              return {
+                t: f.t,
+                bbox: [x1, y1, Math.max(0, x2 - x1), Math.max(0, y2 - y1)] as [
+                  number,
+                  number,
+                  number,
+                  number,
+                ],
+              };
+            }) || [];
+          if (!frames.length) return null;
+          return {
+            id: `video-track-${s.species_id}-${s.track_id ?? idx}`,
+            label: `${s.species_name} (${Math.round((s.confidence || 0) * 100)}%)`,
+            color: '#22c55e',
+            frames,
+          };
+        })
+        .filter(Boolean) as Array<{
+        id: string;
+        label: string;
+        color: string;
+        frames: Array<{ t: number | null; bbox: [number, number, number, number] }>;
+      }>,
+    [trackDetections],
   );
 
   useEffect(() => {
@@ -231,19 +201,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     [progress, filteredDetections],
   );
 
-  // При смене видео без спектрограммы — сброс на video, иначе SpectrogramPlayer получит неверный URL
-  useEffect(() => {
-    if (!video.spectrogram_path && view === 'audio') {
-      setView('video');
-    }
-  }, [video?.id, video?.spectrogram_path, view]);
-
-  // Reset speed when switching video
   useEffect(() => {
     setPlaybackRate(1);
   }, [video?.id]);
 
-  // Apply playback rate to video element
   useEffect(() => {
     const el = videoRef.current;
     if (el) el.playbackRate = playbackRate;
@@ -254,9 +215,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       window.clearTimeout(timeoutRef.current);
     }
     if (playing) {
+      // Touch / coarse pointer: keep controls longer so pause/speed stay reachable.
+      const hideMs =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(pointer: coarse)').matches
+          ? 3500
+          : 1000;
       timeoutRef.current = window.setTimeout(() => {
         setShowControls(false);
-      }, 1000);
+      }, hideMs);
     }
   }, [playing]);
 
@@ -271,15 +238,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [startHideTimer]);
 
   const handleFullscreen = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
 
-    const v = video as HTMLVideoElement & {
+    const v = videoEl as HTMLVideoElement & {
       webkitEnterFullscreen?: () => void;
       webkitSupportsFullscreen?: boolean;
     };
 
-    // iOS Safari: webkitEnterFullscreen on <video> (iPad works; iPhone may fallback to native)
     if (typeof v.webkitEnterFullscreen === 'function') {
       try {
         v.webkitEnterFullscreen();
@@ -288,30 +254,29 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           'webkitEnterFullscreen failed, trying native controls:',
           err,
         );
-        video.controls = true;
+        videoEl.controls = true;
       }
       return;
     }
 
-    // Standard Fullscreen API (desktop, Android)
-    if (typeof video.requestFullscreen === 'function') {
-      video
+    if (typeof videoEl.requestFullscreen === 'function') {
+      videoEl
         .requestFullscreen()
         .then(() => {
           if (videoRef.current) videoRef.current.controls = true;
         })
         .catch((err) => {
           console.warn('requestFullscreen failed:', err);
-          video.controls = true;
+          videoEl.controls = true;
         });
     } else {
-      video.controls = true;
+      videoEl.controls = true;
     }
   }, []);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
 
     const hideControls = () => {
       if (videoRef.current) videoRef.current.controls = false;
@@ -324,17 +289,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const handleWebkitEndFullscreen = () => hideControls();
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    video.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+    videoEl.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      video.removeEventListener(
+      videoEl.removeEventListener(
         'webkitendfullscreen',
         handleWebkitEndFullscreen,
       );
     };
   }, []);
 
-  // Show controls when video is paused
   useEffect(() => {
     if (!playing) {
       setShowControls(true);
@@ -344,7 +308,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     } else {
       startHideTimer();
     }
-    // Clean up timeout on unmount
     return () => {
       if (timeoutRef.current) {
         window.clearTimeout(timeoutRef.current);
@@ -370,21 +333,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <Box
         sx={{
           width: '100%',
-          aspectRatio: '16 / 9', // Enforce 16:9 aspect ratio
+          aspectRatio: '16 / 9',
           position: 'relative',
-          mt: 0, // Removed top margin for cleaner alignment
+          mt: 0,
         }}
         onMouseMove={handleMouseMove}
         onTouchStart={handleTouch}
       >
-        {/* Overlay Tabs — только если есть спектрограмма (BirdNET при записи) */}
-        {showControls && video.spectrogram_path && (
-          <ViewToggle view={view} onChange={setView} />
-        )}
-
-        {/* Tracks toggle: не привязываем к showControls — иначе при воспроизведении
-            переключатель исчезает вместе с остальными контролами */}
-        {view === 'video' && trackDetections.length > 0 && (
+        {trackDetections.length > 0 && (
           <Box
             sx={{
               position: 'absolute',
@@ -423,12 +379,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </Box>
         )}
 
-        {/* Track Bounding Box Overlay */}
-        {showTracks && view === 'video' && trackDetections.length > 0 && (
-          <TrackOverlay species={trackDetections} currentTime={progress} />
+        {showTracks && trackAnnotations.length > 0 && (
+          <AnnotationViewer tracks={trackAnnotations} currentTime={progress} />
         )}
 
-        {/* Active Species Overlay */}
         <CompactDetectionOverlay species={activeDetections} />
 
         {(!playing || showControls) && (
@@ -468,8 +422,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </Tooltip>
         )}
 
-        {/* Playback speed + Fullscreen */}
-        {view === 'video' && (!playing || showControls) && (
+        {(!playing || showControls) && (
           <Box
             sx={{
               position: 'absolute',
@@ -546,7 +499,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           sx={{
             height: '100%',
             bgcolor: 'background.paper',
-            display: view === 'video' ? 'block' : 'none',
             cursor: 'pointer',
           }}
           onClick={togglePlayPause}
@@ -574,27 +526,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             controls={false}
           />
         </Box>
-
-        <Box
-          sx={{
-            height: '100%',
-            bgcolor: 'background.paper',
-            display: view === 'audio' ? 'block' : 'none',
-          }}
-        >
-          {video.spectrogram_path && (
-            <SpectrogramPlayer
-              audioRef={videoRef}
-              playing={playing}
-              imageUrl={
-                resolveImageUrl(video.spectrogram_path) ||
-                `${BASE_URL}/${video.spectrogram_path}`.replace(/^\/{2,}/, '/')
-              }
-              detections={spectrogramDetections}
-              visible={view === 'audio'}
-            />
-          )}
-        </Box>
       </Box>
 
       {filteredDetections.length > 0 && (
@@ -603,7 +534,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           color="text.secondary"
           sx={{ display: 'block', mt: 1 }}
         >
-          {t('video.timelineHint')}
+          {t(canEdit ? 'video.timelineHint' : 'video.timelineHintPublic')}
         </Typography>
       )}
       {showTracksRegenHint && isAdmin && (
@@ -620,6 +551,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         progress={progress}
         detections={filteredDetections}
         onSeek={handleSeek}
+        showTechnicalProviderLabels={canEdit}
       />
     </Box>
   );

@@ -1,19 +1,17 @@
 /** Video details, neighbors, fusion trace, storage day navigation (#343). */
-import axios from 'axios';
-import type { TrackFrame } from '../types';
-import { BASE_API_URL, JOB_STATUS_POLL_TIMEOUT_MS, csrfFetch } from './client';
+import type { TrackFrame, Video } from '../types';
+import {
+  BASE_API_URL,
+  JOB_STATUS_POLL_TIMEOUT_MS,
+  apiFetch,
+} from './client';
 
-export const fetchVideo = async (id: string) => {
-  const response = await axios.get(`${BASE_API_URL}/videos/${id}`);
-  return response.data;
-};
+export const fetchVideo = async (id: string): Promise<Video> =>
+  apiFetch<Video>(`${BASE_API_URL}/videos/${id}`);
 
 /** Покадровые bbox — отдельно от GET /videos/:id (лёгкая первая отрисовка страницы). */
-export const fetchVideoDetectionFrames = async (id: string) => {
-  const response = await axios.get(
-    `${BASE_API_URL}/videos/${id}/detection-frames`,
-  );
-  return response.data as {
+export const fetchVideoDetectionFrames = async (id: string) =>
+  apiFetch<{
     tracks: Array<{
       id: number | null;
       species_id: number;
@@ -21,8 +19,7 @@ export const fetchVideoDetectionFrames = async (id: string) => {
       end_time: number;
       frames: TrackFrame[];
     }>;
-  };
-};
+  }>(`${BASE_API_URL}/videos/${id}/detection-frames`);
 
 export type VideoReidMatchItem = {
   video_species_id: number;
@@ -55,12 +52,8 @@ export type VideoReidMatchPayload = {
 
 export const fetchVideoReidMatch = async (
   id: string,
-): Promise<VideoReidMatchPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/videos/${id}/reid-match`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+): Promise<VideoReidMatchPayload> =>
+  apiFetch(`${BASE_API_URL}/videos/${id}/reid-match`);
 
 /** Prev/next video IDs for the selected day scope. */
 export type VideoNeighbors = {
@@ -78,14 +71,12 @@ export const fetchVideoNeighbors = async (
   id: string,
 ): Promise<VideoNeighbors> => {
   const tzOffset = new Date().getTimezoneOffset();
-  const response = await axios.get(`${BASE_API_URL}/videos/${id}/neighbors`, {
-    params: {
-      day_scope: 'local',
-      tz_offset_minutes: tzOffset,
-      cross_day: 1,
-    },
+  const q = new URLSearchParams({
+    day_scope: 'local',
+    tz_offset_minutes: String(tzOffset),
+    cross_day: '1',
   });
-  return response.data;
+  return apiFetch(`${BASE_API_URL}/videos/${id}/neighbors?${q}`);
 };
 
 export type FusionTraceLine = { field: string; value: string };
@@ -109,15 +100,8 @@ export type FusionTracePayload = {
 
 export const fetchVideoFusionTrace = async (
   id: number,
-): Promise<FusionTracePayload> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/videos/${id}/fusion-trace`,
-    {
-      withCredentials: true,
-    },
-  );
-  return response.data;
-};
+): Promise<FusionTracePayload> =>
+  apiFetch(`${BASE_API_URL}/videos/${id}/fusion-trace`);
 
 export const fetchNearestRecordingDay = async (
   date: string,
@@ -127,33 +111,24 @@ export const fetchNearestRecordingDay = async (
   direction: 'prev' | 'next';
   found: boolean;
 }> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/storage/nearest-recording-day`,
-    {
-      params: { date, direction },
-    },
-  );
-  return response.data;
+  const q = new URLSearchParams({ date, direction });
+  return apiFetch(`${BASE_API_URL}/storage/nearest-recording-day?${q}`);
 };
 
 /** Mark recording as favorite (retention may skip it when protect favorites is on). Contributor/admin. */
 export type PatchVideoRecordingBody = {
   favorite?: boolean;
-  behavior_label?: string | null;
-  behavior_confidence?: number | null;
 };
 
 export const patchVideoRecording = async (
   id: number,
   body: PatchVideoRecordingBody,
-): Promise<Record<string, unknown>> => {
-  const response = await axios.patch(
-    `${BASE_API_URL}/videos/${id}`,
-    body,
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<Record<string, unknown>> =>
+  apiFetch(`${BASE_API_URL}/videos/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
 export const patchVideoFavorite = async (
   id: number,
@@ -164,49 +139,27 @@ export const patchVideoFavorite = async (
 
 /** Delete video recording. Requires contributor or admin access. */
 export const deleteVideo = async (id: number): Promise<void> => {
-  const res = await csrfFetch(`${BASE_API_URL}/videos/${id}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
+  await apiFetch(`${BASE_API_URL}/videos/${id}`, { method: 'DELETE' });
 };
 
 /** Перегенерация YOLO-треков для одной записи (только админ при двух паролях). */
 export const regenerateTracksForSingleVideo = async (
   videoId: number,
   options?: { force?: boolean },
-): Promise<{ message: string; started: boolean; video_id: number }> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/videos/${videoId}/regenerate-tracks`,
-    { force: options?.force === true },
-    { withCredentials: true, timeout: JOB_STATUS_POLL_TIMEOUT_MS },
-  );
-  return response.data;
-};
-
-/** Пересборка спектрограммы для одной записи (только админ при двух паролях). */
-export const regenerateSpectrogramForSingleVideo = async (
-  videoId: number,
-): Promise<{ message: string; started: boolean; video_id: number }> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/videos/${videoId}/regenerate-spectrogram`,
-    {},
-    { withCredentials: true, timeout: JOB_STATUS_POLL_TIMEOUT_MS },
-  );
-  return response.data;
-};
+): Promise<{ message: string; started: boolean; video_id: number }> =>
+  apiFetch(`${BASE_API_URL}/videos/${videoId}/regenerate-tracks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ force: options?.force === true }),
+    signal: AbortSignal.timeout(JOB_STATUS_POLL_TIMEOUT_MS),
+  });
 
 export const mergeVideoSpecies = async (
   videoId: string | number,
   speciesId: number,
-): Promise<{ message: string; species_id: number; updated_count: number }> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/videos/${videoId}/merge-species`,
-    { species_id: speciesId },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<{ message: string; species_id: number; updated_count: number }> =>
+  apiFetch(`${BASE_API_URL}/videos/${videoId}/merge-species`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ species_id: speciesId }),
+  });

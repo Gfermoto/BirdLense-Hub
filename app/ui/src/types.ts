@@ -20,6 +20,8 @@ export interface SpeciesVisit {
     delta_kg: number;
     display_value: number;
     display_unit: 'kg' | 'g';
+    weight_change_grams?: number;
+    weight_trend?: 'up' | 'down' | 'stable';
   } | null;
   species: {
     id: number;
@@ -36,11 +38,16 @@ export interface SpeciesVisit {
     confidence: number;
     source: 'video' | 'audio';
     detection_provider?: string;
+    individual_nickname?: string | null;
+    bird_profile_id?: number | null;
   }[];
   /** Re-ID nickname from backend visit payload when present (#390 UI). */
   individual_nickname?: string | null;
-  /** Model-derived behavior events for this visit. */
-  behavior_events?: { label?: string }[];
+  bird_profile_id?: number | null;
+  /** Trigger semantics for timeline filtering (opencv/frigate/motion_sensor/scales/unknown). */
+  trigger_source?: string;
+  /** Hub camera id (video.cameras[].id) when known. */
+  camera_id?: string | null;
 }
 
 export interface TrackFrame {
@@ -59,6 +66,30 @@ export interface VideoSpecies {
   source: string;
   detection_provider?: string;
   individual_nickname?: string | null;
+  bird_profile_id?: number | null;
+  bird_profile_name?: string | null;
+  bird_profile_avatar_url?: string | null;
+  bird_profile_status?: string | null;
+  classifier_needs_review?: boolean;
+  review_reason?: string | null;
+  welfare_distance?: number | null;
+  classifier_entropy?: number | null;
+  classifier_top1_top2_margin?: number | null;
+  scoring_hint?: {
+    primary_provider?: string;
+    confidence?: number;
+    source?: string;
+    weighted_arbiter_enabled?: boolean;
+    arbiter_weights?: Record<string, number>;
+    needs_review?: boolean;
+    review_reason?: string | null;
+  };
+  semantic_conflict?: boolean;
+  semantic_review_history?: Array<{
+    at?: string | null;
+    source?: string | null;
+    note?: string | null;
+  }>;
   /** Relative path or full URL — use resolveImageUrl() */
   image_url?: string;
   frames?: TrackFrame[];
@@ -82,7 +113,6 @@ export interface Video {
   start_time: string;
   end_time: string;
   video_path: string;
-  spectrogram_path: string;
   favorite: boolean;
   weather: Weather;
   species: VideoSpecies[];
@@ -97,9 +127,9 @@ export interface Video {
     delta_kg: number;
     display_value: number;
     display_unit: 'kg' | 'g';
+    weight_change_grams?: number;
+    weight_trend?: 'up' | 'down' | 'stable';
   } | null;
-  behavior_label?: string | null;
-  behavior_confidence?: number | null;
 }
 
 /** См. OpenAPI `BirdFood`; для списка из API поля id/name/active приходят заполненными. */
@@ -128,12 +158,6 @@ export type ProcessorNightProfileOverrides = {
   min_confidence_binary?: number;
   min_confidence_binary_bird?: number;
   min_confidence_binary_rodent?: number;
-  /** Только OpenVINO: нижняя страховка для ``track(conf)`` (см. detection_strategy). */
-  openvino_binary_track_ultralytics_conf?: number | null;
-  /** Только OpenVINO: множитель conf Bird при сравнении с порогом; сырая conf в данных не меняется. */
-  openvino_binary_bird_score_scale?: number | null;
-  /** Только OpenVINO: подмена порога Bird (null = как min_confidence_binary_bird). */
-  openvino_min_confidence_binary_bird?: number | null;
   /** @deprecated см. min_confidence_binary_rodent */
   min_confidence_binary_squirrel?: number;
   min_track_duration?: number;
@@ -220,9 +244,6 @@ export interface Settings {
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     /** Строже только для боксов Bird. null / пусто в UI → как min_confidence_binary. */
     min_confidence_binary_bird?: number | null;
-    openvino_binary_track_ultralytics_conf?: number | null;
-    openvino_binary_bird_score_scale?: number | null;
-    openvino_min_confidence_binary_bird?: number | null;
     /** Мягче для Rodent (грызуны). null → как min_confidence_binary. */
     min_confidence_binary_rodent?: number | null;
     /** @deprecated Используйте min_confidence_binary_rodent; читается из YAML для совместимости */
@@ -253,14 +274,23 @@ export interface Settings {
     save_dataset_crops?: boolean;
     dataset_min_confidence?: number;
     classifier_fallback_bird?: boolean; // Keep generic detector label when classifier stays uncertain
-    spectrogram_px_per_sec: number; // Spectrogram pixels per second
-    /** If true, generate spectrogram for every recording; if false, only when BirdNET MQTT in window */
-    generate_spectrogram_always?: boolean;
     included_bird_families: string[]; // List of bird families to use in detections
     adaptive_profiles?: ProcessorAdaptiveProfiles;
     frame_processing_warn_ms?: number;
     inference_lores_px?: number;
+    inference_lores_wh?: [number, number];
+    detect_use_native_resolution?: boolean;
+    detection_quality_assumed_fps?: number;
     binary_imgsz?: number;
+    background_subtraction_enabled?: boolean;
+    background_subtraction_history?: number;
+    background_subtraction_var_threshold?: number;
+    background_subtraction_min_fg_ratio?: number;
+    background_subtraction_warmup_frames?: number;
+    background_subtraction_detect_shadows?: boolean;
+    static_object_suppression_enabled?: boolean;
+    static_scene_bird_min_confidence?: number;
+    static_temporal_max_jitter_px?: number;
     classification_scheduler?: string;
     max_classifications_per_frame?: number;
     max_blur_checks?: number;
@@ -274,22 +304,21 @@ export interface Settings {
     key_frame_limit?: number;
     keep_recording_when_no_detections?: boolean;
     detection_strategy?: string;
-    inference_backend?: 'auto' | 'torch' | 'openvino' | 'onnxruntime' | string;
+    inference_backend?: 'auto' | 'torch' | 'onnxruntime' | 'tensorrt' | string;
     classifier_inference_backend?:
       | 'auto'
       | 'torch'
-      | 'openvino'
       | 'onnxruntime'
+      | 'tensorrt'
       | string;
     inference_device?: string;
     classifier_inference_device?: string;
     detector_weight_contract?: 'off' | 'warn' | 'enforce' | string;
     models?: {
       binary?: string;
-      binary_openvino?: string;
+      binary_onnx?: string;
+      binary_tensorrt?: string;
       classifier?: string;
-      classifier_openvino?: string;
-      behavior_openvino?: string;
     };
     classifier_uncertainty_entropy_ge?: number | null;
     classifier_uncertainty_margin_le?: number | null;
@@ -311,6 +340,8 @@ export interface Settings {
     track_regen_frame_step?: number;
     track_regen_detection_strategy?: string;
     track_regen_lores_px?: number;
+    track_regen_lores_wh?: [number, number];
+    track_regen_binary_only?: boolean;
     track_regen_iou_id_fallback?: boolean;
     track_regen_iou_match_threshold?: number | null;
     track_regen_video_timeout_sec?: number;
@@ -320,16 +351,32 @@ export interface Settings {
     track_regen_ignore_regional_species?: boolean;
     track_regen_match_live_pipeline?: boolean;
     track_regen_parallel_auto_with_manual?: boolean;
-    /** Baseline behavior head (#416): logistic on finalize when enabled. */
-    behavior_recognition?: {
-      enabled?: boolean;
-      weights_path?: string;
-      inference_backend?: 'auto' | 'logistic_json' | 'openvino' | string;
-      openvino_fallback_logistic?: boolean;
-      max_runtime_detections?: number;
-      confidence_store_min?: number;
-      confidence_review_threshold?: number;
-    };
+    /** Lores YOLO gate before main-stream record (go2rtc). */
+    detect_first_enabled?: boolean;
+    detect_first_window_seconds?: number;
+    detect_first_max_frames?: number;
+    detect_first_confirm_min_hits?: number;
+    detect_first_confirm_min_track_seconds?: number;
+    /** Per-camera id → processor field overrides (win over tuning_role preset). */
+    camera_overrides?: Record<string, Record<string, unknown>>;
+    /** Role presets referenced by video.cameras[].tuning_role. */
+    camera_tuning_by_role?: Record<string, Record<string, unknown>>;
+    max_box_area_norm?: number;
+    scoring_giant_box_area_frac?: number;
+    detect_record_time_offset_sec?: number;
+    notify_preview_source?: 'auto' | 'record_hires' | 'best_frame_lores' | string;
+    notify_preview_crop_pad_frac?: number;
+    track_static_reject_enabled?: boolean;
+    track_static_reject_min_duration_sec?: number;
+    track_static_reject_min_frames?: number;
+    scoring_default_low_threshold?: number;
+    scoring_default_high_threshold?: number;
+    scoring_relaxed_min_confidence?: number;
+    scoring_frigate_prior_boost?: number;
+    scoring_moving_roi_review_enabled?: boolean;
+    scoring_moving_roi_min_motion_score?: number;
+    scene_adaptive_conf_enabled?: boolean;
+    linear_live_scoring_engine_enabled?: boolean;
   };
   secrets: {
     openweather_api_key: string; // API key for OpenWeather
@@ -352,22 +399,28 @@ export interface Settings {
     cameras?: Array<{
       id?: string;
       stream_name?: string;
-      /** Optional stream for motion/YOLO (can be direct low-res camera feed). */
+      /** Required when video.source=go2rtc: lores motion/YOLO; stream_name is main record. */
       detect_stream_name?: string;
       name?: string;
+      /** Maps to processor.camera_tuning_by_role preset (feeder_close / feeder_far). */
+      tuning_role?: string;
     }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
-    /** cpu | intel — VA-API vs CPU для записи (intel = уже H.264). */
+    /** jetson (NVENC на Orin) | cpu (libx264) — кодек для записи видео. */
     encoding?: string;
-    /** При encoding=intel: true — h264_vaapi для файла записи; false — libx264 (стабильнее на части iGPU). */
-    record_with_vaapi?: boolean;
-    /** auto | opencv | ffmpeg_vaapi — live capture path for motion/detection. */
-    capture_backend?: 'auto' | 'opencv' | 'ffmpeg_vaapi' | string;
+    /** true — аппаратное кодирование записи (NVENC на Orin/jetson); false — libx264 (CPU). */
+    record_hw_encode?: boolean;
+    /** auto | opencv | ffmpeg_nvmpi — live capture path for motion/detection. */
+    capture_backend?: 'auto' | 'opencv' | 'ffmpeg_nvmpi' | string;
     /** h264 | copy — перекодировать RTSP в H.264 для браузера или копировать веб-кодек как есть. */
     record_stream_codec?: 'h264' | 'copy' | string;
     video_width?: number;
     video_height?: number;
+    /** Legacy file-replay; ignored unless true. Not in UI. */
+    force_recording_resolution?: boolean;
+    /** 0 = auto/probe from stream (SOTA-02). */
+    detect_fps?: number;
   };
   mqtt?: {
     broker?: string;
@@ -452,6 +505,10 @@ export interface Settings {
   triggers?: {
     opencv?: {
       enabled?: boolean;
+      detection_method?: 'frame_diff' | 'mog2' | 'hybrid' | string;
+      mog2_var_threshold?: number;
+      mog2_min_contour_area?: number;
+      mog2_detect_shadows?: boolean;
       check_every_n_frames?: number;
       diff_threshold?: number;
       min_contour_area?: number;
@@ -508,6 +565,9 @@ export interface Settings {
     absorb_generic_bird?: boolean;
     absorb_generic_bird_overlap_min_sec?: number;
     absorb_generic_bird_min_classifier_confidence?: number;
+    bbox_iou_gate_enabled?: boolean;
+    bbox_iou_gate_min?: number;
+    bbox_iou_gate_action?: 'warn' | 'reject' | string;
   };
   mcp?: {
     enabled?: boolean;
@@ -540,30 +600,42 @@ export interface Species {
   /** eBird regional top ∪ BirdNET-heard (Bird Directory filter). */
   regional_scope?: boolean;
   count?: number;
+  /** Allowlist card missing photo/description (species-directory API). */
+  catalog_card_incomplete?: boolean;
 }
 
 export interface OverviewTopSpecies {
   id: number;
   name: string;
   detections: number[]; // hourly visit counts (24), legacy field name
+  /** Generic Bird/Rodent from detector — not a named SpeciesVisit */
+  unidentified?: boolean;
 }
 
 export interface OverviewStats {
   uniqueSpecies: number;
-  /** Visit count for the day (SpeciesVisit rows), not recognition segments */
+  /** Named-species visit count (SpeciesVisit rows) */
   totalDetections: number;
-  /** Visits overlapping the last hour */
+  /** Visits overlapping the last hour (named + unidentified segments) */
   lastHourDetections: number;
+  /** YOLO/MQTT segments labeled generic Bird */
+  unidentifiedBirdDetections?: number;
+  /** Detector segments labeled Rodent */
+  rodentDetections?: number;
+  /** Named visits + unidentified bird + rodent segments */
+  totalActivity?: number;
   videoDuration: number;
   audioDuration: number;
   busiestHour: number;
   avgVisitDuration: number;
   detectionByProvider?: Record<string, number>;
+  triggerBySource?: Record<string, number>;
 }
 
 export interface OverviewLastDetection {
   species_name: string;
   start_time: string; // ISO datetime
+  unidentified?: boolean;
 }
 
 export interface OverviewData {

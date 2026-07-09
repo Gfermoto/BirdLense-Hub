@@ -18,6 +18,7 @@ import VideoCall from '@mui/icons-material/VideoCall';
 import Mic from '@mui/icons-material/Mic';
 import Share from '@mui/icons-material/Share';
 import MonitorWeightIcon from '@mui/icons-material/MonitorWeight';
+import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -31,7 +32,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { downloadDetectionCropForINaturalist } from '../api/dataset';
 import { getApiErrorMessage } from '../api/api';
 import { invalidateLocalSpeciesEditCaches } from '../api/invalidateLocalSpeciesCaches';
-import { updateDetectionNickname } from '../api/speciesOverviewDetections';
+import {
+  deleteDetection,
+  deleteVisit,
+  updateDetectionNickname,
+} from '../api/speciesOverviewDetections';
+import { UnlinkBirdProfileButton } from './UnlinkBirdProfileButton';
+import { DeleteBirdProfileButton } from './DeleteBirdProfileButton';
+import { getVisitBirdProfileId } from '../pages/Timeline/timelineFilters';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatDuration } from '../utils/timeUtils';
 import { formatLocalDateTime, formatLocalTime } from '../util';
@@ -194,6 +202,7 @@ export const VisitCard = memo(function VisitCard({
 }: VisitCardProps) {
   const { t } = useTranslation();
   const { canEdit } = useProtectedArea();
+  const quickCorrectionOnly = true;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -208,6 +217,7 @@ export const VisitCard = memo(function VisitCard({
     (d) => d.source === 'video' && d.id,
   )?.id;
   const firstVideoId = (visit.detections ?? []).find((d) => d.video_id)?.video_id;
+  const birdProfileId = getVisitBirdProfileId(visit);
   const nicknameMutation = useMutation({
     mutationFn: (value: string | null) =>
       updateDetectionNickname(Number(firstVideoDetectionId), value),
@@ -216,14 +226,42 @@ export const VisitCard = memo(function VisitCard({
       setSaveSuccess(t('video.nicknameSaved'));
     },
   });
-  const behaviorLabels = [
-    ...new Set(
-      (visit.behavior_events ?? [])
-        .map((e) => String(e.label || '').trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  ];
-  const behaviorText = behaviorLabels.join(', ');
+  const deleteVisitMutation = useMutation<unknown, unknown, void>({
+    mutationFn: () => {
+      if (visit.timeline_kind === 'unlinked_video' && firstVideoDetectionId) {
+        return deleteDetection(Number(firstVideoDetectionId), {
+          source: 'timeline',
+        });
+      }
+      return deleteVisit(Number(visit.id), { source: 'timeline' });
+    },
+    onSuccess: () => {
+      invalidateLocalSpeciesEditCaches(queryClient, firstVideoId);
+      setSaveSuccess(
+        visit.timeline_kind === 'unlinked_video'
+          ? t('visitCard.deleteDetectionSuccess')
+          : t('visitCard.deleteVisitSuccess'),
+      );
+    },
+    onError: (err) => {
+      setSaveError(getApiErrorMessage(err, t('errors.loadSightings')));
+    },
+  });
+  const detections = visit.detections ?? [];
+  const bestConfidence = detections.length
+    ? Math.max(...detections.map((d) => Number(d.confidence) || 0))
+    : null;
+  const triggerSource = String(visit.trigger_source || 'unknown').toLowerCase();
+  const triggerLabel =
+    triggerSource === 'opencv'
+      ? t('timeline.triggerSourceOpencv')
+      : triggerSource === 'frigate'
+        ? t('timeline.triggerSourceFrigate')
+        : triggerSource === 'motion_sensor'
+          ? t('timeline.triggerSourceMotionSensor')
+          : triggerSource === 'scales'
+            ? t('timeline.triggerSourceScales')
+            : t('timeline.triggerSourceUnknown');
 
   const startDateTime = new Date(visit.start_time);
   const isToday = new Date().toDateString() === startDateTime.toDateString();
@@ -271,14 +309,35 @@ export const VisitCard = memo(function VisitCard({
                 >
                   {visit.species.name}
                 </Typography>
-                {(nickname || behaviorText) && (
-                  <Typography variant="body2" color="text.secondary">
-                    {nickname ? `${t('video.nickname')}: ${nickname}` : ''}
-                    {nickname && behaviorText ? ' • ' : ''}
-                    {behaviorText ? `${t('video.behavior')}: ${behaviorText}` : ''}
-                  </Typography>
+                {(nickname) && (
+                  <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
+                    <Typography variant="body2" color="text.secondary">
+                      {nickname ? `${t('video.nickname')}: ${nickname}` : ''}
+                    </Typography>
+                    {nickname && firstVideoDetectionId && canEdit ? (
+                      <>
+                        <UnlinkBirdProfileButton
+                          detectionId={Number(firstVideoDetectionId)}
+                          videoId={firstVideoId}
+                          profileName={nickname}
+                        />
+                        {birdProfileId ? (
+                          <DeleteBirdProfileButton
+                            profileId={birdProfileId}
+                            profileName={nickname}
+                            onDeleted={() =>
+                              invalidateLocalSpeciesEditCaches(
+                                queryClient,
+                                firstVideoId,
+                              )
+                            }
+                          />
+                        ) : null}
+                      </>
+                    ) : null}
+                  </Box>
                 )}
-                {firstVideoDetectionId && canEdit && (
+                {firstVideoDetectionId && canEdit && !quickCorrectionOnly && (
                   <Box mt={0.5}>
                     {!editingNickname ? (
                       <Button
@@ -356,6 +415,30 @@ export const VisitCard = memo(function VisitCard({
               </Tooltip>
             </Box>
             <Box display="flex" gap={1.5} mt={1.5} flexWrap="wrap">
+              {bestConfidence != null ? (
+                <Chip
+                  label={t('visitCard.bestConfidence', {
+                    value: Math.round(bestConfidence * 100),
+                  })}
+                  size="small"
+                  color={bestConfidence >= 0.7 ? 'success' : 'default'}
+                  sx={{ height: 28 }}
+                />
+              ) : null}
+              <Chip
+                label={t('visitCard.detectionsCount', {
+                  count: detections.length,
+                })}
+                size="small"
+                variant="outlined"
+                sx={{ height: 28 }}
+              />
+              <Chip
+                label={t('timeline.triggerSource') + ': ' + triggerLabel}
+                size="small"
+                variant="outlined"
+                sx={{ height: 28 }}
+              />
               {visit.timeline_kind !== 'unlinked_video' ? (
                 <Chip
                   icon={
@@ -376,6 +459,38 @@ export const VisitCard = memo(function VisitCard({
                   sx={{ height: 28 }}
                 />
               )}
+              {canEdit &&
+              ((visit.timeline_kind !== 'unlinked_video' && visit.id > 0) ||
+                (visit.timeline_kind === 'unlinked_video' &&
+                  !!firstVideoDetectionId)) ? (
+                <Button
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  startIcon={<DeleteOutline fontSize="small" />}
+                  disabled={deleteVisitMutation.isPending}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        visit.timeline_kind === 'unlinked_video'
+                          ? t('visitCard.deleteDetectionConfirm', {
+                              name: visit.species.name,
+                            })
+                          : t('visitCard.deleteVisitConfirm', {
+                              name: visit.species.name,
+                            }),
+                      )
+                    ) {
+                      return;
+                    }
+                    deleteVisitMutation.mutate();
+                  }}
+                >
+                  {visit.timeline_kind === 'unlinked_video'
+                    ? t('visitCard.deleteDetection')
+                    : t('visitCard.deleteVisit')}
+                </Button>
+              ) : null}
               {(() => {
                 const sec =
                   visit.video_duration_seconds != null &&

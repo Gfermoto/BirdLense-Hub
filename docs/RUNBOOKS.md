@@ -1,11 +1,47 @@
-# Runbooks (moved)
+# Runbook оператора (Orin)
 
-> **Do not edit this stub.** It exists for old bookmarks and external links to `docs/RUNBOOKS.md`.
+## Ежедневные операции
 
-This page moved to **current documentation**:
+### Проверка здоровья
 
-**[user/runbooks.md](user/runbooks.md)**
+```bash
+cd app && make verify
+# или
+curl http://<host>:8085/api/health
+```
 
----
+### Логи
 
-[Documentation index](index.md) · [Contributor guide](contributor/documentation.md)
+```bash
+cd app && make logs
+# или конкретный сервис
+docker compose logs -f birdlense
+```
+
+### Перезапуск
+
+```bash
+cd app && make stop && make start
+```
+
+### Полное обновление
+
+```bash
+cd app && git pull && make build && make stop && make start
+```
+
+### Деплой на удалённый Orin
+
+1. Настроить `scripts/deploy.local.sh`
+2. `make deploy`
+
+## Проблемы
+
+| Симптом | Действие |
+|---------|----------|
+| 403 на API | Проверить PROCESSOR_SECRET в .env |
+| GPU не виден | `docker run --rm --gpus all nvidia/cuda:12.2-base nvidia-smi` |
+| Пустые записи | Проверить RTSP поток, GStreamer pipeline |
+| Процессор не стартует | `make logs` — проверить пути к ONNX файлам |
+
+См. [`user/runbooks.md`](user/runbooks.md) · [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).

@@ -99,7 +99,7 @@ ensure_venv_docs() {
 }
 
 log "verify-prod-env.sh (A1 CI parity / synthetic secrets)"
-SYNTH_SECRET="$(printf 'ci_%028d' 0)"
+SYNTH_SECRET="$(printf 'ci_%029d' 0)"
 VERIFY_PROD_ENV=1 BIRDLENSE_STRICT_API_AUTH=1 \
   FLASK_SECRET_KEY="${SYNTH_SECRET}" \
   PROCESSOR_SECRET="${SYNTH_SECRET}" \
@@ -120,6 +120,20 @@ ensure_venv_ci
   env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/ruff" format web/ processor/src/ --check
   env -u PIP_USER PYTHONNOUSERSITE=1 PYTHONPATH="${PWD}:${PWD}/web" \
     "${VENV_CI}/bin/python" -m pytest web/tests/ -q --tb=short
+)
+
+log "processor: threshold + detector config guards (lightweight)"
+(
+  cd "${ROOT}/app"
+  env -u PIP_USER PYTHONNOUSERSITE=1 PYTHONPATH="${PWD}:${PWD}/processor/src" \
+    "${VENV_CI}/bin/python" -m pytest \
+    processor/tests/test_threshold_resolution.py \
+    processor/tests/test_welfare_runtime.py \
+    processor/tests/test_reid_runtime.py \
+    processor/tests/test_encoding_utils.py \
+    processor/tests/test_decision_trace_builder.py \
+    -q --tb=short
+  env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/python" "${ROOT}/scripts/verify_merged_detector_config.py"
 )
 
 log "VERSION / docs version"
@@ -180,6 +194,25 @@ log "Radon (информативно, без падения)"
   env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/radon" cc -a -s web/ processor/src/ || true
 )
 
+log "Stream quality matrix gate (#557 Stream E)"
+"${PYTHON}" "${ROOT}/scripts/verify_stream_quality_metrics.py" \
+  --contract "docs/reports/stream_quality/stream_quality_contract.json" \
+  --quality-outcome "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
+  --favorites-benchmark "docs/reports/favorites_ab_benchmark.json" \
+  --champion-shadow "docs/reports/ml_shadow/champion_challenger_latest.json" \
+  --out-json "docs/reports/stream_quality/stream_quality_latest.json" \
+  --out-md "docs/reports/stream_quality/stream_quality_latest.md"
+
+log "Domain closure package gate (#557 final artifacts)"
+"${PYTHON}" "${ROOT}/scripts/verify_domain_closure_package.py" \
+  --contract "docs/reports/domain_finetune/closure_package_contract.json" \
+  --closure-doc "docs/reports/domain_finetune/closure_package_30_60_90.md" \
+  --domain-loop "docs/reports/domain_finetune/domain_finetune_loop_latest.json" \
+  --stream-quality "docs/reports/stream_quality/stream_quality_latest.json" \
+  --champion-shadow "docs/reports/ml_shadow/champion_challenger_latest.json" \
+  --out-json "docs/reports/domain_finetune/closure_package_latest.json" \
+  --out-md "docs/reports/domain_finetune/closure_package_latest.md"
+
 if [[ "${CI_FULL_DOCKER}" != "1" ]]; then
   log "Docker-слой пропущен (CI_FULL_DOCKER=1 для processor+web тестов в образе и E2E smoke)"
   log "Готово (локальный CI без Docker)."
@@ -198,12 +231,12 @@ trap cleanup_stack EXIT
 
 log "Веса processor (при необходимости)"
 for attempt in 1 2 3; do
-  if "${ROOT}/scripts/fetch-processor-weights.sh"; then
+  if "${ROOT}/scripts/fetch-processor-models-orin.sh"; then
     break
   fi
   sleep $((attempt * 10))
   if [[ "${attempt}" -eq 3 ]]; then
-    echo "fetch-processor-weights.sh: не удалось после 3 попыток" >&2
+    echo "fetch-processor-models-orin.sh: не удалось после 3 попыток" >&2
     exit 1
   fi
 done

@@ -1,21 +1,24 @@
+#!/usr/bin/env bash
 # Локальные настройки деплоя — скопируйте в deploy.local.sh
 # cp scripts/deploy.local.sh.example scripts/deploy.local.sh
 # deploy.local.sh не коммитится в git
 #
-# Важно: держите активным ОДИН режим — LAN (на площадке в той же сети) или VPS (удалённо).
-# Перед поездкой на LAN / возвратом к удалёнке — переключите блоки ниже.
+# Важно: держите активным ОДИН режим — A (LAN), B (VPS1) или C (VPS2).
+# Перед поездкой на LAN / сменой VPS — переключите блоки ниже.
 #
 # Публичный доступ без домена: достаточно http://IP:порт в DEPLOY_URL и (при CORS) CORS_ORIGINS.
 # Отдельный reverse proxy и TLS — позже; до тех пор не блокируйте деплой их отсутствием.
+# Пользователь SSH задаётся в DEPLOY_HOST (user@host); отдельной DEPLOY_USER в deploy.sh нет.
 
 # =============================================================================
 # Режим A — на площадке (LAN): пара дней в сети с сервером
 # =============================================================================
-export DEPLOY_HOST="root@192.168.1.11"
-unset DEPLOY_SSH_PORT
-export DEPLOY_URL="http://192.168.1.11:8085"
+# export DEPLOY_HOST="root@192.168.1.11"
+# unset DEPLOY_SSH_PORT
+# export DEPLOY_URL="http://192.168.1.11:8085"
+# export DEPLOY_REMOTE_DIR="/root/BirdLense"
 # CORS на сервере (app/.env): например CORS_ORIGINS=http://192.168.1.11:8085
-
+#
 # Или ~/.ssh/config:
 #   Host birdlense-lan
 #     HostName 192.168.1.11
@@ -24,22 +27,42 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # export DEPLOY_HOST="birdlense-lan"
 
 # =============================================================================
-# Режим B — удалённо (VPS / публичный URL): раскомментируйте и закомментируйте блок A
+# Режим B — VPS1 (birdlense.eyera.info, root, SSH 2222)
 # =============================================================================
-# unset DEPLOY_SSH_PORT
-# export DEPLOY_HOST="root@203.0.113.10"
+# export DEPLOY_HOST="root@185.218.111.196"
 # export DEPLOY_SSH_PORT="2222"
-# export DEPLOY_URL="http://185.218.111.196:8085"
-# CORS на сервере (app/.env): например CORS_ORIGINS=http://185.218.111.196:8085
-#
-# Опционально A1: перед rsync прогнать verify-prod-env по локальной копии server app/.env:
-# export RUN_VERIFY_PROD_BEFORE_DEPLOY=1
-# export VERIFY_PROD_ENV_FILE=/path/to/copy-of-server.env   # по умолчанию: app/.env в корне репо
-# По умолчанию strict-quality не блокирует deploy (только отчёт в логах).
-# export DEPLOY_STRICT_QUALITY_REQUIRED=1  # включить blocking режим для strict-quality
-
-# Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
+# export DEPLOY_URL="https://birdlense.eyera.info"
 # export DEPLOY_REMOTE_DIR="/root/BirdLense"
+# CORS на сервере (app/.env): например CORS_ORIGINS=https://birdlense.eyera.info
+#
+# Или ~/.ssh/config:
+#   Host birdlense-vps
+#     HostName 185.218.111.196
+#     Port 2222
+#     User root
+# export DEPLOY_HOST="birdlense-vps"
+#
+# Опционально: перед rsync прогнать verify-prod-env по локальной копии server app/.env:
+# export RUN_VERIFY_PROD_BEFORE_DEPLOY=1
+# export VERIFY_PROD_ENV_FILE=/path/to/copy-of-server.env
+# export DEPLOY_STRICT_QUALITY_REQUIRED=1
+# export DEPLOY_MIN_INTERVAL_MINUTES=20
+# export DEPLOY_MIN_INTERVAL_BYPASS=1  # только для аварийного исключения
+
+# =============================================================================
+# Режим C — VPS2 (aeon-stack, gfer, SSH 2223, UI по IP:8085)
+# =============================================================================
+# export DEPLOY_HOST="gfer@185.218.111.196"
+# export DEPLOY_SSH_PORT="2223"
+# export DEPLOY_URL="http://185.218.111.196:8085"
+# export DEPLOY_REMOTE_DIR="/home/gfer/BirdLense"
+# CORS на сервере (app/.env): CORS_ORIGINS=http://185.218.111.196:8085
+#
+# Первый деплой / bootstrap (убрать после стабилизации):
+# export DEPLOY_MIN_INTERVAL_BYPASS=1
+# export BIRDLENSE_SKIP_CONFIG_DRIFT_GATE=1
+# export BIRDLENSE_SKIP_OUTCOME_METRICS_GATE=1
+# VPS2 (2 vCPU): export BIRDLENSE_COMPOSE_CPUS=1.9
 
 # Секреты (make deploy сольёт в app/.env на сервере, если заданы):
 # export FLASK_SECRET_KEY="..."
@@ -50,7 +73,31 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # export BIRDLENSE_STRICT_API_AUTH=1
 # export BIRDLENSE_UI_API_KEY="..."   # для curl/интеграций без браузерной сессии
 
-# Один сервер с Intel iGPU: VA-API (видео) + OpenVINO GPU при пробросе DRI (deploy.sh генерирует docker-compose.override.yml).
-# В user_config: processor.inference_backend: openvino (или auto), models.binary_openvino, inference_device: intel:gpu
-# Либо в app/.env на сервере: BIRDLENSE_INFERENCE_DEVICE=intel:gpu (перекрывает пустой inference_device в YAML).
-# Если без renderD* деплой не должен проходить как «полный GPU»: export BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1
+
+# =============================================================================
+# Режим D — VPS Orin remote (gfer, SSH 2225, UI :8088)
+# =============================================================================
+# export DEPLOY_HOST="gfer@185.218.111.196"
+# export DEPLOY_SSH_PORT="2225"
+# export DEPLOY_URL="http://185.218.111.196:8088"
+# export DEPLOY_REMOTE_DIR="/home/gfer/BirdLense"
+# export BIRDLENSE_PLATFORM=orin
+# CORS на сервере (app/.env): CORS_ORIGINS=http://185.218.111.196:8088
+#
+# Первый деплой / bootstrap (убрать после стабилизации):
+# export DEPLOY_MIN_INTERVAL_BYPASS=1
+# export BIRDLENSE_SKIP_CONFIG_DRIFT_GATE=1
+# export BIRDLENSE_SKIP_OUTCOME_METRICS_GATE=1
+
+# =============================================================================
+# Платформа — Orin (единственная)
+# =============================================================================
+# export BIRDLENSE_PLATFORM=orin   # дефолт
+# Модели на Orin: bash scripts/fetch-processor-models-orin.sh
+# make deploy — rsync на DEPLOY_HOST, build + start на целевом Orin.
+# user_config.yaml на сервере не перезаписывается rsync.
+# См. app/app_config/user_config.orin.example.yaml и scripts/user-config.orin-lab.partial.yaml
+# Пример Orin на площадке (LAN):
+# export DEPLOY_HOST="gfer@192.168.1.127"
+# export DEPLOY_URL="http://192.168.1.127:8085"
+#

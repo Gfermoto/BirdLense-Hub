@@ -1,9 +1,11 @@
 """Overview, region, migration calendar, timeline, export, PDF report, unknowns (#198)."""
 
 from datetime import timedelta
+import os
 
 from flask import Response, request
 from app_config.app_config import app_config
+from app_config.trigger_config import get_active_trigger_names
 from auth import ui_sensitive_export_access
 from models import db
 from services.cache import cache_get, cache_set
@@ -41,6 +43,12 @@ from routes.ui_timeline_helpers import build_merged_timeline_items
 def _favorite_only_from_request() -> bool:
     raw = (request.args.get("favorite_only") or request.args.get("favorites") or "").strip().lower()
     return raw in ("1", "true", "yes", "on")
+
+
+def _allowed_timeline_trigger_sources() -> set[str]:
+    mqtt_broker = os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker")
+    active = get_active_trigger_names(app_config, mqtt_broker=mqtt_broker)
+    return {"all", *[str(x or "").strip().lower() for x in active if str(x or "").strip()]}
 
 
 def register_ui_overview_timeline_routes(app):
@@ -221,6 +229,9 @@ def register_ui_overview_timeline_routes(app):
         hour_param = request.args.get("hour", type=int)
         start_time = request.args.get("start_time")
         end_time = request.args.get("end_time")
+        trigger_source = request.args.get("trigger_source", "all").strip().lower()
+        if trigger_source not in _allowed_timeline_trigger_sources():
+            return {"error": "trigger_source is invalid"}, 400
 
         try:
             start_dt, end_dt = resolve_timeline_utc_window(
@@ -234,17 +245,32 @@ def register_ui_overview_timeline_routes(app):
             return {"error": str(exc)}, 400
         fav = 1 if _favorite_only_from_request() else 0
         if date_param:
-            tck = f"timeline:local:{date_param}:{time_of_day}:{hour_param}:f{fav}"
+            tck = f"timeline:local:{date_param}:{time_of_day}:{hour_param}:f{fav}:t{trigger_source}"
         else:
-            tck = f"timeline:{start_time}:{end_time}:f{fav}"
+            tck = f"timeline:{start_time}:{end_time}:f{fav}:t{trigger_source}"
+
+        if end_dt - start_dt > timedelta(days=1):
+            return {"error": ("The interval between start_time and end_time must not exceed 1 day")}, 400
+
+        limit_raw = request.args.get("limit", type=int)
+        offset_raw = request.args.get("offset", type=int) or 0
+        paginated = limit_raw is not None
+        if paginated:
+            tck = f"{tck}:l{limit_raw}:o{offset_raw}"
         hit, tcached = cache_get(tck)
         if hit:
             return tcached
 
-        if end_dt - start_dt > timedelta(days=1):
-            return {"error": "The interval between start_time and end_time must not exceed 1 day"}, 400
-
-        response = build_merged_timeline_items(db.session, start_dt, end_dt, favorite_only=bool(fav))
+        response = build_merged_timeline_items(
+            db.session,
+            start_dt,
+            end_dt,
+            favorite_only=bool(fav),
+            trigger_source=trigger_source,
+            active_trigger_sources=_allowed_timeline_trigger_sources() - {"all"},
+            limit=limit_raw,
+            offset=offset_raw,
+        )
         cache_set(tck, response, CACHE_TIMELINE_SEC)
         return response
 
@@ -258,6 +284,9 @@ def register_ui_overview_timeline_routes(app):
         hour_param = request.args.get("hour", type=int)
         start_time = request.args.get("start_time")
         end_time = request.args.get("end_time")
+        trigger_source = request.args.get("trigger_source", "all").strip().lower()
+        if trigger_source not in _allowed_timeline_trigger_sources():
+            return {"error": "trigger_source is invalid"}, 400
         fmt = request.args.get("format", "json").lower()
 
         fmt_err = validate_timeline_export_format(fmt)
@@ -283,6 +312,8 @@ def register_ui_overview_timeline_routes(app):
             start_dt,
             end_dt,
             favorite_only=_favorite_only_from_request(),
+            trigger_source=trigger_source,
+            active_trigger_sources=_allowed_timeline_trigger_sources() - {"all"},
         )
         rows = build_timeline_export_rows(merged)
         body, mimetype, headers = build_timeline_export_response_parts(
@@ -332,10 +363,12 @@ def register_ui_overview_timeline_routes(app):
         start_time = request.args.get("start_time")
         end_time = request.args.get("end_time")
         limit = request.args.get("limit", 100, type=int)
+        queue = request.args.get("queue")
+        review_reason = request.args.get("review_reason")
 
         uck = (
             f"unknowns:{date_param or start_time}:{time_of_day}:{hour_param}:"
-            f"{end_time}:{limit}:{app_config.get('ui.unknown_confidence_threshold')}"
+            f"{end_time}:{limit}:{queue}:{review_reason}:{app_config.get('ui.unknown_confidence_threshold')}"
         )
         hit, uc = cache_get(uck)
         if hit:
@@ -349,6 +382,8 @@ def register_ui_overview_timeline_routes(app):
                 start_time=start_time,
                 end_time=end_time,
                 limit=limit,
+                queue=queue,
+                review_reason_filter=review_reason,
             )
         except ValueError as exc:
             return {"error": str(exc)}, 400

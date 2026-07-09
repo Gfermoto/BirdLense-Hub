@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from functools import lru_cache
@@ -51,8 +52,13 @@ def resolve_classifier_weights_path(app_config_get) -> tuple[str, str]:
     Путь к весам классификатора как у процессора.
     Возвращает (абсолютный_путь, путь_для_логов).
     """
-    rel = app_config_get("processor.models.classifier", "models/classification/weights/best.pt")
-    rel = rel or "models/classification/weights/best.pt"
+    engine = str(app_config_get("processor.classifier_engine", "birder_eu") or "birder_eu").strip().lower()
+    variant = str(app_config_get("processor.birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
+    rel = (
+        app_config_get("processor.models.classifier")
+        or app_config_get("processor.models.classifier_birder_eu")
+        or f"models/classification/{variant}/{variant}.onnx"
+    )
     if os.path.isabs(rel):
         return rel, rel
     abs_path = os.path.join(_processor_root(), rel)
@@ -81,6 +87,37 @@ def load_classifier_labels_or_error(weights_path: str) -> tuple[list[str] | None
     """
     Список сырых имён классов из checkpoint или (None, сообщение_об_ошибке).
     """
+    if os.path.isdir(weights_path):
+        class_labels = os.path.join(weights_path, "class_labels.txt")
+        if os.path.isfile(class_labels):
+            try:
+                with open(class_labels, encoding="utf-8") as f:
+                    labels = [line.strip() for line in f if line.strip()]
+                if labels:
+                    return labels, None
+            except (OSError, UnicodeDecodeError) as e:
+                return None, f"failed to read class_labels.txt: {e}"
+
+        config_json = os.path.join(weights_path, "config.json")
+        if os.path.isfile(config_json):
+            try:
+                with open(config_json, encoding="utf-8") as f:
+                    cfg = json.load(f)
+                id2label = cfg.get("id2label") if isinstance(cfg, dict) else None
+                if isinstance(id2label, dict):
+                    labels: list[str] = []
+                    for key in sorted(
+                        id2label.keys(),
+                        key=lambda k: int(k) if str(k).isdigit() else str(k),
+                    ):
+                        labels.append(str(id2label[key]))
+                    if labels:
+                        return labels, None
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+                return None, f"failed to read classifier config.json: {e}"
+
+        return None, f"classifier labels not found in directory: {weights_path}"
+
     if not os.path.isfile(weights_path):
         return None, f"classifier weights not found: {weights_path}"
     try:

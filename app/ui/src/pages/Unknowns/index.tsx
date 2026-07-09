@@ -15,8 +15,9 @@ import CardActionArea from '@mui/material/CardActionArea';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import { SpeciesCorrectionAutocomplete } from '../../components/filters/SpeciesCorrectionAutocomplete';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -46,7 +47,6 @@ import type { UnknownDetection } from '../../api/timeline';
 import {
   confirmDetection,
   deleteReviewQueueVideos,
-  fetchBirdDirectory,
   fetchRecentCorrections,
   previewReviewQueueDelete,
   updateDetectionSpecies,
@@ -67,14 +67,50 @@ function reviewReasonLabel(t: (key: string) => string, reason?: string) {
       return t('unknowns.reviewReasonGenericBird');
     case 'classifier_uncertainty':
       return t('unknowns.reviewReasonClassifierUncertainty');
+    case 'semantic_review_required':
+      return t('unknowns.reviewReasonOperatorFlagged');
+    case 'bbox_rejected':
+      return t('unknowns.reviewReasonBboxRejected');
+    case 'reid_no_match':
+      return t('unknowns.reviewReasonReidNoMatch');
+    case 'welfare_anomaly':
+      return t('unknowns.reviewReasonWelfareAnomaly');
+    case 'unknown_label':
+      return t('unknowns.reviewReasonUnknownLabel');
+    case 'detect_first_anchor_only':
+      return t('unknowns.reviewReasonDetectFirstAnchor');
     default:
-      return reason || '';
+      return '';
+  }
+}
+
+const REVIEW_REASON_FILTERS = [
+  'low_confidence',
+  'generic_bird',
+  'classifier_uncertainty',
+  'semantic_review_required',
+  'bbox_rejected',
+  'reid_no_match',
+  'welfare_anomaly',
+  'unknown_label',
+  'detect_first_anchor_only',
+] as const;
+
+function reviewStateLabel(t: (key: string) => string, state?: string) {
+  switch (state) {
+    case 'pending':
+      return t('unknowns.reviewStatePending');
+    case 'semantic_review_required':
+      return t('unknowns.reviewStateExpert');
+    case 'reviewed':
+      return t('unknowns.reviewStateReviewed');
+    default:
+      return t('unknowns.reviewStatePending');
   }
 }
 
 export function UnknownCard({
   detection,
-  speciesList,
   onCorrect,
   onConfirm,
   canEdit,
@@ -83,7 +119,6 @@ export function UnknownCard({
   onToggleSelected,
 }: {
   detection: UnknownDetection;
-  speciesList: { id: number; name: string }[];
   onCorrect: (detectionId: number, speciesId: number) => void;
   onConfirm: (detectionId: number) => void;
   canEdit: boolean;
@@ -173,11 +208,7 @@ export function UnknownCard({
               )}
               {detection.review_state && (
                 <Chip
-                  label={
-                    detection.review_state === 'pending'
-                      ? t('unknowns.reviewStatePending')
-                      : detection.review_state
-                  }
+                  label={reviewStateLabel(t, detection.review_state)}
                   size="small"
                   color="info"
                   variant="outlined"
@@ -231,87 +262,49 @@ export function UnknownCard({
                 label={t('unknowns.bulkSelect')}
               />
             )}
-            <FormControl size="small" fullWidth>
-              <InputLabel
-                id={`unknowns-correct-species-${detection.id}`}
-                shrink
-              >
-                {t('unknowns.correctSpecies')}
-              </InputLabel>
-              <Select
-                labelId={`unknowns-correct-species-${detection.id}`}
-                displayEmpty
-                value={selectedSpeciesId === '' ? '' : selectedSpeciesId}
-                label={t('unknowns.correctSpecies')}
-                renderValue={(v: number | string) => {
-                  if (v === '' || v === undefined) {
-                    return (
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        color="text.secondary"
-                      >
-                        {t('unknowns.speciesSelectPlaceholder')}
-                      </Typography>
-                    );
-                  }
-                  const id = Number(v);
-                  const row = speciesList.find((s) => Number(s.id) === id);
-                  return row?.name ?? String(v);
-                }}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setSelectedSpeciesId(v === '' ? '' : Number(v));
-                }}
-                disabled={!canEdit}
-                MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
-              >
-                <MenuItem value="">
-                  <em>{t('unknowns.speciesSelectPlaceholder')}</em>
-                </MenuItem>
-                {speciesList.map((s) => (
-                  <MenuItem key={s.id} value={s.id}>
-                    {s.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <span>
-              <Button
-                variant="contained"
-                size="small"
-                disabled={
-                  selectedSpeciesId === '' ||
-                  !Number.isFinite(Number(selectedSpeciesId)) ||
-                  Number(selectedSpeciesId) === Number(detection.species_id) ||
-                  correcting ||
-                  !canEdit
-                }
-                onClick={handleCorrect}
-              >
-                {correcting ? '...' : t('unknowns.apply')}
-              </Button>
-            </span>
-            <Tooltip
-              title={
-                !canEdit
-                  ? ''
-                  : pendingSpeciesChange
-                    ? t('unknowns.confirmBlockedPendingApply')
-                    : t('unknowns.confirmCorrectHelp')
-              }
-            >
-              <span>
+            {canEdit && (
+              <>
+                <SpeciesCorrectionAutocomplete
+                  value={selectedSpeciesId}
+                  onChange={setSelectedSpeciesId}
+                  disabled={!canEdit}
+                  excludeSpeciesId={detection.species_id}
+                  label={t('unknowns.correctSpecies')}
+                />
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   size="small"
-                  disabled={confirming || !canEdit || pendingSpeciesChange}
-                  onClick={handleConfirm}
+                  disabled={
+                    selectedSpeciesId === '' ||
+                    !Number.isFinite(Number(selectedSpeciesId)) ||
+                    Number(selectedSpeciesId) ===
+                      Number(detection.species_id) ||
+                    correcting
+                  }
+                  onClick={handleCorrect}
                 >
-                  {confirming ? '...' : t('unknowns.confirmCorrect')}
+                  {correcting ? '...' : t('unknowns.apply')}
                 </Button>
-              </span>
-            </Tooltip>
+                <Tooltip
+                  title={
+                    pendingSpeciesChange
+                      ? t('unknowns.confirmBlockedPendingApply')
+                      : t('unknowns.confirmCorrectHelp')
+                  }
+                >
+                  <span>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={confirming || pendingSpeciesChange}
+                      onClick={handleConfirm}
+                    >
+                      {confirming ? '...' : t('unknowns.confirmCorrect')}
+                    </Button>
+                  </span>
+                </Tooltip>
+              </>
+            )}
           </Box>
         </Box>
       </CardContent>
@@ -329,6 +322,9 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const queueParam = (searchParams.get('queue') || '').trim().toLowerCase();
+  const reviewReasonParam = (searchParams.get('review_reason') || '').trim().toLowerCase();
+  const expertQueueEnabled = queueParam === 'expert' || location.pathname === '/review';
   const videoListReturnPath = `${location.pathname}${location.search}`;
   const queryClient = useQueryClient();
   const { canEdit } = useProtectedArea();
@@ -350,13 +346,26 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       : 'all';
   });
 
+  const setReviewReasonFilter = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    const normalized = value.trim().toLowerCase();
+    if (normalized) {
+      next.set('review_reason', normalized);
+    } else {
+      next.delete('review_reason');
+    }
+    setSearchParams(next, { replace: true });
+  };
+
   const unknownsListKey = useMemo(
     () =>
       queryKeys.unknowns.list(
         selectedDate?.format('YYYY-MM-DD') ?? '',
         timeOfDay,
+        expertQueueEnabled ? 'expert' : 'default',
+        reviewReasonParam || 'all',
       ),
-    [selectedDate, timeOfDay],
+    [selectedDate, timeOfDay, expertQueueEnabled, reviewReasonParam],
   );
 
   const {
@@ -370,16 +379,13 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       return fetchUnknownsForObserverDate(selectedDate.format('YYYY-MM-DD'), {
         timeOfDay,
         limit: 500,
+        ...(expertQueueEnabled ? { queue: 'expert' as const } : {}),
+        ...(reviewReasonParam ? { reviewReason: reviewReasonParam } : {}),
       });
     },
     enabled: !!selectedDate,
   });
 
-  const { data: speciesList = [] } = useQuery({
-    queryKey: queryKeys.species.directory,
-    queryFn: () => fetchBirdDirectory(),
-    staleTime: 5 * 60 * 1000,
-  });
   const { data: recentCorrections = [] } = useQuery({
     queryKey: queryKeys.corrections.recent,
     queryFn: () => fetchRecentCorrections(8),
@@ -493,6 +499,10 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
     mutationFn: (detectionId: number) =>
       confirmDetection(detectionId, 'unknowns'),
     onSuccess: (_data, detectionId) => {
+      queryClient.setQueryData<UnknownDetection[] | undefined>(
+        unknownsListKey,
+        (prev) => (prev ?? []).filter((row) => row.id !== detectionId),
+      );
       queryClient.invalidateQueries({ queryKey: queryKeys.unknowns.all });
       queryClient.invalidateQueries({
         queryKey: queryKeys.timeline.unknownsCountAll,
@@ -506,7 +516,11 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.corrections.recent });
       setSuccessVideoId(resolveVideoIdForDetection(detectionId));
-      setCorrectSuccess(t('unknowns.corrected'));
+      setCorrectSuccess(
+        expertQueueEnabled
+          ? t('unknowns.expertTaskDone')
+          : t('unknowns.corrected'),
+      );
     },
     onError: (err: unknown) => {
       setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
@@ -652,6 +666,37 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
     <>
       <PageHelp {...unknownsHelpConfig} />
       {afterTitleSlot}
+      <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          justifyContent="space-between"
+        >
+          <Box>
+            <Typography variant="body2" fontWeight={600}>
+              {canEdit
+                ? t('unknowns.roleSplitTitle')
+                : t('unknowns.guestBrowseTitle')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {canEdit
+                ? t('unknowns.roleSplitHint')
+                : t('unknowns.guestBrowseHint')}
+            </Typography>
+          </Box>
+          {canEdit && (
+            <Button
+              component={RouterLink}
+              to="/labelling"
+              size="small"
+              variant="outlined"
+            >
+              {t('unknowns.openGeometryQueue')}
+            </Button>
+          )}
+        </Stack>
+      </Alert>
       <Box
         display="flex"
         flexWrap="wrap"
@@ -683,6 +728,32 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
             <MenuItem value="day">{t('timeline.timeDay')}</MenuItem>
             <MenuItem value="afternoon">{t('timeline.timeAfternoon')}</MenuItem>
             <MenuItem value="evening">{t('timeline.timeEvening')}</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 220 }}>
+          <InputLabel id="unknowns-review-reason-label">
+            {t('unknowns.reviewReasonFilter')}
+          </InputLabel>
+          <Select
+            labelId="unknowns-review-reason-label"
+            value={
+              REVIEW_REASON_FILTERS.includes(
+                reviewReasonParam as (typeof REVIEW_REASON_FILTERS)[number],
+              )
+                ? reviewReasonParam
+                : ''
+            }
+            onChange={(e) => setReviewReasonFilter(String(e.target.value))}
+            label={t('unknowns.reviewReasonFilter')}
+          >
+            <MenuItem value="">
+              <em>{t('unknowns.reviewReasonFilterAll')}</em>
+            </MenuItem>
+            {REVIEW_REASON_FILTERS.map((reason) => (
+              <MenuItem key={reason} value={reason}>
+                {reviewReasonLabel(t, reason)}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       </Box>
@@ -830,7 +901,6 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         <UnknownCard
           key={`${d.id}-${d.species_id}`}
           detection={d}
-          speciesList={speciesList}
           onCorrect={handleCorrect}
           onConfirm={handleConfirm}
           canEdit={canEdit}

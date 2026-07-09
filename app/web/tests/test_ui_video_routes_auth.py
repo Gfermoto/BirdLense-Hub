@@ -28,6 +28,7 @@ def test_fusion_trace_allows_mcp_style_non_session_access(monkeypatch):
         sys.modules,
         "models",
         types.SimpleNamespace(
+            ActiveLearningCase=object,
             Species=object,
             SpeciesVisit=object,
             Video=object,

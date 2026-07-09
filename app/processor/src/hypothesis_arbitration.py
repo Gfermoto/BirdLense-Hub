@@ -150,13 +150,10 @@ def _tag_row(row: dict, reason: str) -> None:
 
 def _mark_arbitrated_primary_provider(row: dict) -> None:
     provider = str(row.get("detection_provider") or "").strip()
-    if provider and provider.lower() != "arbitration":
+    if provider:
         row["arbitrated_primary_provider"] = provider
-    lineage = _merge_provider_sets([row])
-    if "arbitration" not in lineage:
-        lineage.append("arbitration")
-    row["contributing_providers"] = sorted(set(lineage))
-    row["detection_provider"] = "arbitration"
+    row["fusion_stage"] = "arbitrated"
+    row["contributing_providers"] = _merge_provider_sets([row])
 
 
 def _sync_outcome_bucket(row: dict) -> dict:
@@ -194,12 +191,13 @@ def _build_generic_review_row(
     review_row["start_time"] = start_time
     review_row["end_time"] = end_time
     review_row["track_id"] = None
-    review_row["visit_eligible"] = False
+    review_row["visit_eligible"] = True
     review_row["notification_eligible"] = False
     review_row["decision_kind"] = "review_only_generic"
     review_row["evidence_state"] = "cross_species_conflict"
-    review_row["detection_provider"] = "arbitration"
+    # Arbitration is a fusion stage, not a business provider/source.
     review_row["contributing_providers"] = _merge_provider_sets(rows)
+    _mark_arbitrated_primary_provider(review_row)
     review_row["confidence"] = max(_safe_float(leader.get("confidence")), 0.45)
     review_row["_pre_fusion_confidence"] = _safe_float(review_row.get("confidence"))
     _tag_row(review_row, reason)

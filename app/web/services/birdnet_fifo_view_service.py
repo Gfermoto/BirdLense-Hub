@@ -1,4 +1,7 @@
-"""Чтение очереди BirdNET из hub БД для UI/API (#269); формат как у JSON-снимка процессора."""
+"""Чтение очереди BirdNET из hub БД для UI/API (#269).
+
+Формат ответа совпадает с JSON-снимком процессора.
+"""
 
 from __future__ import annotations
 
@@ -84,7 +87,7 @@ def prune_birdnet_event_list_db_view(
     ttl_hours: float,
     cap: int,
 ) -> list[dict]:
-    """Та же семантика, что в процессоре birdnet_fifo_persist.prune_birdnet_event_list."""
+    """Та же семантика, что в processor birdnet_fifo_persist prune."""
     try:
         ttl_hours = float(ttl_hours)
     except (TypeError, ValueError):
@@ -119,7 +122,7 @@ def build_birdnet_fifo_snapshot_payload(
     *,
     events: list[dict],
     fifo_cap: int,
-    mqtt_connected: bool,
+    mqtt_connected: bool | None,
     processor_pid: int,
     recent_limit: int,
     now: datetime | None = None,
@@ -175,7 +178,7 @@ def build_birdnet_fifo_snapshot_payload(
     return {
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "processor_pid": int(processor_pid),
-        "mqtt_connected": bool(mqtt_connected),
+        "mqtt_connected": (bool(mqtt_connected) if mqtt_connected is not None else None),
         "queue_len": len(events),
         "fifo_cap": int(fifo_cap),
         "fifo_fill_ratio": round(fill_ratio, 4),
@@ -189,7 +192,7 @@ def build_birdnet_fifo_snapshot_payload(
 
 
 def try_build_birdnet_fifo_snapshot_from_db() -> dict | None:
-    """Если таблица есть и чтение успешно — тело ответа diagnostics (без HTTP). Иначе None."""
+    """Возврат diagnostics body из БД, иначе None."""
     try:
         if not sa_inspect(db.engine).has_table("birdnet_fifo_event"):
             return None
@@ -204,7 +207,25 @@ def try_build_birdnet_fifo_snapshot_from_db() -> dict | None:
         return None
 
     if not rows:
-        return None
+        try:
+            recent_limit = int(app_config.get("processor.birdnet_fifo_snapshot_recent_limit") or 80)
+        except (TypeError, ValueError):
+            recent_limit = 80
+        cap = birdnet_fifo_cap_from_config()
+        snapshot = build_birdnet_fifo_snapshot_payload(
+            events=[],
+            fifo_cap=cap,
+            mqtt_connected=None,
+            processor_pid=0,
+            recent_limit=recent_limit,
+        )
+        snapshot["persist_source"] = "sqlite"
+        return {
+            "available": True,
+            "snapshot_source": "sqlite",
+            "db_row_count": 0,
+            "snapshot": snapshot,
+        }
 
     events: list[dict] = []
     for r in rows:
@@ -239,7 +260,7 @@ def try_build_birdnet_fifo_snapshot_from_db() -> dict | None:
     snapshot = build_birdnet_fifo_snapshot_payload(
         events=pruned,
         fifo_cap=cap,
-        mqtt_connected=False,
+        mqtt_connected=None,
         processor_pid=0,
         recent_limit=recent_limit,
     )

@@ -12,6 +12,19 @@ from services.visit_processor import VisitProcessor
 from models import Species, db
 
 
+def _species_row_for_metadata_test(name: str, **fields) -> Species:
+    """Reuse registry seed rows when present; avoid UNIQUE(name) across ordered tests."""
+    sp = Species.query.filter_by(name=name).first()
+    if sp is None:
+        sp = Species(name=name, **fields)
+        db.session.add(sp)
+    else:
+        for key, value in fields.items():
+            setattr(sp, key, value)
+    db.session.commit()
+    return sp
+
+
 @pytest.fixture(autouse=True)
 def _disable_settings_passwords_for_registry_tests(client, monkeypatch):
     """Registry system endpoints are protected; open access like other settings smoke tests.
@@ -174,6 +187,40 @@ class TestSpeciesResolverIntegration:
         items = (api.get_json() or {}).get("items") or []
         assert any("Totally Unknown Bird XYZ" in (i.get("raw_name") or "") for i in items)
 
+    def test_species_identity_attaches_external_aliases_to_existing_taxon(self, app):
+        from models import SpeciesAlias, SpeciesTaxon
+        from services.species_identity_service import SpeciesIdentityService
+
+        with app.app_context():
+            taxon = SpeciesTaxon.query.filter_by(common_name="Great Tit").first()
+            if taxon is None:
+                taxon = SpeciesTaxon(
+                    taxon_key="great-tit-test",
+                    common_name="Great Tit",
+                    scientific_name="Parus major",
+                )
+                db.session.add(taxon)
+                db.session.flush()
+            species = _species_row_for_metadata_test("Great Tit", taxon_id=taxon.id)
+            if species.taxon_id != taxon.id:
+                species.taxon_id = taxon.id
+                db.session.commit()
+
+            svc = SpeciesIdentityService(db, app.logger)
+            resolved = svc.resolve_or_create_species(
+                "Great Tit",
+                source="ingest:frigate",
+                audit_aliases=["great_tit", "Parus major (Great Tit)"],
+                audit_scientific_names=["Parus major"],
+            )
+            db.session.commit()
+
+            assert resolved is not None
+            assert resolved.name == "Great Tit"
+            alias_keys = {row.alias_key for row in SpeciesAlias.query.filter_by(taxon_id=taxon.id).all()}
+            assert "great tit" in alias_keys
+            assert "parus major" in alias_keys
+
 
 class TestSpeciesMetadataRepair:
     def test_enrich_species_metadata_treats_blank_description_as_missing(
@@ -283,6 +330,32 @@ def test_catalog_cards_coverage_counts_per_allowlist_line(app, monkeypatch):
         assert snap["completion_percent"] == round((2.0 / 3.0) * 100.0, 2)
 
 
+def test_materialize_allowlist_normalizes_caps_common_name(app, monkeypatch):
+    from services.species_registry_service import ensure_allowlist_species_materialized
+
+    with app.app_context():
+        monkeypatch.setattr(
+            registry_mod,
+            "load_catalog_allowlist_names",
+            lambda _get: ("PARUS MAJOR (GREAT TIT)",),
+        )
+        monkeypatch.setattr(
+            registry_mod,
+            "normalize_catalog_display_name",
+            lambda value, _mapping: "Great Tit" if str(value).strip().upper() == "GREAT TIT" else value,
+        )
+
+        out = ensure_allowlist_species_materialized(
+            app_config.get,
+            fill_metadata=False,
+            dry_run=False,
+            limit=10,
+        )
+        row = Species.query.filter_by(name="Great Tit").first()
+        assert out["allowlist_total"] == 1
+        assert row is not None
+
+
 def test_update_species_info_from_wiki_whitespace_image_counts_as_empty(
     app,
     monkeypatch,
@@ -323,15 +396,13 @@ def test_update_species_info_from_wiki_applies_manual_great_tit_override(app, mo
     import species_metadata as sm
 
     with app.app_context():
-        sp = Species(
-            name="Great Tit",
+        sp = _species_row_for_metadata_test(
+            "Great Tit",
             description="",
             image_url="",
             metadata_source=None,
             metadata_source_url=None,
         )
-        db.session.add(sp)
-        db.session.commit()
 
         monkeypatch.setattr(sm, "get_wikipedia_image_and_description", lambda *_a, **_k: (None, None))
         monkeypatch.setattr(sm, "get_inaturalist_image_and_description", lambda *_a, **_k: (None, None, None))
@@ -347,15 +418,13 @@ def test_update_species_info_from_wiki_applies_manual_eurasian_blue_tit_override
     import species_metadata as sm
 
     with app.app_context():
-        sp = Species(
-            name="Eurasian Blue Tit",
+        sp = _species_row_for_metadata_test(
+            "Eurasian Blue Tit",
             description="",
             image_url="",
             metadata_source=None,
             metadata_source_url=None,
         )
-        db.session.add(sp)
-        db.session.commit()
 
         monkeypatch.setattr(sm, "get_wikipedia_image_and_description", lambda *_a, **_k: (None, None))
         monkeypatch.setattr(sm, "get_inaturalist_image_and_description", lambda *_a, **_k: (None, None, None))
@@ -397,6 +466,10 @@ def test_typo_catalog_wikipedia_title_maps_misspellings():
 
     assert sm._typo_catalog_wikipedia_title("KILLDEAR") == "Killdeer"
     assert sm._typo_catalog_wikipedia_title("MANDRIN DUCK") == "Mandarin duck"
+    assert sm._typo_catalog_wikipedia_title("AUCKLAND SHAQ") == "Auckland shag"
+    assert sm._typo_catalog_wikipedia_title("ASIAN DOLLARD BIRD") == "Asian dollarbird"
+    assert sm._typo_catalog_wikipedia_title("Go Away Bird") == "Gray go-away-bird"
+    assert sm._typo_catalog_wikipedia_title("Black Cockato") == "Red-tailed black cockatoo"
     assert sm._typo_catalog_wikipedia_title("Unknown Typo Bird") is None
 
 
@@ -435,9 +508,7 @@ def test_update_species_info_from_wiki_skips_bad_wikipedia_then_accepts_good(app
     monkeypatch.setattr(sm, "get_wikipedia_image_and_description", fake_wiki)
 
     with app.app_context():
-        sp = Species(name="Redhead", description="", image_url="")
-        db.session.add(sp)
-        db.session.commit()
+        sp = _species_row_for_metadata_test("Redhead", description="", image_url="")
         sm._wiki_meta_cache.clear()
         ok = sm.update_species_info_from_wiki(sp)
         db.session.commit()
@@ -463,9 +534,11 @@ def test_update_species_info_from_wiki_clears_suspicious_existing_description(ap
     monkeypatch.setattr(sm, "get_inaturalist_image_and_description", lambda title: (None, None, None))
 
     with app.app_context():
-        sp = Species(name="Redhead", description=bad, image_url="https://example.com/wrong.jpg")
-        db.session.add(sp)
-        db.session.commit()
+        sp = _species_row_for_metadata_test(
+            "Redhead",
+            description=bad,
+            image_url="https://example.com/wrong.jpg",
+        )
         sm._wiki_meta_cache.clear()
         ok = sm.update_species_info_from_wiki(sp)
         db.session.commit()

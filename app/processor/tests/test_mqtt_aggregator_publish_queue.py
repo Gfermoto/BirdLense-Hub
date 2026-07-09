@@ -49,6 +49,19 @@ class TestMqttAggregatorPublishQueue(unittest.TestCase):
         self.assertEqual(self.agg._publish_queue.qsize(), 1)
         self.agg._client.publish.assert_not_called()
 
+    def test_publish_queue_drops_oldest_when_full(self):
+        agg = MQTTEventAggregator(
+            broker="127.0.0.1",
+            ha_discovery=False,
+            publish_queue_max=2,
+        )
+        agg._enqueue_publish("t1", "old", qos=0, retain=False)
+        agg._enqueue_publish("t2", "mid", qos=0, retain=False)
+        agg._enqueue_publish("t3", "new", qos=0, retain=False)
+        queued = [item[0] for item in list(agg._publish_queue.queue)]
+        self.assertEqual(queued, ["t2", "t3"])
+        self.assertEqual(agg._publish_queue.qsize(), 2)
+
     def test_publish_enqueues_when_disconnected(self):
         self.agg._connected = False
         self.agg.publish_detection("X", 0.5)

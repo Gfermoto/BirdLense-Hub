@@ -4,16 +4,15 @@
 
 ---
 
-## Intel GPU: запись идёт как CPU
+## Jetson NVENC: запись идёт как CPU
 
-В **Настройки → Видео → Кодирование записи** можно выбрать CPU или Intel GPU. Если в логах «Starting FFmpeg recording ... (CPU)» при выборе Intel — в контейнере нет доступа к `/dev/dri/renderD128`.
+В **Настройки → Видео → Кодирование записи** можно выбрать Jetson (NVENC) или CPU. Если в логах «Recording ... (CPU)» при выборе Jetson — в контейнере нет доступа к NVIDIA GPU.
 
-**Решение:** скопировать override:
+**Решение:** проверить NVIDIA runtime:
 ```bash
-cp app/docker-compose.intel.example.yml app/docker-compose.override.yml
-make stop && make start
+docker exec birdlense nvidia-smi
 ```
-В настройках выбрать «Intel GPU». На странице System должно появиться «Сейчас: Intel GPU (VA-API)».
+В настройках выбрать «Jetson». На странице System должны появиться метрики GPU.
 
 ---
 
@@ -31,7 +30,7 @@ make stop && make start
 
 ## Старт одного контейнера (entrypoint): куда смотреть, если «зависло» {#single-container-startup-stuck}
 
-Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [ARCHITECTURE.ru.md](./architecture.ru.md#runtime-processes-ports-and-health-signals) и [RUNTIME_COUPLING.ru.md](../../archive/internal/docs-legacy/RUNTIME_COUPLING.ru.md).
+Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [ARCHITECTURE.ru.md](./architecture.ru.md#runtime-processes-ports-and-health-signals) и [RUNTIME_COUPLING.ru.md](../archive/internal/docs-legacy/RUNTIME_COUPLING.ru.md).
 
 | Симптом | Куда смотреть |
 | --------- | ---------------- |
@@ -83,9 +82,9 @@ docker logs birdlense --tail 200 2>&1
 
 **Падения нет** при `processor.detector_weight_contract: warn` (дефолт). В режиме **`enforce`** старт не пройдёт, пока веса и scope не согласованы.
 
-**Что сделать:** (1) Сузьте `processor.detector_scope` под реальные `model.names` / манифест обучения. (2) Либо выкатите веса, где есть все scoped-классы, и перезапустите processor. (3) Не добавляйте `Background` в scope — см. [CV_ML_PREP.ru.md](../../archive/internal/docs-legacy/CV_ML_PREP.ru.md).
+**Что сделать:** (1) Сузьте `processor.detector_scope` под реальные `model.names` / манифест обучения. (2) Либо выкатите веса, где есть все scoped-классы, и перезапустите processor. (3) Не добавляйте `Background` в scope — см. [CV_ML_PREP.ru.md](../archive/internal/docs-legacy/CV_ML_PREP.ru.md).
 
-**Связано:** [CV_ML_ROADMAP_PHASES.ru.md](../../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md) (эпик #368). Англ. версия: [TROUBLESHOOTING.md](../user/troubleshooting.md#detector-weight-contract-mismatch).
+**Связано:** [CV_ML_ROADMAP_PHASES.ru.md](../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md) (эпик #368). Англ. версия: [TROUBLESHOOTING.md](../user/troubleshooting.md#detector-weight-contract-mismatch).
 
 ---
 
@@ -115,7 +114,7 @@ docker logs birdlense --tail 200 2>&1
 
 **Что сделать:**
 
-1. **Ресурсы хоста и Docker** — в `app/docker-compose.yml` по умолчанию лимит **4 CPU / 4G RAM**. При необходимости поднимите `cpus` и `mem_limit` через `docker-compose.override.yml` (см. `docker-compose.intel.example.yml` как образец override).
+1. **Ресурсы хоста и Docker** — в `app/docker-compose.yml` по умолчанию лимит **4 CPU / 4G RAM**. При необходимости поднимите `cpus` и `mem_limit` через `docker-compose.override.yml`.
 2. **Кэш API** — **Настройки → Производительность**: включите Redis (`performance.cache_redis_enabled`), проверьте `REDIS_URL` в `.env` (в compose обычно `redis://redis:6379/0`). Без Redis кэш только в памяти процесса и менее эффективен при перезапусках.
 3. **Параллельные запросы** — один процесс gunicorn, потоки `gthread` (по умолчанию **16**). Увеличить очередь: в `app/.env` задать `GUNICORN_THREADS=24` (или выше, если RAM и CPU позволяют), затем перезапуск контейнера: `cd app && docker compose restart birdlense` (или `make stop && make start`).
 4. **Диск и БД** — очень большой `birdlense.db` или медленный диск усиливают задержки; страница **Система** показывает загрузку. При необходимости сделайте бэкап (**Система → Хранилище**), остановите хаб и выполните обслуживание SQLite (например `sqlite3 birdlense.db "VACUUM;"`).
@@ -205,7 +204,17 @@ sqlite3 "/path/to/backup.db" "PRAGMA integrity_check;"
 
 go2rtc должен слушать `0.0.0.0:1984`. Проверка: `curl -s -o /dev/null -w "%{http_code}" http://172.17.0.1:1984/api/streams` → 200.
 
-**Обход:** на странице Live нажать **«MJPEG»** — поток через процессор.
+**Чёрный экран Live → Go2RTC → MJPEG:** RTSP часто только **H264** — тогда `/api/stream.mjpeg` у go2rtc **пустой**. На хосте go2rtc добавьте к потоку:
+
+```yaml
+  BirdBox:
+    - rtsp://...
+    - ffmpeg:BirdBox#video=mjpeg
+```
+
+(аналогично `Forest` и др.) Пример: [`docs/examples/go2rtc-streams.example.yaml`](../examples/go2rtc-streams.example.yaml). Без ffmpeg Hub всё равно крутит кадры через **`frame.jpeg`** (~4 fps); для оверлеев — **«Поток детекции»** (`/processor/live/N`).
+
+**WebRTC «переходит» на MSE:** без TURN/UDP с браузера до go2rtc WebRTC не поднимается — на VPS надёжнее **MSE** или **MJPEG** с `ffmpeg:…#video=mjpeg`.
 
 ---
 

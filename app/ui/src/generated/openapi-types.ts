@@ -78,6 +78,12 @@ export interface paths {
                             status: string;
                             /** @example true */
                             ready: boolean;
+                            /** @description True when historical pipeline-quality checks are healthy. Core service readiness may be true while this is false. */
+                            quality_ready?: boolean;
+                            /** @description True when bbox/crop geometry SLO gate is green (#642); ReID/behavior layers allowed. */
+                            bbox_slo_ok?: boolean;
+                            /** @description Gate evaluation reason (e.g. ok, funnel_degraded, bbox_iou_p50=...). */
+                            bbox_slo_reason?: string;
                             /** Format: date-time */
                             checked_at: string;
                             checks: {
@@ -97,6 +103,23 @@ export interface paths {
                                     is_dir?: boolean;
                                     writable?: boolean;
                                     status?: string;
+                                };
+                                cache_backend?: {
+                                    [key: string]: unknown;
+                                };
+                                processor_heartbeat?: {
+                                    [key: string]: unknown;
+                                };
+                                pipeline_funnel?: components["schemas"]["PipelineFunnelCheck"];
+                                yolo_detector?: {
+                                    status?: string;
+                                    source?: string;
+                                    /** @description Effective detector backend after bootstrap (torch/onnxruntime/tensorrt). */
+                                    inference_backend_effective?: string;
+                                    /** @description Requested processor.inference_backend (may differ when auto fallback). */
+                                    inference_backend_requested?: string;
+                                    /** @description True when auto resolved to torch at bootstrap. */
+                                    inference_auto_torch_fallback?: boolean;
                                 };
                             };
                             components: {
@@ -128,6 +151,9 @@ export interface paths {
                                     status: "ok" | "warn" | "error";
                                 }[];
                             };
+                            pipeline_funnel?: {
+                                [key: string]: unknown;
+                            };
                         };
                     };
                 };
@@ -142,6 +168,11 @@ export interface paths {
                             status: string;
                             /** @example false */
                             ready: boolean;
+                            /** @description True when historical pipeline-quality checks are healthy. Core service readiness may be false due to core checks. */
+                            quality_ready?: boolean;
+                            /** @description True when bbox/crop geometry SLO gate is green (#642). */
+                            bbox_slo_ok?: boolean;
+                            bbox_slo_reason?: string;
                             /** Format: date-time */
                             checked_at: string;
                             checks: {
@@ -162,6 +193,23 @@ export interface paths {
                                     is_dir?: boolean;
                                     writable?: boolean;
                                     status?: string;
+                                };
+                                cache_backend?: {
+                                    [key: string]: unknown;
+                                };
+                                processor_heartbeat?: {
+                                    [key: string]: unknown;
+                                };
+                                pipeline_funnel?: components["schemas"]["PipelineFunnelCheck"];
+                                yolo_detector?: {
+                                    status?: string;
+                                    source?: string;
+                                    /** @description Effective detector backend after bootstrap (torch/onnxruntime/tensorrt). */
+                                    inference_backend_effective?: string;
+                                    /** @description Requested processor.inference_backend (may differ when auto fallback). */
+                                    inference_backend_requested?: string;
+                                    /** @description True when auto resolved to torch at bootstrap. */
+                                    inference_auto_torch_fallback?: boolean;
                                 };
                             };
                             components: {
@@ -187,6 +235,9 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "ok" | "warn" | "error";
                                 }[];
+                            };
+                            pipeline_funnel?: {
+                                [key: string]: unknown;
                             };
                         };
                     };
@@ -299,6 +350,57 @@ export interface paths {
                     };
                     content: {
                         "text/plain": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/debug/scoring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ScoringEngine debug (thresholds, histogram, Black Box tail)
+         * @description Live SOTA 2.0 scoring telemetry from decision trace JSONL and config.
+         *     Requires settings password (same as `/api/ui/status/debug`).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Scoring debug payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Password required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
@@ -1031,7 +1133,12 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Observer-local calendar day (YYYY-MM-DD). Use either date or start_time/end_time. */
                     date?: string;
+                    /** @description Unix timestamp (UTC); pair with end_time for explicit window. */
+                    start_time?: number;
+                    /** @description Unix timestamp (UTC); pair with start_time for explicit window. */
+                    end_time?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1054,6 +1161,8 @@ export interface paths {
                                 species_name?: string;
                                 /** Format: date-time */
                                 start_time?: string | null;
+                                /** @description True when last activity is generic Bird/Rodent (detector only) */
+                                unidentified?: boolean;
                             } | null;
                             /** @description IANA timezone name used for local-hour bucketing */
                             observer_timezone?: string;
@@ -1105,6 +1214,8 @@ export interface paths {
                     favorite_only?: string;
                     /** @description Same as `favorite_only` (either may be used). */
                     favorites?: string;
+                    /** @description Trigger-layer filter only (not detection provider/source). */
+                    trigger_source?: "all" | "opencv" | "frigate" | "motion_sensor" | "scales" | "unknown";
                 };
                 header?: never;
                 path?: never;
@@ -1202,14 +1313,25 @@ export interface paths {
         };
         /**
          * List all species
-         * @description Retrieve a list of all bird species that have been detected by the system. This includes summary information like name, parent species, and detection count. Useful for managing species data and monitoring diversity.
-         *     With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` (objects / non-bird COCO labels) are omitted for the Bird Directory UI.
+         * @description Retrieve species rows for catalog UIs. Default ``scope=project`` returns project-visible
+         *     species (observed rows plus arbitration/classifier vocabulary and Bird/Rodent placeholders).
+         *     ``scope=allowlist`` returns one row per classifier class. Use ``scope=all`` for the full DB catalog.
+         *     With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` are omitted.
+         *     With ``meta=1``, response is ``{items, meta}`` with allowlist vs DB totals.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description If true, filter out catalog rows flagged by the data-quality blocklist. */
                     exclude_suspects?: boolean;
+                    /** @description Catalog slice (default project = operator-visible catalog). */
+                    scope?: "project" | "allowlist" | "observed" | "all";
+                    /** @description If true, wrap list in `{items, meta}` with coverage counters. */
+                    meta?: boolean;
+                    /** @description If true, return rows without catalog audio metadata. */
+                    missing_audio?: boolean;
+                    /** @description If true, return rows with incomplete photo/description metadata. */
+                    catalog_incomplete?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -1217,13 +1339,13 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description List of species */
+                /** @description List of species (array) or wrapped payload when meta=1 */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["SpeciesSummary"][];
+                        "application/json": components["schemas"]["SpeciesSummary"][] | components["schemas"]["SpeciesCatalogListResponse"];
                     };
                 };
             };
@@ -2419,205 +2541,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/system/processor-weights/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Custom processor weights status (#276)
-         * @description Effective paths for binary detector, classifier, and species allowlist; whether each file lives under
-         *     `DATA_DIR/custom_weights`; sizes and mtimes. Settings password (or MCP Bearer) required.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Status payload */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Password required */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/system/processor-weights/upload": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upload custom .pt or class_names.txt (#276)
-         * @description Multipart field `file`. Query `role` = `binary` | `classifier` | `class_names`.
-         *     For `classifier`, either a readable allowlist file must exist or `acknowledge_classifier_only=1`.
-         *     Writes under `DATA_DIR/custom_weights/`, updates `user_config`, reloads app config, sets processor restart flag.
-         *     Admin-only when contributor password is enabled. Max 2 GiB for .pt (zip-style checkpoint), 32 MiB for .txt.
-         */
-        post: {
-            parameters: {
-                query: {
-                    role: "binary" | "classifier" | "class_names";
-                    acknowledge_classifier_only?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "multipart/form-data": {
-                        /** Format: binary */
-                        file: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Saved */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            ok?: boolean;
-                            path?: string;
-                            role?: string;
-                            status?: {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Access denied */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/system/processor-weights/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reset custom weights to built-in defaults (#276)
-         * @description JSON body `{ "roles": ["binary"] | ["classifier"] | ["class_names"] | ["all"] | combinations }`.
-         *     Removes files in `custom_weights` and clears matching keys from user_config when they pointed there.
-         *     Sets processor restart flag. Admin-only when contributor password is enabled.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        roles: ("binary" | "classifier" | "class_names" | "all")[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Reset done */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            ok?: boolean;
-                            removed_files?: string[];
-                            status?: {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-                /** @description Bad request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Access denied */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/system/species-registry/seed": {
         parameters: {
             query?: never;
@@ -3601,9 +3524,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["CamerasResponse"];
                     };
                 };
                 /** @description Error */
@@ -4179,13 +4100,13 @@ export interface paths {
         };
         /**
          * Migration calendar
-         * @description Species visits aggregated by calendar month (heatmap). catalog selects rows: observed = species with activity in range; dataset = class folders under data/dataset; full_eu = EU allowlist catalog. Legacy aliases: active -> observed; full -> full_eu. evidence is accepted for compatibility but ignored.
+         * @description Species visits aggregated by calendar month (heatmap). catalog selects rows: observed = species with activity in range; all (alias full, full_eu) = full classifier allowlist catalog; dataset = class folders under data/dataset (admin/API only). Legacy aliases: active -> observed. evidence is accepted for compatibility but ignored.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description Catalog mode; active and full are legacy aliases. */
-                    catalog?: "observed" | "dataset" | "full_eu" | "active" | "full";
+                    catalog?: "observed" | "all" | "dataset" | "full_eu" | "active" | "full";
                     /** @description Inclusive filter on visit year (optional). */
                     start_year?: number;
                     /** @description Inclusive filter on visit year (optional). */
@@ -5577,7 +5498,49 @@ export interface paths {
                 };
             };
         };
-        put?: never;
+        /** Update retention configuration */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RetentionConfigUpdate"];
+                };
+            };
+            responses: {
+                /** @description Updated retention config */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RetentionConfigResponse"];
+                    };
+                };
+                /** @description Error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         /** Run retention policy (delete old recordings) */
         post: {
             parameters: {
@@ -6051,6 +6014,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/diagnostics/backpressure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Processor W1 queue depths and drop counters
+         * @description Live backpressure snapshot from ``processor_runtime_stats.json``:
+         *     finalize/classifier/MQTT queue gauges and deferred-trigger counters.
+         *     Requires settings password.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Backpressure snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/diagnostics/processor-runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Processor runtime stats snapshot (JSON file on disk)
+         * @description Full counters/gauges/latency snapshot written by the processor process.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Processor runtime snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/domain-health": {
         parameters: {
             query?: never;
@@ -6089,6 +6154,217 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/yolo-detector-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * YOLO detector blind/healthy status
+         * @description Live YOLO detector health (blind alert, phase, stream probe gauges).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    hours?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/debug/bbox-parity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bbox parity debug metrics
+         * @description Bbox parity debug sessions and geometry gate metrics (settings password).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    session_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/debug/motion-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Motion / static calibration preview
+         * @description MOG2 / static calibration preview with mask overlay (settings password).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    camera_id?: string;
+                    mode?: "detection_mog2" | "trigger_mog2" | "static";
+                    overrides?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Frame unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/trigger-graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trigger graph and source FP/FN metrics
+         * @description Aggregated trigger graph FP/FN metrics by source (session_runtime_metrics).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    hours?: number;
+                    camera_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
                     };
                 };
             };
@@ -6773,121 +7049,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/system/regenerate-spectrograms": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bulk regenerate spectrograms
-         * @description Admin: start batch spectrogram job.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/system/regenerate-spectrograms/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Spectrogram batch status
-         * @description Poll batch spectrogram job.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/system/regenerate-tracks/status": {
         parameters: {
             query?: never;
@@ -6933,6 +7094,187 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List async background jobs
+         * @description Unified status for catalog repair, regen, fusion export, etc. Requires settings password.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Jobs list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            jobs?: {
+                                [key: string]: unknown;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Start async job */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        type: "track_regen" | "catalog_repair" | "species_metadata" | "fusion_export" | "fusion_eval" | "telegram_proxy_refresh";
+                        payload?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Job started */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Job already running */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get async job status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    job_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Job status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Request job cancel (track_regen only) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    job_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Cancel requested */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Job not running */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -7542,58 +7884,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/videos/{video_id}/regenerate-spectrogram": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Regenerate spectrogram
-         * @description Admin: queue spectrogram regeneration for one recording.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    video_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/videos/{video_id}/regenerate-tracks": {
         parameters: {
             query?: never;
@@ -8037,6 +8327,20 @@ export interface components {
         Error: {
             error?: string;
         };
+        RetentionConfigUpdate: {
+            /** @enum {string} */
+            mode?: "cascade" | "files_only" | "disabled";
+            days?: number | null;
+            max_gb?: number | null;
+            dataset_max_age_days?: number;
+            migration_max_age_days?: number;
+            protect_favorites?: boolean;
+            min_age_hours?: number;
+            batch_size?: number;
+            max_deletes_per_run?: number;
+            auto_run_enabled?: boolean;
+            auto_run_interval_hours?: number;
+        };
         RetentionConfigResponse: {
             /** @enum {string} */
             mode?: "cascade" | "files_only" | "disabled";
@@ -8047,11 +8351,21 @@ export interface components {
             protect_favorites?: boolean;
             min_age_hours?: number;
             batch_size?: number;
+            max_deletes_per_run?: number;
+            /** @description Scheduled retention auto-run; default false in default_config.yaml (distinct from reconcile.auto_run_enabled). */
+            auto_run_enabled?: boolean;
+            /** @description Hours between scheduled retention checks when auto_run_enabled is true; default 6. */
+            auto_run_interval_hours?: number;
             /** Format: date-time */
             last_run?: string | null;
             last_deleted_count?: number;
             last_freed_bytes?: number;
             last_mode?: string;
+            orphan_recording_files?: {
+                orphan_session_count?: number;
+                orphan_bytes?: number;
+                sample_paths?: string[];
+            };
         };
         ConfigAuditResponse: {
             deprecated_keys_present: string[];
@@ -8147,7 +8461,6 @@ export interface components {
             /** Format: date-time */
             end_time?: string;
             video_path?: string;
-            spectrogram_path?: string;
             favorite?: boolean;
             weather?: {
                 main?: string;
@@ -8178,6 +8491,13 @@ export interface components {
                 display_value?: number;
                 /** @enum {string} */
                 display_unit?: "kg" | "g";
+                /** @description Signed mass change during the visit window (grams); null when scales data missing */
+                weight_change_grams?: number;
+                /**
+                 * @description Direction vs noise threshold (~5 g); stable when change is within sensor noise
+                 * @enum {string}
+                 */
+                weight_trend?: "up" | "down" | "stable";
             } | null;
             /** @description Runtime or manually set behavior taxonomy label (#416) */
             behavior_label?: string | null;
@@ -8209,11 +8529,50 @@ export interface components {
             id?: number;
             name?: string;
             detections?: number[];
+            /** @description True for synthetic generic Bird/Rodent rows from detector segments */
+            unidentified?: boolean;
+        };
+        PipelineFunnelCheck: {
+            /** @enum {string} */
+            status?: "ok" | "degraded" | "unknown";
+            sessions_total?: number | null;
+            healthy_persist_rate?: number | null;
+            fusion_drop_rate?: number | null;
+            fp_empty_opencv_rate?: number | null;
+            alerts?: string[];
+            top_root_causes?: string[];
+            /** @description p50/p95 persist-tail substage latencies from recent session_runtime_metrics (#624). */
+            persist_substage_breakdown?: {
+                [key: string]: unknown;
+            };
+        };
+        CameraSummary: {
+            /** @description Canonical camera id, equal to the Go2RTC recording stream name. */
+            id?: string;
+            /** @description Display name used in the UI. */
+            name?: string;
+            stream_url?: string;
+            /** @description Go2RTC stream name used for main/live playback. */
+            go2rtc_src?: string;
+            /** @description Processor MJPEG overlay endpoint for the detection stream. */
+            stream_url_mjpeg?: string;
+            camera_slot?: string | null;
+            camera_profile?: string | null;
+        };
+        CamerasResponse: {
+            cameras?: components["schemas"]["CameraSummary"][];
         };
         OverviewStats: {
             uniqueSpecies?: number;
+            /** @description Named-species visits (SpeciesVisit), excludes generic Bird/Rodent */
             totalDetections?: number;
             lastHourDetections?: number;
+            /** @description YOLO/MQTT segments labeled generic Bird (classifier not required) */
+            unidentifiedBirdDetections?: number;
+            /** @description Detector segments labeled Rodent or rodent-like taxa */
+            rodentDetections?: number;
+            /** @description Named visits plus unidentified bird and rodent detector segments */
+            totalActivity?: number;
             busiestHour?: number;
             /** @description Mean duration of one recording (Video) in seconds for the day window */
             avgVisitDuration?: number;
@@ -8223,6 +8582,10 @@ export interface components {
             audioDuration?: number;
             /** @description Visit counts by `VideoSpecies.detection_provider` (key `legacy` if null) */
             detectionByProvider?: {
+                [key: string]: number;
+            };
+            /** @description Visit counts by `Video.trigger_source` (key `unknown` if null) */
+            triggerBySource?: {
                 [key: string]: number;
             };
         };
@@ -8237,6 +8600,8 @@ export interface components {
             video_duration_seconds?: number | null;
             /** @enum {string} */
             timeline_kind?: "visit" | "unlinked_video";
+            /** @description Trigger semantics for the visit item (opencv/frigate/motion_sensor/scales/unknown). */
+            trigger_source?: string | null;
             individual_nickname?: string | null;
             /** @description Behavior events produced by behavior recognition model runtime. */
             behavior_events?: {
@@ -8292,7 +8657,7 @@ export interface components {
             /** @enum {string|null} */
             review_state?: "pending" | "reviewed" | "not_applicable" | null;
             /** @enum {string|null} */
-            review_reason?: "low_confidence" | "generic_bird" | "classifier_uncertainty" | null;
+            review_reason?: "low_confidence" | "generic_bird" | "classifier_uncertainty" | "semantic_review_required" | "bbox_rejected" | "reid_no_match" | "welfare_anomaly" | "unknown_label" | "detect_first_anchor_only" | null;
             review_source?: string | null;
             classifier_entropy?: number | null;
             classifier_top1_top2_margin?: number | null;
@@ -8301,15 +8666,51 @@ export interface components {
         SpeciesSummary: {
             id?: number;
             name?: string;
+            /** @description Raw persisted species name before catalog display normalization. */
+            db_name?: string;
+            scientific_name?: string | null;
+            /** @description True when the active classifier/allowlist can predict this row. */
+            classifier_predictable?: boolean;
             parent_id?: number;
             /** Format: date-time */
             created_at?: string;
             image_url?: string;
-            description?: string;
+            description?: string | null;
+            metadata_source?: string | null;
+            metadata_source_url?: string | null;
             active?: boolean;
             /** @description True if species is in the eBird regional top (same source as Migration comparison) or has any BirdNET MQTT detection (detection_provider birdnet_mqtt). Used for Bird Directory «Regional» filter. */
             regional_scope?: boolean;
             count?: number;
+            /** @description True when photo or description is missing or placeholder (card-quality UI). */
+            catalog_card_incomplete?: boolean;
+            /**
+             * @description Present when the row was returned under a scoped catalog query.
+             * @enum {string}
+             */
+            catalog_scope?: "project" | "allowlist" | "observed" | "all";
+            /** @description True when the catalog card has linked audio metadata. */
+            catalog_has_audio?: boolean;
+        };
+        SpeciesCatalogMeta: {
+            db_species_total?: number;
+            allowlist_total?: number;
+            listed_allowlist?: number;
+            allowlist_incomplete?: number;
+            project_vocabulary_total?: number;
+            listed_project?: number;
+            arbitration_vocabulary_total?: number;
+            classifier_engine?: string | null;
+            classifier_class_count?: number | null;
+            catalog_with_audio?: number;
+            catalog_missing_audio?: number;
+            catalog_cards?: {
+                [key: string]: unknown;
+            };
+        };
+        SpeciesCatalogListResponse: {
+            items?: components["schemas"]["SpeciesSummary"][];
+            meta?: components["schemas"]["SpeciesCatalogMeta"];
         };
         BirdFamily: {
             id?: number;
@@ -8396,7 +8797,7 @@ export interface components {
                 used?: number;
                 percent?: number;
             };
-            /** @description Video encoding setting (cpu or intel); hints whether GPU chart may apply. */
+            /** @description Video encoding (orin/jetson for NVIDIA NVENC; always HW on Orin). */
             encoding?: string;
             gpu_percent?: number | null;
         };
@@ -8481,8 +8882,6 @@ export interface components {
             };
             /** @description Processor tuning; full shape follows `default_config.yaml` / `user_config.yaml`. Listed properties are a non-exhaustive subset used by the UI; extra keys are allowed. */
             processor?: {
-                video_width?: number;
-                video_height?: number;
                 tracker?: string;
                 max_record_seconds?: number;
                 post_record_seconds?: number;
@@ -8497,12 +8896,6 @@ export interface components {
                 min_confidence_binary_rodent?: number | null;
                 /** @description Deprecated alias for min_confidence_binary_rodent (legacy YAML only). */
                 min_confidence_binary_squirrel?: number | null;
-                /** @description OpenVINO-only cap for YOLO.track(conf); min(stock_floor, this). Compensates lower OV scores vs torch. */
-                openvino_binary_track_ultralytics_conf?: number | null;
-                /** @description OpenVINO-only Bird confidence multiplier for threshold compare only; stored conf stays raw. */
-                openvino_binary_bird_score_scale?: number | null;
-                /** @description Optional OpenVINO-only replacement for min_confidence_binary_bird in floor + per-label. */
-                openvino_min_confidence_binary_bird?: number | null;
                 bird_skip_classifier_max_area_frac?: number | null;
                 min_confidence_to_process?: number;
                 min_confidence_to_notify?: number;
@@ -8525,9 +8918,6 @@ export interface components {
                 save_dataset_crops?: boolean;
                 dataset_min_confidence?: number;
                 classifier_fallback_bird?: boolean;
-                spectrogram_px_per_sec?: number;
-                /** @description If true, generate spectrogram after every recording; if false, only when BirdNET MQTT in window */
-                generate_spectrogram_always?: boolean;
                 included_bird_families?: string[];
                 adaptive_profiles?: {
                     [key: string]: unknown;
@@ -8604,6 +8994,25 @@ export interface components {
                 reid_species_similarity_thresholds?: {
                     [key: string]: number;
                 };
+            } & {
+                [key: string]: unknown;
+            };
+            /** @description Capture and recording; full shape follows `default_config.yaml`. Recording resolution is auto-probed per camera (not set in UI). */
+            video?: {
+                /** @description 0 = auto/probe from stream */
+                detect_fps?: number;
+                /**
+                 * @deprecated
+                 * @description Legacy file-replay only; ignored unless force_recording_resolution is true
+                 */
+                video_width?: number;
+                /**
+                 * @deprecated
+                 * @description Legacy file-replay only; ignored unless force_recording_resolution is true
+                 */
+                video_height?: number;
+                /** @description When true, video_width/height override stream probe (legacy file-replay) */
+                force_recording_resolution?: boolean;
             } & {
                 [key: string]: unknown;
             };

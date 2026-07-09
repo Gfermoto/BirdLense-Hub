@@ -8,7 +8,7 @@ set -euo pipefail
 # - effective trigger config from running container
 # - recent trigger-related log lines
 
-ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 DEPLOY_LOCAL="${ROOT_DIR}/scripts/deploy.local.sh"
 
 if [[ ! -f "${DEPLOY_LOCAL}" ]]; then

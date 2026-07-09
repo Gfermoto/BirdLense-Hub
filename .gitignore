@@ -8,7 +8,12 @@ __pycache__
 # Снимки БД, скачанные scripts/recover-sqlite-from-backups.sh pull-*
 backups-recovered/
 app/data/recordings
+app/data/stress_clips/*.mp4
+app/data/audit_clips/*.mp4
+app/processor/models/tracker/.adaptive_tracker_cache/
 app/data/dataset/
+# Локальные датасеты/артефакты бенчей (не коммитить)
+app/data/datasets/
 app/data/cache/
 app/data/.ultralytics/
 app/data/processor/
@@ -18,7 +23,13 @@ app/data/diagnostics/
 app/data/feedback_exports/
 app/processor/data/
 app/data/processor.log*
+# Prod DB snapshots for governance (#585) — fetch locally, never commit
+app/data/db/prod_snapshots/
+app/data/db/birdlense_prod_latest.db
+app/data/db/birdlense_prod_latest.json
+app/app_config/.user_config_prod_drift.yaml
 app.log
+*.pyc
 .DS_Store
 # Windows NTFS ADS artifacts from downloaded/copied files
 **/*:Zone.Identifier
@@ -43,7 +54,12 @@ scripts/datasets/background_yolo/
 scripts/datasets/birds_rodent_background_yolo/
 scripts/datasets/coco_birds_yolo/
 scripts/datasets/.venv-detector/
+.venv-classifier/
+# Ruff cache at repo root
+.ruff_cache/
 .venv-datasets/
+# Local ReID/torch hub cache — must not shadow web/models.py when PYTHONPATH includes app/
+app/models/
 app/.venv/
 app/.ruff_cache/
 app/.pytest_cache/
@@ -54,18 +70,40 @@ app/.pytest_cache/
 .venv-ci/
 .venv-yolo-fetch/
 .venv-docs/
+.venv-birder/
+# Local model weights at repo root (do not commit large blobs)
+models/
+.tmp_fusion_*.json
+/0
+# Local deep-pipeline scratch scripts (not part of CI/Makefile)
+scripts/deep_pipeline_today_runner.py
+scripts/deep_pipeline_today_vps.py
+scripts/deep_pipeline_tuning_plan.py
 # Local model weight (do not commit large model blobs)
 app/yolo11n.pt
 # Настройки — не коммитить (только шаблоны в репо)
 user_config.yaml
 app/app_config/user_config.yaml
 app/app_config/user_config.yaml.bak
+# Bootstrap-конфиг с реальными кредами (никогда в репо)
+app/app_config/user_config.jetson-bootstrap.yaml
+app/app_config/user_config.*.bootstrap.yaml
+# Локальные примеси, переопределения
+app/app_config/*.local.yaml
+# Локальные примеси, переопределения
+.tmp/
+app/data/decision_traces/
+deploy_status*.txt
+app/ui_nm_old*/
+app/ui_node_modules_trash*/
 app/configs/*.local.yaml
 app/configs/*.local.yml
 app/configs/env.local
 
 # Deploy — локальные переопределения (IP, URL)
 scripts/deploy.local.sh
+deploy/profiles/
+deploy/profiles/
 # Правила для git filter-repo --replace-text (могут содержать реальные хост/IP)
 scripts/.git-filter-repo-replacements.local.txt
 
@@ -78,8 +116,8 @@ scripts/.git-filter-repo-replacements.local.txt
 # ESPHome: пример секретов — в репозитории (см. esphome/README.md)
 !esphome/secrets.yaml.example
 # Локальный конфиг весов с Wi‑Fi/OTA — в репо шаблон bird-feeder-scale.yaml.example
-esphome/bird-feeder-scale.yaml
-!esphome/bird-feeder-scale.yaml.example
+esphome/*.yaml
+!esphome/*.yaml.example
 esphome/.esphome/
 # Код без секретов: имена файлов совпадают с шаблонами **/*secret* / **/*password*
 !app/app_config/secret_env.py
@@ -109,44 +147,52 @@ app/ui/coverage/
 .cursor/rules/*
 !.cursor/rules/deploy.mdc
 !.cursor/rules/dev-workflow.mdc
+!.cursor/rules/opencode.mdc
+!.cursor/rules/security-reports.mdc
 
 # Артефакты (curl -c, debug)
 **/-X
 
-# Обученные модели (веса): игнор под models/, кроме явных текстов/YAML.
-# Примечание: app/processor/models/ целиком ломает negation для подкаталогов — используем models/*.
+# Обученные модели (веса)
 app/processor/models/*
+!app/processor/models/README.md
 !app/processor/models/classification/
 app/processor/models/classification/*
-!app/processor/models/classification/weights/
-app/processor/models/classification/weights/*
-!app/processor/models/classification/weights/class_names.txt
+!app/processor/models/classification/README.md
 !app/processor/models/detection/
 app/processor/models/detection/*
 !app/processor/models/detection/README.md
-# BRG binary detector shipped with Hub + matching OpenVINO IR (rest of weights/ — локально).
-!app/processor/models/detection/weights/
-app/processor/models/detection/weights/*
-app/processor/models/detection/weights/snapshots/**
-!app/processor/models/detection/weights/best.pt
-!app/processor/models/detection/weights/last.pt
-!app/processor/models/detection/weights/best_openvino_model/
-app/processor/models/detection/weights/best_openvino_model/*
-!app/processor/models/detection/weights/best_openvino_model/best.bin
-!app/processor/models/detection/weights/best_openvino_model/best.xml
-!app/processor/models/detection/weights/best_openvino_model/metadata.yaml
+!app/processor/models/detection/class_maps/
+!app/processor/models/detection/class_maps/*.yaml
+!app/processor/models/detection/trapper_ai_v02_2024/
+app/processor/models/detection/trapper_ai_v02_2024/*
+!app/processor/models/reid/
+app/processor/models/reid/*
+!app/processor/models/reid/ornimetrics/
+!app/processor/models/reid/ornimetrics/README.md
+!app/processor/models/welfare/
+app/processor/models/welfare/*
+!app/processor/models/welfare/ornimetrics/
+!app/processor/models/welfare/ornimetrics/README.md
+!app/processor/models/classification/convnext_v2_tiny_eu-common256px/
+app/processor/models/classification/convnext_v2_tiny_eu-common256px/*
 
 # Windows / экспорт мусор рядом с весами
 **/Zone.Identifier
 !app/processor/models/tracker/
 app/processor/models/tracker/*
+!app/processor/models/tracker/README.md
 !app/processor/models/tracker/*.yaml
-!app/processor/models/behavior/
-app/processor/models/behavior/*
-!app/processor/models/behavior/README.md
-!app/processor/models/behavior/behavior_logistic_export@v1.json
-!app/processor/models/behavior/behavior_logistic_openvino/
-!app/processor/models/behavior/behavior_logistic_openvino/behavior_logistic.onnx
+# Behavior models — resolved through behavior_model_paths legacy aliases
+
+# Zenodo annotation CSVs (full set via scripts/download_wetlandbirds_zenodo.sh)
+app/data/datasets/Visual-WetlandBirds/annotations/
+
+# Behavior v2.1 — generated manifests/crops (rebuild on VPS via scripts/)
+app/data/datasets/behavior_v2_1/
+app/data/datasets/behavior_v2_1_local/
+app/data/datasets/Visual-WetlandBirds/videos/
+app/data/behavior_auto_monitor/
 
 # Сгенерированная документация (make docs)
 docs/api/
@@ -218,3 +264,23 @@ app/web/instance/
 # Локальный scratch и копии диагностики у корня репо (не путать с app/data/)
 /tmp/
 /data/
+
+# Отчёты и визуализации бенчей (в git — только выбранные .md, см. git add docs/reports/*.md)
+docs/reports/showdown_viz/
+docs/reports/trapper_test_1952/*.jpg
+docs/reports/trapper_test_1952/collage_top10.jpg
+docs/reports/**/*.jpg
+docs/reports/**/*.jpeg
+docs/reports/**/*.png
+docs/reports/**/*.log
+docs/reports/**/results_visual/
+
+# Генерируемые отчёты деплоя и DORA — не коммитить (создаются при make deploy/verify)
+docs/reports/deploy_contract/
+docs/reports/dora/
+# Агентские/операционные baseline-отчёты — могут содержать хосты и секреты; не коммитить
+docs/reports/orin-stack-baseline-*.md
+docs/reports/*-stack-baseline-*.md
+docs/reports/agent-*.md
+# RTSP пароли — не коммитить!
+scripts/smoke_detect_subtype_compare.py

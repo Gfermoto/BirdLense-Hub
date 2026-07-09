@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { BASE_URL } from './client';
+import { ApiHttpError, BASE_URL } from './client';
 
 export { BASE_URL, BASE_API_URL, JOB_STATUS_POLL_TIMEOUT_MS } from './client';
 
@@ -12,6 +12,9 @@ export function getApiErrorMessage(err: unknown, fallback: string): string {
       if (typeof msg === 'string' && msg.trim()) return msg;
     }
     if (err.message) return err.message;
+  }
+  if (err instanceof ApiHttpError) {
+    if (typeof err.message === 'string' && err.message.trim()) return err.message;
   }
   if (err instanceof Error && err.message) return err.message;
   return fallback;
@@ -76,7 +79,6 @@ export {
   fetchVideoFusionTrace,
   fetchVideoNeighbors,
   mergeVideoSpecies,
-  regenerateSpectrogramForSingleVideo,
   regenerateTracksForSingleVideo,
 } from './video';
 export type {
@@ -157,20 +159,12 @@ export {
   trackSiteVisitor,
 } from './systemAuditMetrics';
 
-export type {
-  ProcessorWeightsAllowlistStatus,
-  ProcessorWeightsSlotStatus,
-  ProcessorWeightsStatusResponse,
-} from './notificationsProcessor';
 export {
-  fetchProcessorWeightsStatus,
   fetchVapidPublicKey,
   refreshTelegramProxy,
-  resetProcessorWeights,
   restartProcessor,
   sendTestNotification,
   subscribePush,
-  uploadProcessorWeight,
 } from './notificationsProcessor';
 
 export type { PurgeStorageBody } from './settingsYamlDb';
@@ -232,8 +226,6 @@ export type {
   RefreshSpeciesMetadataResponse,
   ReviewQueueDeletePreview,
   ReviewQueueDeletePreviewVideo,
-  SpectrogramRegenProgress,
-  SpectrogramRegenerationJobStatus,
   TrackRegenProgress,
   TrackRegenerationJobStatus,
   TuningTargetEntry,
@@ -249,7 +241,6 @@ export {
   fetchOverviewData,
   fetchRecentCorrections,
   fetchSpeciesSummary,
-  fetchSpectrogramRegenerationStatus,
   fetchTrackRegenSpeciesOptions,
   fetchTrackRegenerationStatus,
   fetchTuningTargets,

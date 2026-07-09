@@ -11,6 +11,7 @@ sys.path.append(src_path)
 sys.path.append(os.path.join(project_root, 'app'))
 
 from frame_processor import FrameProcessor
+from roi_crop import roi_crop_ref_from_norm_bbox
 
 
 class _DummyStrategy:
@@ -41,6 +42,33 @@ class TestFrameProcessorKeyFrames(unittest.TestCase):
             track['key_frames'][1]['score'],
         )
         self.assertIs(track['best_frame'], crop_high)
+
+    def test_update_track_accepts_roi_crop_ref(self):
+        fp = FrameProcessor(_DummyStrategy())
+        frame = np.zeros((32, 32, 3), dtype=np.uint8)
+        roi = roi_crop_ref_from_norm_bbox(
+            frame,
+            x1=4,
+            y1=5,
+            x2=20,
+            y2=22,
+        )
+        self.assertIsNotNone(roi)
+
+        fp.update_track(
+            2,
+            "Bird",
+            None,
+            0.7,
+            None,
+            [0.1, 0.1, 0.5, 0.5],
+            0.0,
+            roi,
+            10.0,
+        )
+        track = fp.tracks[2]
+        self.assertEqual(track["best_frame"].shape[:2], (17, 16))
+        self.assertEqual(len(track["key_frames"]), 1)
 
 
 if __name__ == '__main__':

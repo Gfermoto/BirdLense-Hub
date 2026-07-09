@@ -1,5 +1,7 @@
+import type { ReactElement } from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { UnknownCard } from './index';
 import type { UnknownDetection } from '../../api/timeline';
@@ -9,6 +11,18 @@ const memoryRouterFuture = {
   v7_startTransition: true,
   v7_relativeSplatPath: true,
 } as const;
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+function renderUnknownCard(ui: ReactElement) {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter future={memoryRouterFuture}>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
 
 const detection: UnknownDetection = {
   id: 1,
@@ -25,21 +39,18 @@ const detection: UnknownDetection = {
 
 describe('UnknownCard', () => {
   it('shows localized review reason chip for operator explainability', () => {
-    render(
-      <MemoryRouter future={memoryRouterFuture}>
+    renderUnknownCard(
         <UnknownCard
           detection={detection}
-          speciesList={[]}
           onCorrect={() => Promise.resolve()}
           onConfirm={() => Promise.resolve()}
           canEdit={false}
           videoListReturnPath="/timeline?review=1"
           selected={false}
           onToggleSelected={() => {}}
-        />
-      </MemoryRouter>,
+        />,
     );
 
-    expect(screen.getByText('Low confidence')).toBeInTheDocument();
+    expect(screen.getByText('Model unsure about species')).toBeInTheDocument();
   });
 });

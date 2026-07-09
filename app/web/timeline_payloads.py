@@ -10,26 +10,71 @@ from time_util import ensure_utc
 from services.feeder_scale import video_scales_estimate_payload
 
 
-def _model_behavior_events_from_video(video) -> list[dict]:
-    """Runtime behavior baseline persisted on Video (#416)."""
+def resolve_video_camera_id(session, video) -> str | None:
+    """Video.camera_id or nearest session_runtime_metrics row (legacy clips)."""
     if not video:
-        return []
-    lab = getattr(video, "behavior_label", None) or ""
-    lab = str(lab).strip()
-    if not lab:
-        return []
-    conf = getattr(video, "behavior_confidence", None)
+        return None
+    raw = getattr(video, "camera_id", None)
+    if raw and str(raw).strip():
+        return str(raw).strip()
+    if session is None:
+        return None
     try:
-        c = max(0.0, min(1.0, float(conf))) if conf is not None else 0.0
-    except (TypeError, ValueError):
-        c = 0.0
-    return [
-        {
-            "label": lab,
-            "confidence": round(c, 4),
-            "evidence": {"reason": "behavior_recognition_runtime"},
-        }
-    ]
+        from datetime import timedelta
+
+        from models import SessionRuntimeMetrics
+
+        v_start = ensure_utc(video.start_time)
+        window = timedelta(seconds=120)
+        row = (
+            session.query(SessionRuntimeMetrics.camera_id)
+            .filter(
+                SessionRuntimeMetrics.camera_id.isnot(None),
+                SessionRuntimeMetrics.created_at >= v_start - window,
+                SessionRuntimeMetrics.created_at <= v_start + window,
+            )
+            .order_by(SessionRuntimeMetrics.created_at.desc())
+            .first()
+        )
+        if row and row[0]:
+            return str(row[0]).strip()
+    except Exception:
+        return None
+    return None
+
+
+def _infer_trigger_source_from_detections(detections: list[dict], *, preferred_trigger: str | None = None) -> str:
+    """Best-effort trigger source for timeline semantics.
+
+    Timeline payload historically has detection source/provider only. To keep
+    trigger semantics explicit for UI filters we derive a stable trigger tag
+    from detection lineage.
+    """
+    normalized_preferred = str(preferred_trigger or "").strip().lower()
+    if normalized_preferred in {
+        "opencv",
+        "frigate",
+        "motion_sensor",
+        "scales",
+        "unknown",
+    }:
+        return normalized_preferred
+
+    providers = {
+        str(d.get("detection_provider") or "").strip().lower() for d in (detections or []) if isinstance(d, dict)
+    }
+    if any("frigate" in p for p in providers):
+        return "frigate"
+    if any(p in {"yolo", "ultralytics", "onnxruntime"} for p in providers):
+        return "opencv"
+    if any(p in {"opencv", "motion", "motion_detector", "or_motion"} for p in providers):
+        return "opencv"
+    if any(p in {"scale", "scales"} for p in providers):
+        return "scales"
+    sources = {str(d.get("source") or "").strip().lower() for d in (detections or []) if isinstance(d, dict)}
+    if "audio" in sources:
+        return "motion_sensor"
+    return "unknown"
 
 
 def get_primary_video_for_visit(visit) -> object | None:
@@ -71,7 +116,7 @@ def get_primary_video_for_visit_in_window(
     return primary.video
 
 
-def format_visit_for_timeline(visit) -> dict:
+def format_visit_for_timeline(visit, *, session=None) -> dict:
     """Format SpeciesVisit to timeline API format (detections, weather, species)."""
     video = get_primary_video_for_visit(visit)
     video_duration_seconds = None
@@ -82,6 +127,7 @@ def format_visit_for_timeline(visit) -> dict:
     detections = []
     total_recording_seconds = 0.0
     nickname = None
+    bird_profile_id = None
     for vs in sorted(visit.video_species, key=lambda x: x.created_at, reverse=True):
         video_start = ensure_utc(vs.video.start_time)
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
@@ -90,6 +136,8 @@ def format_visit_for_timeline(visit) -> dict:
             nn = str(vs.individual_nickname).strip()
             if nn:
                 nickname = nn
+        if bird_profile_id is None and getattr(vs, "bird_profile_id", None):
+            bird_profile_id = int(vs.bird_profile_id)
         det = {
             "id": vs.id,
             "video_id": vs.video_id,
@@ -100,10 +148,19 @@ def format_visit_for_timeline(visit) -> dict:
         }
         if getattr(vs, "individual_nickname", None):
             det["individual_nickname"] = vs.individual_nickname
+        if getattr(vs, "bird_profile_id", None):
+            det["bird_profile_id"] = int(vs.bird_profile_id)
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
+        if getattr(vs, "audio_evidence", None):
+            det["audio_evidence"] = vs.audio_evidence
+        if getattr(vs, "birdnet_prior", None) is not None:
+            det["birdnet_prior"] = vs.birdnet_prior
+        if getattr(vs, "weighted_arbiter_score", None) is not None:
+            det["weighted_arbiter_score"] = vs.weighted_arbiter_score
+        if getattr(vs, "hint_trace", None):
+            det["hint_trace"] = vs.hint_trace
         detections.append(det)
-    behavior_events = _model_behavior_events_from_video(video)
     return {
         "id": visit.id,
         "start_time": ensure_utc(visit.start_time).isoformat(),
@@ -126,12 +183,18 @@ def format_visit_for_timeline(visit) -> dict:
         },
         "detections": detections,
         "individual_nickname": nickname,
-        "behavior_events": behavior_events,
+        "bird_profile_id": bird_profile_id,
+        "behavior_events": [],
         "timeline_kind": "visit",
+        "trigger_source": _infer_trigger_source_from_detections(
+            detections,
+            preferred_trigger=getattr(video, "trigger_source", None) if video else None,
+        ),
+        "camera_id": resolve_video_camera_id(session, video),
     }
 
 
-def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
+def format_unlinked_video_for_timeline(video, *, fallback_species, session=None) -> dict:
     """Ролик за интервал без привязки к SpeciesVisit — тот же контракт, что у визита в /timeline."""
     v0 = ensure_utc(video.start_time)
     v1 = ensure_utc(video.end_time)
@@ -140,6 +203,7 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
     total_recording_seconds = 0.0
     vss = sorted(video.video_species, key=lambda x: x.created_at, reverse=True)
     nickname = None
+    bird_profile_id = None
     for vs in vss:
         video_start = ensure_utc(vs.video.start_time)
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
@@ -148,6 +212,8 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
             nn = str(vs.individual_nickname).strip()
             if nn:
                 nickname = nn
+        if bird_profile_id is None and getattr(vs, "bird_profile_id", None):
+            bird_profile_id = int(vs.bird_profile_id)
         det = {
             "id": vs.id,
             "video_id": vs.video_id,
@@ -158,8 +224,18 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         }
         if getattr(vs, "individual_nickname", None):
             det["individual_nickname"] = vs.individual_nickname
+        if getattr(vs, "bird_profile_id", None):
+            det["bird_profile_id"] = int(vs.bird_profile_id)
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
+        if getattr(vs, "audio_evidence", None):
+            det["audio_evidence"] = vs.audio_evidence
+        if getattr(vs, "birdnet_prior", None) is not None:
+            det["birdnet_prior"] = vs.birdnet_prior
+        if getattr(vs, "weighted_arbiter_score", None) is not None:
+            det["weighted_arbiter_score"] = vs.weighted_arbiter_score
+        if getattr(vs, "hint_trace", None):
+            det["hint_trace"] = vs.hint_trace
         detections.append(det)
     if vss:
         sp = vss[0].species
@@ -200,6 +276,12 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         "species": species_block,
         "detections": detections,
         "individual_nickname": nickname,
-        "behavior_events": _model_behavior_events_from_video(video),
+        "bird_profile_id": bird_profile_id,
+        "behavior_events": [],
         "timeline_kind": "unlinked_video",
+        "trigger_source": _infer_trigger_source_from_detections(
+            detections,
+            preferred_trigger=getattr(video, "trigger_source", None),
+        ),
+        "camera_id": resolve_video_camera_id(session, video),
     }

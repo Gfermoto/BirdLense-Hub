@@ -152,15 +152,15 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
 
 ## В логах «Slow frame processing» (медленная обработка кадра)
 
-Симптом: в логах процессора строки вида **`Slow frame processing: … ms >= … ms`** — время прохода детектора/пайплайна превышает **`processor.frame_processing_warn_ms`** (по умолчанию **450** мс). Высокое разрешение + VA-API всё равно упираются в бюджет кадра.
+Симптом: в логах процессора строки вида **`Slow frame processing: … ms >= … ms`** — время прохода детектора/пайплайна превышает **`processor.frame_processing_warn_ms`** (по умолчанию **450** мс). Высокое разрешение + NVDEC/NVENC всё равно упираются в бюджет кадра.
 
 1. **Система → Аудит конфигурации** — блок **Runtime процессора**: счётчик `slow_frame_processor_detect_total`, **p95** детектора vs порог (данные из `data/diagnostics/processor_runtime_stats.json`).
 2. **Настройки → Процессор → Модели** — уменьшите **`processor.binary_imgsz`** (например **640**, затем **512**), сохраните настройки и снова посмотрите логи.
 3. Если **шум в логах** приемлем по UX — поднимите **`processor.frame_processing_warn_ms`** (это **не ускоряет** инференс, только реже предупреждает).
 4. **Свет / ночь** — если YOLO часто не вызывается из‑за light gate, см. `processor.light_gate_*` и ночные оверрайды (recall vs нагрузка).
-5. **GPU / VA-API на VPS** — убедитесь, что контейнер реально использует ожидаемый путь: `docker logs birdlense` (строки VA-API / FFmpeg); на хосте при необходимости `intel_gpu_top`, `vainfo`. Без GPU остаётся CPU — на высоком разрешении slow frame ожидаемы.
+5. **GPU (Orin)** — убедитесь, что контейнер использует NVIDIA runtime: `docker logs birdlense` (строки NVENC / GStreamer). Без GPU остаётся CPU.
 
-См. также [PROCESSOR_PERFORMANCE](./processor-performance.ru.md), [CONFIGURATION](./configuration.ru.md), [release-readiness](../../release-readiness.md). Ворота релиза: [DEFINITION_OF_DONE](../../archive/internal/docs-legacy/DEFINITION_OF_DONE.ru.md).
+См. также [PROCESSOR_PERFORMANCE](./processor-performance.ru.md), [CONFIGURATION](./configuration.ru.md), [release-readiness](../../release-readiness.md). Ворота релиза: DEFINITION_OF_DONE (архивирован).
 
 ## Падает readiness при установке или после деплоя
 
@@ -191,7 +191,7 @@ python3 scripts/prune_deprecated_user_config.py --path app/app_config/user_confi
 cd app && docker compose restart birdlense
 ```
 
-Перед записью создаётся резервная копия `user_config.yaml.bak`. См. также [SECRETS_ROTATION](../../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md).
+Перед записью создаётся резервная копия `user_config.yaml.bak`. См. также [SECRETS_ROTATION](../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md).
 
 ## Быстрая проверка MCP (Bearer)
 
@@ -206,7 +206,7 @@ export MCP_TOKEN='ваш-токен-с-сервера'
 
 ## PostgreSQL как БД хаба
 
-Compose overlay, `DATABASE_URL`, пул, greenfield vs перенос с SQLite и разделение с файлом процессора **`birdlense.db`**: [POSTGRES_MIGRATION.ru](../../archive/internal/docs-legacy/POSTGRES_MIGRATION.ru.md).
+Compose overlay, `DATABASE_URL`, пул, greenfield vs перенос с SQLite и разделение с файлом процессора **`birdlense.db`**: [POSTGRES_MIGRATION.ru](../archive/internal/docs-legacy/POSTGRES_MIGRATION.ru.md).
 
 ## Отладка по запросам
 

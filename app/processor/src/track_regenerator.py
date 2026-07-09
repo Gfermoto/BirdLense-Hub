@@ -6,15 +6,11 @@ Runs YOLO+ByteTrack on each frame and returns detections with frames.
 from __future__ import annotations
 
 import logging
-import math
 import os
-import time
 import threading
 from contextlib import contextmanager
-import cv2
 
 from shared.ctor_kwarg_guard import assert_ctor_kwargs
-from yolo_geometry import letterbox_bgr_to_wh
 
 logger = logging.getLogger(__name__)
 _TRACK_REGEN_INFER_LOCK = threading.RLock()
@@ -129,13 +125,15 @@ def build_detection_pipeline(
 
 def process_video_for_tracks(
     video_path: str,
-    lores_size=(640, 640),
+    lores_size: tuple[int, int] | None = None,
     frame_processor=None,
     decision_maker=None,
     frame_step: int = 1,
     max_runtime_sec: int | None = None,
     progress_hook=None,
     progress_hook_interval: int = 20,
+    metrics_out: dict | None = None,
+    camera_id: str | None = None,
 ):
     """
     Run YOLO+ByteTrack on video file. Returns list of detections with frames.
@@ -144,10 +142,13 @@ def process_video_for_tracks(
     progress_hook: вызывается из UI-воркера; meta: phase, yolo_frames_done, yolo_frames_total (оценка).
     """
     from app_config.app_config import app_config
+    from species_mapping_config import build_species_mapping
     from species_normalizer import normalize
+    from stream_probe import probe_video_file, publish_probe_gauges
+    from tracking_service import TrackingService
 
     if not os.path.isfile(video_path):
-        logger.warning(f"Video not found: {video_path}")
+        logger.warning("Video not found: %s", video_path)
         return []
 
     if frame_processor is None or decision_maker is None:
@@ -161,81 +162,33 @@ def process_video_for_tracks(
     serialize_infer = bool(app_config.get("processor.track_regen_serialize_inference", True))
     interprocess_serialize = bool(app_config.get("processor.track_regen_serialize_inference_interprocess", True))
 
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        logger.warning(f"Cannot open video: {video_path}")
-        return []
+    probe_caps = probe_video_file(video_path)
+    publish_probe_gauges(probe_caps)
+    source_fps = float(probe_caps.fps) if probe_caps and probe_caps.fps > 0.5 else 0.0
 
-    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    frame_total_guess = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    try:
-        fcg = float(frame_total_guess)
-        yolo_runs_est = int(math.ceil(fcg / float(frame_step))) if fcg > 1.5 else None
-    except (TypeError, ValueError):
-        yolo_runs_est = None
-    if yolo_runs_est is not None:
-        yolo_runs_est = max(1, yolo_runs_est)
-    frame_count = 0
-    runs_done = 0
-    try:
-        _hi = max(1, int(progress_hook_interval or 20))
-    except (TypeError, ValueError):
-        _hi = 20
-    started = time.monotonic()
-    try:
-        with _track_regen_interprocess_lock(interprocess_serialize):
-            while True:
-                if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
-                    raise TimeoutError(f"Track regeneration timeout ({max_runtime_sec}s) for {video_path}")
-                # Только decode+retrieve на обрабатываемых кадрах; между ними — grab()
-                # без полного декодирования (иначе frame_step почти не ускоряет батч).
-                if frame_count % frame_step == 0:
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
-                    frame_time_sec = frame_count / fps
-                    # Не stretch в lores_size: иначе на 16:9 клипах YOLO+ByteTrack почти пустой (см. yolo_geometry).
-                    frame_resized = letterbox_bgr_to_wh(frame, (int(lores_size[0]), int(lores_size[1])))
-                    if serialize_infer:
-                        with _TRACK_REGEN_INFER_LOCK:
-                            has_detections = frame_processor.run(
-                                frame_resized,
-                                frame_time=frame_time_sec,
-                                skip_light_gate=True,
-                            )
-                    else:
-                        has_detections = frame_processor.run(
-                            frame_resized,
-                            frame_time=frame_time_sec,
-                            skip_light_gate=True,
-                        )
-                    decision_maker.update_has_detections(has_detections)
-                    runs_done += 1
-                    if progress_hook is not None and (
-                        runs_done == 1
-                        or runs_done % _hi == 0
-                        or (yolo_runs_est is not None and runs_done >= yolo_runs_est)
-                    ):
-                        try:
-                            progress_hook(
-                                {
-                                    "phase": "yolo_infer",
-                                    "yolo_frames_done": runs_done,
-                                    "yolo_frames_total": yolo_runs_est,
-                                }
-                            )
-                        except Exception:
-                            logger.debug("Track regen progress_hook failed", exc_info=True)
-                else:
-                    ret = cap.grab()
-                    if not ret:
-                        break
-                frame_count += 1
-    finally:
-        cap.release()
+    service = TrackingService.from_regen_pipeline(
+        frame_processor,
+        decision_maker,
+        runtime_cfg=app_config.config,
+        source_fps=source_fps,
+        frame_step=frame_step,
+    )
+    infer_lock = _TRACK_REGEN_INFER_LOCK if serialize_infer else None
+
+    with _track_regen_interprocess_lock(interprocess_serialize):
+        service.process_video(
+            video_path,
+            camera_id=camera_id,
+            frame_step=frame_step,
+            max_runtime_sec=max_runtime_sec,
+            progress_hook=progress_hook,
+            progress_hook_interval=progress_hook_interval,
+            metrics_out=metrics_out,
+            infer_lock=infer_lock,
+        )
 
     results = decision_maker.get_results(frame_processor.tracks)
-    species_mapping = app_config.get("detection.species_mapping") or {}
+    species_mapping = build_species_mapping(app_config)
 
     detections = []
     for r in results:
@@ -271,19 +224,26 @@ def process_video_for_tracks(
                 row[copy_key] = r[copy_key]
         detections.append(row)
     detections = _dedupe_track_detections(detections)
+    if metrics_out is not None:
+        species = sorted(
+            {str(d.get("species_name") or "").strip() for d in detections if str(d.get("species_name") or "").strip()}
+        )
+        metrics_out["fused_track_count"] = len(detections)
+        metrics_out["species_detected"] = species
+        metrics_out["species_detected_count"] = len(species)
+        metrics_out.update(frame_processor.get_tracking_stability_stats())
     logger.info(
-        "Track regen: %s -> %s detections, %s frames, frame_step=%s",
+        "Track regen: %s -> %s detections, frame_step=%s unified_with_live=%s",
         video_path,
         len(detections),
-        frame_count,
         frame_step,
+        bool(service.policy.unified_with_live),
     )
-    if not detections and frame_count > 0:
+    if not detections and metrics_out and int(metrics_out.get("total_frames") or 0) > 0:
         logger.info(
             "Track regen: 0 accepted tracks after %s frames — если кадры есть, но пусто: "
             "снизить processor.min_confidence_binary_bird / min_confidence_to_process, "
-            "увеличить track_regen_lores_px (single-video уже подтягивает inference_lores_px), "
-            "или проверить веса детектора/классификатора.",
-            frame_count,
+            "проверить track_regen_match_live_pipeline и веса детектора/классификатора.",
+            metrics_out.get("total_frames"),
         )
     return detections

@@ -7,6 +7,8 @@ import Tooltip from '@mui/material/Tooltip';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { OverviewTopSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
+import { useTranslation } from 'react-i18next';
+import { overviewSpeciesLabel } from './overviewSpeciesLabel';
 import { Dayjs } from 'dayjs';
 
 const polarToCartesian = (
@@ -61,6 +63,7 @@ export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
   size: propSize,
   observerTimezone,
 }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -268,7 +271,7 @@ export const DailyPatternChart: React.FC<DailyPatternChartProps> = ({
                 }}
               />
               <Typography variant="caption">
-                {species.name} ({totalDetections})
+                {overviewSpeciesLabel(t, species)} ({totalDetections})
               </Typography>
             </Box>
           );

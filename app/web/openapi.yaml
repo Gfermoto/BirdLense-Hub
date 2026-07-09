@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: BirdLense Hub UI API
-  version: 0.3.7
+  version: 0.5.0
   description: |
     BirdLense Hub is an automated bird feeder monitoring and analytics system. It uses video and audio processing to detect, identify, and log bird (and other animal) visits, providing rich statistics, visualizations, and configuration options via a REST API. The API supports:
       - Querying real-time and historical bird visit data
@@ -63,6 +63,15 @@ paths:
                   ready:
                     type: boolean
                     example: true
+                  quality_ready:
+                    type: boolean
+                    description: True when historical pipeline-quality checks are healthy. Core service readiness may be true while this is false.
+                  bbox_slo_ok:
+                    type: boolean
+                    description: True when bbox/crop geometry SLO gate is green (#642); ReID/behavior layers allowed.
+                  bbox_slo_reason:
+                    type: string
+                    description: Gate evaluation reason (e.g. ok, funnel_degraded, bbox_iou_p50=...).
                   checked_at:
                     type: string
                     format: date-time
@@ -100,6 +109,30 @@ paths:
                             type: boolean
                           status:
                             type: string
+                      cache_backend:
+                        type: object
+                        additionalProperties: true
+                      processor_heartbeat:
+                        type: object
+                        additionalProperties: true
+                      pipeline_funnel:
+                        $ref: "#/components/schemas/PipelineFunnelCheck"
+                      yolo_detector:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          source:
+                            type: string
+                          inference_backend_effective:
+                            type: string
+                            description: Effective detector backend after bootstrap (torch/onnxruntime/tensorrt).
+                          inference_backend_requested:
+                            type: string
+                            description: Requested processor.inference_backend (may differ when auto fallback).
+                          inference_auto_torch_fallback:
+                            type: boolean
+                            description: True when auto resolved to torch at bootstrap.
                   components:
                     type: object
                     properties:
@@ -152,6 +185,9 @@ paths:
                             status:
                               type: string
                               enum: [ok, warn, error]
+                  pipeline_funnel:
+                    type: object
+                    additionalProperties: true
         "503":
           description: App is up but not fully ready for use
           content:
@@ -166,6 +202,14 @@ paths:
                   ready:
                     type: boolean
                     example: false
+                  quality_ready:
+                    type: boolean
+                    description: True when historical pipeline-quality checks are healthy. Core service readiness may be false due to core checks.
+                  bbox_slo_ok:
+                    type: boolean
+                    description: True when bbox/crop geometry SLO gate is green (#642).
+                  bbox_slo_reason:
+                    type: string
                   checked_at:
                     type: string
                     format: date-time
@@ -205,6 +249,30 @@ paths:
                             type: boolean
                           status:
                             type: string
+                      cache_backend:
+                        type: object
+                        additionalProperties: true
+                      processor_heartbeat:
+                        type: object
+                        additionalProperties: true
+                      pipeline_funnel:
+                        $ref: "#/components/schemas/PipelineFunnelCheck"
+                      yolo_detector:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          source:
+                            type: string
+                          inference_backend_effective:
+                            type: string
+                            description: Effective detector backend after bootstrap (torch/onnxruntime/tensorrt).
+                          inference_backend_requested:
+                            type: string
+                            description: Requested processor.inference_backend (may differ when auto fallback).
+                          inference_auto_torch_fallback:
+                            type: boolean
+                            description: True when auto resolved to torch at bootstrap.
                   components:
                     type: object
                     properties:
@@ -253,6 +321,9 @@ paths:
                             status:
                               type: string
                               enum: [ok, warn, error]
+                  pipeline_funnel:
+                    type: object
+                    additionalProperties: true
   /status:
     get:
       summary: Component status
@@ -321,6 +392,26 @@ paths:
             text/plain:
               schema:
                 type: string
+  /api/debug/scoring:
+    get:
+      summary: ScoringEngine debug (thresholds, histogram, Black Box tail)
+      description: |
+        Live SOTA 2.0 scoring telemetry from decision trace JSONL and config.
+        Requires settings password (same as `/api/ui/status/debug`).
+      responses:
+        "200":
+          description: Scoring debug payload
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/metrics:
     get:
       summary: Prometheus metrics (API alias)
@@ -782,6 +873,19 @@ paths:
           schema:
             type: string
             format: date
+          description: Observer-local calendar day (YYYY-MM-DD). Use either date or start_time/end_time.
+        - in: query
+          name: start_time
+          required: false
+          schema:
+            type: integer
+          description: Unix timestamp (UTC); pair with end_time for explicit window.
+        - in: query
+          name: end_time
+          required: false
+          schema:
+            type: integer
+          description: Unix timestamp (UTC); pair with start_time for explicit window.
       responses:
         "200":
           description: Overview data
@@ -812,6 +916,9 @@ paths:
                         type: string
                         format: date-time
                         nullable: true
+                      unidentified:
+                        type: boolean
+                        description: True when last activity is generic Bird/Rodent (detector only)
                   observer_timezone:
                     type: string
                     description: IANA timezone name used for local-hour bucketing
@@ -873,6 +980,13 @@ paths:
           schema:
             type: string
           description: Same as `favorite_only` (either may be used).
+        - in: query
+          name: trigger_source
+          required: false
+          schema:
+            type: string
+            enum: [all, opencv, frigate, motion_sensor, scales, unknown]
+          description: Trigger-layer filter only (not detection provider/source).
       responses:
         "200":
           description: Timeline data
@@ -934,8 +1048,11 @@ paths:
     get:
       summary: List all species
       description: |
-        Retrieve a list of all bird species that have been detected by the system. This includes summary information like name, parent species, and detection count. Useful for managing species data and monitoring diversity.
-        With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` (objects / non-bird COCO labels) are omitted for the Bird Directory UI.
+        Retrieve species rows for catalog UIs. Default ``scope=project`` returns project-visible
+        species (observed rows plus arbitration/classifier vocabulary and Bird/Rodent placeholders).
+        ``scope=allowlist`` returns one row per classifier class. Use ``scope=all`` for the full DB catalog.
+        With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` are omitted.
+        With ``meta=1``, response is ``{items, meta}`` with allowlist vs DB totals.
       parameters:
         - in: query
           name: exclude_suspects
@@ -943,15 +1060,43 @@ paths:
           schema:
             type: boolean
           description: If true, filter out catalog rows flagged by the data-quality blocklist.
+        - in: query
+          name: scope
+          required: false
+          schema:
+            type: string
+            enum: [project, allowlist, observed, all]
+            default: project
+          description: Catalog slice (default project = operator-visible catalog).
+        - in: query
+          name: meta
+          required: false
+          schema:
+            type: boolean
+          description: If true, wrap list in `{items, meta}` with coverage counters.
+        - in: query
+          name: missing_audio
+          required: false
+          schema:
+            type: boolean
+          description: If true, return rows without catalog audio metadata.
+        - in: query
+          name: catalog_incomplete
+          required: false
+          schema:
+            type: boolean
+          description: If true, return rows with incomplete photo/description metadata.
       responses:
         "200":
-          description: List of species
+          description: List of species (array) or wrapped payload when meta=1
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SpeciesSummary"
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/SpeciesSummary"
+                  - $ref: "#/components/schemas/SpeciesCatalogListResponse"
   /bird_families:
     get:
       summary: Get all bird families
@@ -1553,136 +1698,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  /system/processor-weights/status:
-    get:
-      summary: Custom processor weights status (#276)
-      description: |
-        Effective paths for binary detector, classifier, and species allowlist; whether each file lives under
-        `DATA_DIR/custom_weights`; sizes and mtimes. Settings password (or MCP Bearer) required.
-      responses:
-        "200":
-          description: Status payload
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "403":
-          description: Password required
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-  /system/processor-weights/upload:
-    post:
-      summary: Upload custom .pt or class_names.txt (#276)
-      description: |
-        Multipart field `file`. Query `role` = `binary` | `classifier` | `class_names`.
-        For `classifier`, either a readable allowlist file must exist or `acknowledge_classifier_only=1`.
-        Writes under `DATA_DIR/custom_weights/`, updates `user_config`, reloads app config, sets processor restart flag.
-        Admin-only when contributor password is enabled. Max 2 GiB for .pt (zip-style checkpoint), 32 MiB for .txt.
-      parameters:
-        - name: role
-          in: query
-          required: true
-          schema:
-            type: string
-            enum: [binary, classifier, class_names]
-        - name: acknowledge_classifier_only
-          in: query
-          required: false
-          schema:
-            type: string
-            description: Set to 1/true/yes to skip allowlist-exists check for classifier upload
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-              required: [file]
-      responses:
-        "200":
-          description: Saved
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  path:
-                    type: string
-                  role:
-                    type: string
-                  status:
-                    type: object
-                    additionalProperties: true
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "403":
-          description: Access denied
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-  /system/processor-weights/reset:
-    post:
-      summary: Reset custom weights to built-in defaults (#276)
-      description: |
-        JSON body `{ "roles": ["binary"] | ["classifier"] | ["class_names"] | ["all"] | combinations }`.
-        Removes files in `custom_weights` and clears matching keys from user_config when they pointed there.
-        Sets processor restart flag. Admin-only when contributor password is enabled.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [roles]
-              properties:
-                roles:
-                  type: array
-                  items:
-                    type: string
-                    enum: [binary, classifier, class_names, all]
-      responses:
-        "200":
-          description: Reset done
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  removed_files:
-                    type: array
-                    items:
-                      type: string
-                  status:
-                    type: object
-                    additionalProperties: true
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "403":
-          description: Access denied
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /system/species-registry/seed:
     post:
       summary: Seed species registry from bundled mapping
@@ -2229,8 +2244,7 @@ paths:
           content:
             application/json:
               schema:
-                additionalProperties: true
-                type: object
+                $ref: '#/components/schemas/CamerasResponse'
           description: OK
         '403':
           content:
@@ -2500,8 +2514,8 @@ paths:
   /migration-calendar:
     get:
       description: 'Species visits aggregated by calendar month (heatmap). catalog selects rows: observed = species with activity
-        in range; dataset = class folders under data/dataset; full_eu = EU allowlist catalog. Legacy aliases: active -> observed;
-        full -> full_eu. evidence is accepted for compatibility but ignored.'
+        in range; all (alias full, full_eu) = full classifier allowlist catalog; dataset = class folders under data/dataset
+        (admin/API only). Legacy aliases: active -> observed. evidence is accepted for compatibility but ignored.'
       parameters:
       - description: Catalog mode; active and full are legacy aliases.
         in: query
@@ -2511,6 +2525,7 @@ paths:
           default: observed
           enum:
           - observed
+          - all
           - dataset
           - full_eu
           - active
@@ -3121,6 +3136,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Error
+    put:
+      summary: Update retention configuration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetentionConfigUpdate'
+      responses:
+        '200':
+          description: Updated retention config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionConfigResponse'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
     post:
       summary: Run retention policy (delete old recordings)
       requestBody:
@@ -3344,6 +3385,45 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Review-only noise candidates
+  /system/diagnostics/backpressure:
+    get:
+      summary: Processor W1 queue depths and drop counters
+      description: |
+        Live backpressure snapshot from ``processor_runtime_stats.json``:
+        finalize/classifier/MQTT queue gauges and deferred-trigger counters.
+        Requires settings password.
+      responses:
+        '200':
+          description: Backpressure snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '403':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /system/diagnostics/processor-runtime:
+    get:
+      summary: Processor runtime stats snapshot (JSON file on disk)
+      description: Full counters/gauges/latency snapshot written by the processor process.
+      responses:
+        '200':
+          description: Processor runtime snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '403':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /system/domain-health:
     get:
       description: External domain reachability; may require UI API key in strict mode.
@@ -3362,6 +3442,117 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Domain health check
+  /system/yolo-detector-health:
+    get:
+      description: Live YOLO detector health (blind alert, phase, stream probe gauges).
+      parameters:
+        - in: query
+          name: hours
+          schema:
+            type: integer
+            default: 24
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+      summary: YOLO detector blind/healthy status
+  /debug/bbox-parity:
+    get:
+      description: Bbox parity debug sessions and geometry gate metrics (settings password).
+      parameters:
+        - in: query
+          name: session_id
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+      summary: Bbox parity debug metrics
+  /api/debug/motion-preview:
+    get:
+      description: MOG2 / static calibration preview with mask overlay (settings password).
+      parameters:
+        - in: query
+          name: camera_id
+          schema:
+            type: string
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum:
+              - detection_mog2
+              - trigger_mog2
+              - static
+        - in: query
+          name: overrides
+          schema:
+            type: string
+            description: JSON overrides for processor/triggers.opencv (unsaved form values).
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Frame unavailable
+      summary: Motion / static calibration preview
+  /analytics/trigger-graph:
+    get:
+      description: Aggregated trigger graph FP/FN metrics by source (session_runtime_metrics).
+      parameters:
+        - in: query
+          name: hours
+          schema:
+            type: integer
+            default: 24
+        - in: query
+          name: camera_id
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+      summary: Trigger graph and source FP/FN metrics
   /system/fusion/eval:
     post:
       description: 'Admin: run eval job on traces.'
@@ -3668,55 +3859,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Scan and import recordings
-  /system/regenerate-spectrograms:
-    post:
-      description: 'Admin: start batch spectrogram job.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              additionalProperties: true
-              type: object
-        required: false
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Bulk regenerate spectrograms
-  /system/regenerate-spectrograms/status:
-    get:
-      description: Poll batch spectrogram job.
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Spectrogram batch status
   /system/regenerate-tracks/status:
     get:
       description: Poll batch track regeneration job.
@@ -3735,6 +3877,104 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Track batch status
+  /jobs:
+    get:
+      summary: List async background jobs
+      description: Unified status for catalog repair, regen, fusion export, etc. Requires settings password.
+      responses:
+        '200':
+          description: Jobs list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        '403':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Start async job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - track_regen
+                    - catalog_repair
+                    - species_metadata
+                    - fusion_export
+                    - fusion_eval
+                    - telegram_proxy_refresh
+                payload:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '202':
+          description: Job started
+        '400':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Job already running
+  /jobs/{job_id}:
+    get:
+      summary: Get async job status
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Request job cancel (track_regen only)
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cancel requested
+        '409':
+          description: Job not running
   /system/review-queue/delete:
     post:
       description: 'Admin: apply bulk delete.'
@@ -4015,30 +4255,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Merge species on recording
-  /videos/{video_id}/regenerate-spectrogram:
-    post:
-      description: 'Admin: queue spectrogram regeneration for one recording.'
-      parameters:
-      - in: path
-        name: video_id
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Regenerate spectrogram
   /videos/{video_id}/regenerate-tracks:
     post:
       description: 'Admin: queue track regeneration for one recording.'
@@ -4256,6 +4472,34 @@ components:
       properties:
         error:
           type: string
+    RetentionConfigUpdate:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [cascade, files_only, disabled]
+        days:
+          type: integer
+          nullable: true
+        max_gb:
+          type: number
+          nullable: true
+        dataset_max_age_days:
+          type: integer
+        migration_max_age_days:
+          type: integer
+        protect_favorites:
+          type: boolean
+        min_age_hours:
+          type: integer
+        batch_size:
+          type: integer
+        max_deletes_per_run:
+          type: integer
+        auto_run_enabled:
+          type: boolean
+        auto_run_interval_hours:
+          type: integer
     RetentionConfigResponse:
       type: object
       properties:
@@ -4278,6 +4522,14 @@ components:
           type: integer
         batch_size:
           type: integer
+        max_deletes_per_run:
+          type: integer
+        auto_run_enabled:
+          type: boolean
+          description: Scheduled retention auto-run; default false in default_config.yaml (distinct from reconcile.auto_run_enabled).
+        auto_run_interval_hours:
+          type: integer
+          description: Hours between scheduled retention checks when auto_run_enabled is true; default 6.
         last_run:
           type: string
           format: date-time
@@ -4288,6 +4540,17 @@ components:
           type: integer
         last_mode:
           type: string
+        orphan_recording_files:
+          type: object
+          properties:
+            orphan_session_count:
+              type: integer
+            orphan_bytes:
+              type: integer
+            sample_paths:
+              type: array
+              items:
+                type: string
     ConfigAuditResponse:
       type: object
       required:
@@ -4476,8 +4739,6 @@ components:
           format: date-time
         video_path:
           type: string
-        spectrogram_path:
-          type: string
         favorite:
           type: boolean
         weather:
@@ -4543,6 +4804,13 @@ components:
             display_unit:
               type: string
               enum: [kg, g]
+            weight_change_grams:
+              type: number
+              description: Signed mass change during the visit window (grams); null when scales data missing
+            weight_trend:
+              type: string
+              enum: [up, down, stable]
+              description: Direction vs noise threshold (~5 g); stable when change is within sensor noise
         behavior_label:
           type: string
           nullable: true
@@ -4601,6 +4869,69 @@ components:
           type: array
           items:
             type: integer
+        unidentified:
+          type: boolean
+          description: True for synthetic generic Bird/Rodent rows from detector segments
+    PipelineFunnelCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unknown]
+        sessions_total:
+          type: integer
+          nullable: true
+        healthy_persist_rate:
+          type: number
+          nullable: true
+        fusion_drop_rate:
+          type: number
+          nullable: true
+        fp_empty_opencv_rate:
+          type: number
+          nullable: true
+        alerts:
+          type: array
+          items:
+            type: string
+        top_root_causes:
+          type: array
+          items:
+            type: string
+        persist_substage_breakdown:
+          type: object
+          description: p50/p95 persist-tail substage latencies from recent session_runtime_metrics (#624).
+          additionalProperties: true
+    CameraSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Canonical camera id, equal to the Go2RTC recording stream name.
+        name:
+          type: string
+          description: Display name used in the UI.
+        stream_url:
+          type: string
+        go2rtc_src:
+          type: string
+          description: Go2RTC stream name used for main/live playback.
+        stream_url_mjpeg:
+          type: string
+          description: Processor MJPEG overlay endpoint for the detection stream.
+        camera_slot:
+          type: string
+          nullable: true
+        camera_profile:
+          type: string
+          nullable: true
+    CamerasResponse:
+      type: object
+      properties:
+        cameras:
+          type: array
+          items:
+            $ref: "#/components/schemas/CameraSummary"
     OverviewStats:
       type: object
       properties:
@@ -4608,8 +4939,18 @@ components:
           type: integer
         totalDetections:
           type: integer
+          description: Named-species visits (SpeciesVisit), excludes generic Bird/Rodent
         lastHourDetections:
           type: integer
+        unidentifiedBirdDetections:
+          type: integer
+          description: YOLO/MQTT segments labeled generic Bird (classifier not required)
+        rodentDetections:
+          type: integer
+          description: Detector segments labeled Rodent or rodent-like taxa
+        totalActivity:
+          type: integer
+          description: Named visits plus unidentified bird and rodent detector segments
         busiestHour:
           type: integer
         avgVisitDuration:
@@ -4624,6 +4965,11 @@ components:
         detectionByProvider:
           type: object
           description: Visit counts by `VideoSpecies.detection_provider` (key `legacy` if null)
+          additionalProperties:
+            type: integer
+        triggerBySource:
+          type: object
+          description: Visit counts by `Video.trigger_source` (key `unknown` if null)
           additionalProperties:
             type: integer
     TimelineVisit:
@@ -4647,6 +4993,10 @@ components:
         timeline_kind:
           type: string
           enum: [visit, unlinked_video]
+        trigger_source:
+          type: string
+          nullable: true
+          description: Trigger semantics for the visit item (opencv/frigate/motion_sensor/scales/unknown).
         individual_nickname:
           type: string
           nullable: true
@@ -4755,7 +5105,18 @@ components:
         review_reason:
           type: string
           nullable: true
-          enum: [low_confidence, generic_bird, classifier_uncertainty]
+          enum:
+            [
+              low_confidence,
+              generic_bird,
+              classifier_uncertainty,
+              semantic_review_required,
+              bbox_rejected,
+              reid_no_match,
+              welfare_anomaly,
+              unknown_label,
+              detect_first_anchor_only,
+            ]
         review_source:
           type: string
           nullable: true
@@ -4774,6 +5135,15 @@ components:
           type: integer
         name:
           type: string
+        db_name:
+          type: string
+          description: Raw persisted species name before catalog display normalization.
+        scientific_name:
+          type: string
+          nullable: true
+        classifier_predictable:
+          type: boolean
+          description: True when the active classifier/allowlist can predict this row.
         parent_id:
           type: integer
         created_at:
@@ -4783,6 +5153,13 @@ components:
           type: string
         description:
           type: string
+          nullable: true
+        metadata_source:
+          type: string
+          nullable: true
+        metadata_source_url:
+          type: string
+          nullable: true
         active:
           type: boolean
         regional_scope:
@@ -4792,6 +5169,55 @@ components:
             or has any BirdNET MQTT detection (detection_provider birdnet_mqtt). Used for Bird Directory «Regional» filter.
         count:
           type: integer
+        catalog_card_incomplete:
+          type: boolean
+          description: True when photo or description is missing or placeholder (card-quality UI).
+        catalog_scope:
+          type: string
+          enum: [project, allowlist, observed, all]
+          description: Present when the row was returned under a scoped catalog query.
+        catalog_has_audio:
+          type: boolean
+          description: True when the catalog card has linked audio metadata.
+    SpeciesCatalogMeta:
+      type: object
+      properties:
+        db_species_total:
+          type: integer
+        allowlist_total:
+          type: integer
+        listed_allowlist:
+          type: integer
+        allowlist_incomplete:
+          type: integer
+        project_vocabulary_total:
+          type: integer
+        listed_project:
+          type: integer
+        arbitration_vocabulary_total:
+          type: integer
+        classifier_engine:
+          type: string
+          nullable: true
+        classifier_class_count:
+          type: integer
+          nullable: true
+        catalog_with_audio:
+          type: integer
+        catalog_missing_audio:
+          type: integer
+        catalog_cards:
+          type: object
+          additionalProperties: true
+    SpeciesCatalogListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpeciesSummary"
+        meta:
+          $ref: "#/components/schemas/SpeciesCatalogMeta"
     BirdFamily:
       type: object
       properties:
@@ -4965,7 +5391,7 @@ components:
               type: number
         encoding:
           type: string
-          description: Video encoding setting (cpu or intel); hints whether GPU chart may apply.
+          description: Video encoding (orin/jetson for NVIDIA NVENC; always HW on Orin).
         gpu_percent:
           type: number
           nullable: true
@@ -5135,10 +5561,6 @@ components:
             Listed properties are a non-exhaustive subset used by the UI; extra keys are allowed.
           additionalProperties: true
           properties:
-            video_width:
-              type: integer
-            video_height:
-              type: integer
             tracker:
               type: string
             max_record_seconds:
@@ -5168,20 +5590,6 @@ components:
               type: number
               nullable: true
               description: Deprecated alias for min_confidence_binary_rodent (legacy YAML only).
-            openvino_binary_track_ultralytics_conf:
-              type: number
-              nullable: true
-              description: >
-                OpenVINO-only cap for YOLO.track(conf); min(stock_floor, this). Compensates lower OV scores vs torch.
-            openvino_binary_bird_score_scale:
-              type: number
-              nullable: true
-              description: >
-                OpenVINO-only Bird confidence multiplier for threshold compare only; stored conf stays raw.
-            openvino_min_confidence_binary_bird:
-              type: number
-              nullable: true
-              description: Optional OpenVINO-only replacement for min_confidence_binary_bird in floor + per-label.
             bird_skip_classifier_max_area_frac:
               type: number
               nullable: true
@@ -5231,11 +5639,6 @@ components:
               type: number
             classifier_fallback_bird:
               type: boolean
-            spectrogram_px_per_sec:
-              type: integer
-            generate_spectrogram_always:
-              type: boolean
-              description: If true, generate spectrogram after every recording; if false, only when BirdNET MQTT in window
             included_bird_families:
               type: array
               items:
@@ -5373,6 +5776,27 @@ components:
               additionalProperties:
                 type: number
               description: Optional per-species cosine thresholds keyed by species display name (#390).
+        video:
+          type: object
+          description: >
+            Capture and recording; full shape follows `default_config.yaml`.
+            Recording resolution is auto-probed per camera (not set in UI).
+          additionalProperties: true
+          properties:
+            detect_fps:
+              type: number
+              description: "0 = auto/probe from stream"
+            video_width:
+              type: integer
+              deprecated: true
+              description: Legacy file-replay only; ignored unless force_recording_resolution is true
+            video_height:
+              type: integer
+              deprecated: true
+              description: Legacy file-replay only; ignored unless force_recording_resolution is true
+            force_recording_resolution:
+              type: boolean
+              description: When true, video_width/height override stream probe (legacy file-replay)
         secrets:
           type: object
           properties:

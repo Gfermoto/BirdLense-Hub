@@ -100,15 +100,34 @@ def test_processor_rodent_migration_from_legacy_squirrel_keys(tmp_path, monkeypa
         app_config.reload()
 
 
+def test_confidence_floors_skip_when_env_set(tmp_path, monkeypatch):
+    from app_config.app_config import app_config
+
+    user_cfg = {"processor": {"min_confidence_binary": 0.1}}
+    user_config = tmp_path / "user_config.yaml"
+    user_config.write_text(yaml.safe_dump(user_cfg), encoding="utf-8")
+    old_user_config_file = app_config.user_config_file
+    monkeypatch.setattr(app_config, "user_config_file", str(user_config))
+    monkeypatch.setenv("BIRDLENSE_SKIP_CONFIDENCE_FLOORS", "1")
+
+    try:
+        app_config.reload()
+        assert app_config.get("processor.min_confidence_binary") == 0.1
+    finally:
+        monkeypatch.delenv("BIRDLENSE_SKIP_CONFIDENCE_FLOORS", raising=False)
+        app_config.user_config_file = old_user_config_file
+        app_config.reload()
+
+
 def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
     from app_config.app_config import app_config
 
     user_cfg = {
         "detection": {"min_confidence_to_store": 0.05},
         "processor": {
-            "min_confidence_binary": 0.1,
+            "min_confidence_binary": 0.05,
             "min_confidence_to_process": 0.03,
-            "min_track_duration": 0.2,
+            "min_track_duration": 0.1,
             "min_box_size_px": 24,
         },
     }
@@ -120,22 +139,38 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
     try:
         app_config.reload()
 
-        assert app_config.get("detection.min_confidence_to_store") == 0.22
-        assert app_config.get("processor.min_confidence_binary") == 0.22
-        assert app_config.get("processor.min_confidence_to_process") == 0.24
-        assert app_config.get("processor.min_track_duration") == 0.35
+        assert app_config.get("detection.min_confidence_to_store") == 0.08
+        assert app_config.get("processor.min_confidence_binary") == 0.08
+        assert app_config.get("processor.min_confidence_to_process") == 0.04
+        assert app_config.get("processor.min_track_duration") == 0.15
         assert app_config.get("processor.min_box_size_px") == 24
 
         app_config.save()
         saved = yaml.safe_load(user_config.read_text(encoding="utf-8")) or {}
-        assert float(saved["detection"]["min_confidence_to_store"]) == 0.22
-        assert float(saved["processor"]["min_confidence_binary"]) == 0.22
-        assert float(saved["processor"]["min_confidence_to_process"]) == 0.24
-        assert float(saved["processor"]["min_track_duration"]) == 0.35
+        assert float(saved["detection"]["min_confidence_to_store"]) == 0.08
+        assert float(saved["processor"]["min_confidence_binary"]) == 0.08
+        assert float(saved["processor"]["min_confidence_to_process"]) == 0.04
+        assert float(saved["processor"]["min_track_duration"]) == 0.15
         assert int(saved["processor"]["min_box_size_px"]) == 24
     finally:
         app_config.user_config_file = old_user_config_file
         app_config.reload()
+
+
+def test_confidence_floors_global_not_above_role_presets(monkeypatch):
+    """Global min_confidence_to_process must not be raised above feeder role presets."""
+    from app_config.app_config import AppConfig, app_config
+
+    default = yaml.safe_load(
+        open(app_config.default_config_file, encoding="utf-8")
+    ) or {}
+    merged = AppConfig.merge_dicts(default, {})
+    AppConfig._enforce_confidence_floors(merged)
+    proc = merged.get("processor") or {}
+    roles = proc.get("camera_tuning_by_role") or {}
+    assert float(roles["feeder_close"]["min_confidence_to_process"]) == 0.04
+    assert float(roles["feeder_far"]["min_confidence_to_process"]) == 0.04
+    assert float(proc["min_confidence_to_process"]) == 0.08
 
 
 def test_migrate_legacy_trigger_topics_copies_into_new_domains():
@@ -231,7 +266,9 @@ def test_migrate_processor_classifier_best_eu_relative_path():
         },
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
-    assert user["processor"]["models"]["classifier"] == ("models/classification/weights/best.pt")
+    assert user["processor"]["models"]["classifier"] == (
+        "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx"
+    )
 
 
 def test_migrate_processor_classifier_best_eu_absolute_path():
@@ -243,16 +280,48 @@ def test_migrate_processor_classifier_best_eu_absolute_path():
         },
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
-    assert user["processor"]["models"]["classifier"] == ("models/classification/weights/best.pt")
+    assert user["processor"]["models"]["classifier"] == (
+        "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx"
+    )
 
 
-def test_migrate_processor_classifier_unchanged_for_canonical():
+def test_migrate_processor_classifier_best_pt_to_birder_layout():
     user = {
         "processor": {
+            "classifier_engine": "birder_eu",
             "models": {"classifier": "models/classification/weights/best.pt"},
         },
     }
-    assert migrate_processor_classifier_best_eu_path(user) is False
+    assert migrate_processor_classifier_best_eu_path(user) is True
+    assert user["processor"]["models"]["classifier"] == (
+        "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx"
+    )
+
+
+def test_migrate_video_record_hw_encode_renames_legacy_key():
+    from app_config.track_first_migrations import migrate_video_record_hw_encode
+
+    user = {"video": {"record_with_vaapi": False}}
+    assert migrate_video_record_hw_encode(user) is True
+    assert user["video"]["record_hw_encode"] is False
+    assert "record_with_vaapi" not in user["video"]
+
+
+def test_migrate_remove_openvino_processor_stack():
+    from app_config.track_first_migrations import migrate_remove_openvino_processor_stack
+
+    user = {
+        "processor": {
+            "inference_backend": "openvino",
+            "openvino_binary_enabled": True,
+            "models": {"binary_openvino": "legacy/path", "binary": "models/detection/x.onnx"},
+        },
+    }
+    assert migrate_remove_openvino_processor_stack(user) is True
+    proc = user["processor"]
+    assert proc["inference_backend"] == "onnxruntime"
+    assert "binary_openvino" not in proc["models"]
+    assert "openvino_binary_enabled" not in proc
 
 
 def test_fold_motion_settings_patch_into_triggers():

@@ -247,11 +247,20 @@ class TestAllowlistScientificForDisplayName:
         abspath = str(p.resolve())
 
         monkeypatch.setattr(
-            "services.species_catalog.allowlist.resolve_allowlist_path",
-            lambda _get: abspath,
+            "services.species_catalog.allowlist.resolve_all_allowlist_paths",
+            lambda _get: [abspath],
         )
         _load_allowlist_names_cached.cache_clear()
-        assert allowlist_scientific_name_for_display_name("Eurasian Magpie", lambda *_a, **_k: None) == "Pica pica"
+
+        def fake_get(key, default=None):
+            if key in (
+                "species.catalog_allowlist_follow_classifier_engine",
+                "species.catalog_allowlist_use_active_classifier",
+            ):
+                return False
+            return default
+
+        assert allowlist_scientific_name_for_display_name("Eurasian Magpie", fake_get) == "Pica pica"
 
 
 def test_normalize_species_to_canonical_handles_case_variants():

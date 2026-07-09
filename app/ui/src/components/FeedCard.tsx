@@ -144,7 +144,7 @@ export const FeedCard = () => {
         <Typography component="h2" variant="h6">
           {feedEnabled ? t('feed.feederControl') : t('feed.feederIdleTitle')}
         </Typography>
-        {feedEnabled && (
+        {feedEnabled && isAdmin && (
           <>
             <Button
               variant="contained"
@@ -157,7 +157,7 @@ export const FeedCard = () => {
               }}
               startIcon={<RestaurantIcon />}
               onClick={handleDispense}
-              disabled={loading || !isAdmin}
+              disabled={loading}
             >
               {loading ? t('feed.dispensing') : t('feed.dispenseFeed')}
             </Button>
@@ -167,6 +167,11 @@ export const FeedCard = () => {
               </Typography>
             )}
           </>
+        )}
+        {feedEnabled && !isAdmin && (
+          <Typography variant="body2" color="text.secondary">
+            {t('feed.dispenseViewOnly')}
+          </Typography>
         )}
         {!feedEnabled && (
           <Typography variant="body2" color="text.secondary">

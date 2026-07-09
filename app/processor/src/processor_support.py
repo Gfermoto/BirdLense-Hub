@@ -4,8 +4,16 @@ import logging
 import os
 import threading
 import time
+from datetime import datetime, timezone
 
 from api import API
+from app_config.app_config import app_config
+from motion_detectors.opencv_live_overlay import (
+    merge_live_detector_polygons,
+    refresh_all_opencv_live_detectors,
+    snapshot_opencv_live_by_camera,
+)
+from frigate_live_track import get_frigate_live_bbox
 from processor_runtime_stats import flush_runtime_stats_snapshot, runtime_stats_snapshot
 
 # last_video_ok_at / last_yolo_ok_at для статуса (обновляет main loop)
@@ -13,7 +21,44 @@ processor_status = {
     "last_video_ok_at": None,
     "last_yolo_ok_at": None,
     "last_yolo_detection_at": None,
+    "last_motion_at": None,
+    "yolo_inference_ready_at": None,
+    "yolo_inference_backend": None,
+    "inference_backend_requested": None,
+    "inference_backend_effective": None,
+    "inference_auto_torch_fallback": None,
+    "bootstrap_error": None,
+    "bootstrap_error_code": None,
 }
+
+
+def mark_motion_triggered() -> None:
+    """Record latest motion trigger for between-session idle monitoring."""
+    now = datetime.now(timezone.utc).isoformat()
+    processor_status["last_motion_at"] = now
+    try:
+        from processor_runtime_stats import set_gauge
+
+        set_gauge("last_motion_age_sec", 0.0)
+    except Exception:
+        _log.debug("last_motion_age gauge reset skipped", exc_info=True)
+
+
+def mark_yolo_inference_ready(backend: str | None = None) -> None:
+    """Signal that detector/classifier weights loaded; idle without sessions is still ok."""
+    now = datetime.now(timezone.utc).isoformat()
+    processor_status["yolo_inference_ready_at"] = now
+    if backend:
+        processor_status["yolo_inference_backend"] = str(backend).strip().lower()
+    try:
+        from processor_runtime_stats import set_gauge
+
+        set_gauge("yolo_inference_ready", 1)
+        if backend:
+            set_gauge("yolo_inference_backend", str(backend).strip().lower())
+    except Exception:
+        _log.debug("yolo inference ready gauges skipped", exc_info=True)
+
 
 _log = logging.getLogger(__name__)
 
@@ -82,6 +127,77 @@ def check_restart_flag():
         raise SystemExit(0)
 
 
+def _heartbeat_payload() -> dict:
+    bootstrap_error = processor_status.get("bootstrap_error")
+    if bootstrap_error:
+        data: dict = {
+            "status": "config_error",
+            "bootstrap_error": str(bootstrap_error),
+        }
+        code = processor_status.get("bootstrap_error_code")
+        if code:
+            data["bootstrap_error_code"] = str(code)
+    else:
+        data = {"status": "up"}
+    if processor_status.get("last_video_ok_at"):
+        data["last_video_ok_at"] = processor_status["last_video_ok_at"]
+    if processor_status.get("last_yolo_ok_at"):
+        data["last_yolo_ok_at"] = processor_status["last_yolo_ok_at"]
+    if processor_status.get("last_yolo_detection_at"):
+        data["last_yolo_detection_at"] = processor_status["last_yolo_detection_at"]
+    if processor_status.get("yolo_inference_ready_at"):
+        data["yolo_inference_ready_at"] = processor_status["yolo_inference_ready_at"]
+        data["yolo_inference_ready"] = True
+    if processor_status.get("yolo_inference_backend"):
+        data["yolo_inference_backend"] = processor_status["yolo_inference_backend"]
+    if processor_status.get("inference_backend_requested"):
+        data["inference_backend_requested"] = processor_status["inference_backend_requested"]
+    if processor_status.get("inference_backend_effective"):
+        data["inference_backend_effective"] = processor_status["inference_backend_effective"]
+    if processor_status.get("inference_auto_torch_fallback"):
+        data["inference_auto_torch_fallback"] = True
+        reason = processor_status.get("inference_auto_torch_fallback_reason")
+        if reason:
+            data["inference_auto_torch_fallback_reason"] = str(reason)
+    last_motion_at = processor_status.get("last_motion_at")
+    if last_motion_at:
+        data["last_motion_at"] = last_motion_at
+        try:
+            motion_dt = datetime.fromisoformat(str(last_motion_at).replace("Z", "+00:00"))
+            motion_age = max(0.0, (datetime.now(timezone.utc) - motion_dt).total_seconds())
+            rounded_age = round(motion_age, 3)
+            data["last_motion_age_sec"] = rounded_age
+            from processor_runtime_stats import set_gauge
+
+            set_gauge("last_motion_age_sec", rounded_age)
+        except (TypeError, ValueError):
+            _log.debug("heartbeat: last_motion_age_sec skipped", exc_info=True)
+    ref = heartbeat_mqtt_ref[0] if heartbeat_mqtt_ref else None
+    if ref is not None:
+        try:
+            data["mqtt_connected"] = ref.is_mqtt_ok_for_heartbeat()
+        except Exception:
+            data["mqtt_connected"] = False
+    try:
+        from encoding_status import get_last_encoding_used
+
+        enc = get_last_encoding_used()
+        if enc:
+            data["encoding_used"] = enc
+    except Exception:
+        _log.debug("heartbeat: encoding_status unavailable", exc_info=True)
+    try:
+        flush_runtime_stats_snapshot()
+        data["runtime_stats"] = runtime_stats_snapshot()
+    except Exception:
+        _log.debug("heartbeat: runtime_stats flush/snapshot failed", exc_info=True)
+    return data
+
+
+def _send_heartbeat(api: API, hb_row_id: int | None) -> int | None:
+    return api.activity_log(type="heartbeat", data=_heartbeat_payload(), id=hb_row_id)
+
+
 def heartbeat():
     """Периодический heartbeat в API (60 с)."""
     hb_row_id = None
@@ -90,33 +206,7 @@ def heartbeat():
         try:
             if api is None:
                 api = API()
-            data = {"status": "up"}
-            if processor_status.get("last_video_ok_at"):
-                data["last_video_ok_at"] = processor_status["last_video_ok_at"]
-            if processor_status.get("last_yolo_ok_at"):
-                data["last_yolo_ok_at"] = processor_status["last_yolo_ok_at"]
-            if processor_status.get("last_yolo_detection_at"):
-                data["last_yolo_detection_at"] = processor_status["last_yolo_detection_at"]
-            ref = heartbeat_mqtt_ref[0] if heartbeat_mqtt_ref else None
-            if ref is not None:
-                try:
-                    data["mqtt_connected"] = ref.is_mqtt_ok_for_heartbeat()
-                except Exception:
-                    data["mqtt_connected"] = False
-            try:
-                from encoding_status import get_last_encoding_used
-
-                enc = get_last_encoding_used()
-                if enc:
-                    data["encoding_used"] = enc
-            except Exception:
-                _log.debug("heartbeat: encoding_status unavailable", exc_info=True)
-            try:
-                flush_runtime_stats_snapshot()
-                data["runtime_stats"] = runtime_stats_snapshot()
-            except Exception:
-                _log.debug("heartbeat: runtime_stats flush/snapshot failed", exc_info=True)
-            hb_row_id = api.activity_log(type="heartbeat", data=data, id=hb_row_id)
+            hb_row_id = _send_heartbeat(api, hb_row_id)
         except Exception as e:
             logging.error("Heartbeat failed: %s (will retry in 60s)", e)
         # Restart: только основной цикл (check_restart_flag); SystemExit из потока
@@ -126,6 +216,81 @@ def heartbeat():
 
 def start_heartbeat_daemon():
     """Запустить поток heartbeat в фоне."""
-    t = threading.Thread(target=heartbeat, daemon=True)
+
+    def _run() -> None:
+        hb_row_id = None
+        api = None
+        while True:
+            try:
+                if api is None:
+                    api = API()
+                hb_row_id = _send_heartbeat(api, hb_row_id)
+            except Exception as e:
+                logging.error("Heartbeat failed: %s (will retry in 60s)", e)
+            time.sleep(60)
+
+    t = threading.Thread(target=_run, daemon=True, name="birdlense-heartbeat")
+    t.start()
+    return t
+
+
+_opencv_overlay_row_id = None
+_opencv_overlay_empty_since: float | None = None
+
+
+def _opencv_overlay_heartbeat_loop():
+    """Публикует live-контуры OpenCV для UI в near-realtime."""
+    global _opencv_overlay_row_id, _opencv_overlay_empty_since
+    api = None
+    try:
+        tick_sec = float(app_config.get("ui.live_overlay_tick_seconds") or 0.12)
+    except (TypeError, ValueError):
+        tick_sec = 0.12
+    tick_sec = min(0.5, max(0.05, tick_sec))
+    while True:
+        try:
+            refresh_all_opencv_live_detectors()
+            snap = snapshot_opencv_live_by_camera()
+            if snap:
+                for cam_id, payload in snap.items():
+                    polys = payload.get("detector_polygons")
+                    if polys:
+                        continue
+                    fb = get_frigate_live_bbox(cam_id)
+                    merged, src = merge_live_detector_polygons([], fb)
+                    if merged:
+                        payload["detector_polygons"] = merged
+                        payload["detector_overlay_source"] = src
+            if snap:
+                _opencv_overlay_empty_since = None
+                if api is None:
+                    api = API()
+                payload = {
+                    "by_camera": snap,
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                _opencv_overlay_row_id = api.activity_log(
+                    type="opencv_live",
+                    data=payload,
+                    id=_opencv_overlay_row_id,
+                )
+            else:
+                now = time.time()
+                if _opencv_overlay_empty_since is None:
+                    _opencv_overlay_empty_since = now
+                elif now - _opencv_overlay_empty_since >= 45:
+                    logging.warning(
+                        "OpenCV live overlay snapshot empty for %.0fs (processor not analyzing frames?)",
+                        now - _opencv_overlay_empty_since,
+                    )
+                    _opencv_overlay_empty_since = now
+        except Exception as e:
+            logging.error("OpenCV overlay heartbeat failed: %s (retry in %.2fs)", e, tick_sec)
+        time.sleep(tick_sec)
+
+
+def start_opencv_overlay_daemon():
+    """Фоновая публикация opencv_live в activity_log для Live-оверлея."""
+    t = threading.Thread(target=_opencv_overlay_heartbeat_loop, daemon=True)
     t.start()
     return t

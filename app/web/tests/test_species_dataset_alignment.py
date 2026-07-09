@@ -26,6 +26,30 @@ def test_normalize_classifier_label_matches_processor_style():
     assert normalize_classifier_label("Blue_OR_Jay") == "Blue/Jay"
 
 
+def test_resolve_classifier_weights_birder_engine(monkeypatch):
+    from services.species_dataset_alignment_service import resolve_classifier_weights_path
+
+    cfg = {
+        "processor.classifier_engine": "birder_eu",
+        "processor.models.classifier": "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx",
+    }
+    abs_path, log_path = resolve_classifier_weights_path(lambda key, default=None: cfg.get(key, default))
+    assert log_path.endswith("convnext_v2_tiny_eu-common256px.onnx")
+    assert abs_path.endswith("/app/processor/models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx")
+
+
+def test_load_classifier_labels_reads_class_labels_txt(tmp_path):
+    from services.species_dataset_alignment_service import load_classifier_labels_or_error
+
+    model_dir = tmp_path / "birder_eu_classifier"
+    model_dir.mkdir(parents=True)
+    (model_dir / "class_labels.txt").write_text("Bird A\nBird B\n", encoding="utf-8")
+
+    labels, err = load_classifier_labels_or_error(str(model_dir))
+    assert err is None
+    assert labels == ["Bird A", "Bird B"]
+
+
 def test_alignment_when_weights_unreadable(app, monkeypatch):
     import services.species_dataset_alignment_service as mod
 

@@ -185,7 +185,7 @@ export const SystemMonitor = ({
 
   if (!live) return null;
 
-  const showGpuCard = live.encoding === 'intel' || live.gpu_percent != null;
+  const showGpuCard = live.gpu_percent != null;
   const cpuPercent = live.cpu?.percent ?? null;
   const memoryPercent = live.memory?.percent ?? null;
   const diskPercent = live.disk?.percent ?? null;

@@ -1,16 +1,99 @@
-import axios from 'axios';
 import type { components } from '../generated/openapi-types';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 /** Ответ `GET /system/config-audit` (см. OpenAPI `ConfigAuditResponse`). */
 export type ConfigAudit = components['schemas']['ConfigAuditResponse'];
 
-export const fetchConfigAudit = async (): Promise<ConfigAudit> => {
-  const response = await axios.get(`${BASE_API_URL}/system/config-audit`, {
-    withCredentials: true,
-  });
-  return response.data;
+export const fetchConfigAudit = async (): Promise<ConfigAudit> =>
+  apiFetch(`${BASE_API_URL}/system/config-audit`);
+
+export type TuningEstimate = {
+  estimated_recall: number;
+  estimated_precision: number;
+  estimated_runtime_cost: number;
 };
+
+export type TuningWorkbenchPayload = {
+  schema: string;
+  generated_at: string;
+  global: {
+    estimated: TuningEstimate;
+    guardrails: {
+      errors: string[];
+      warnings: string[];
+    };
+  };
+  presets: Array<{
+    id: string;
+    title: string;
+    overrides: Record<string, unknown>;
+    estimated: TuningEstimate;
+    delta_vs_current: {
+      recall_delta: number;
+      precision_delta: number;
+      runtime_cost_delta: number;
+    };
+  }>;
+  camera_profiles: Array<{
+    camera_id: string;
+    tuning_role?: string | null;
+    role_preset?: Record<string, unknown>;
+    overrides: Record<string, unknown>;
+    effective_keys?: Record<string, unknown>;
+    effective: TuningEstimate;
+    delta_vs_global: {
+      recall_delta: number;
+      precision_delta: number;
+      runtime_cost_delta: number;
+    };
+  }>;
+  available_cameras: string[];
+  last_change?: {
+    action?: string;
+    preset_id?: string;
+    camera_id?: string;
+    guardrails?: { errors?: string[]; warnings?: string[] };
+    auto_eval?: {
+      baseline: TuningEstimate;
+      current: TuningEstimate;
+      delta: {
+        recall_delta: number;
+        precision_delta: number;
+        runtime_cost_delta: number;
+      };
+      ok: boolean;
+    };
+  } | null;
+};
+
+export const fetchTuningWorkbench = async (): Promise<TuningWorkbenchPayload> =>
+  apiFetch(`${BASE_API_URL}/system/tuning-workbench`);
+
+export const applyTuningPreset = async (
+  presetId: string,
+): Promise<Record<string, unknown>> =>
+  apiFetch(`${BASE_API_URL}/system/tuning-workbench/apply-preset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ preset_id: presetId }),
+  });
+
+export const saveCameraTuningProfile = async (
+  cameraId: string,
+  overrides: Record<string, unknown>,
+): Promise<Record<string, unknown>> =>
+  apiFetch(`${BASE_API_URL}/system/tuning-workbench/camera-profile`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ camera_id: cameraId, overrides }),
+  });
+
+export const rollbackTuningProfile = async (): Promise<Record<string, unknown>> =>
+  apiFetch(`${BASE_API_URL}/system/tuning-workbench/rollback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 
 export type ObservabilityPayload = {
   notify_preview_generated_24h: Record<string, number>;
@@ -57,18 +140,26 @@ export type ObservabilityPayload = {
   };
 };
 
-export const fetchObservability = async (): Promise<ObservabilityPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/system/observability`, {
-    withCredentials: true,
-  });
-  return response.data;
+export type ProcessorBackpressurePayload = {
+  available?: boolean;
+  generated_at?: string;
+  gauges?: Record<string, number | boolean | string>;
+  counters?: Record<string, number>;
+  snapshot_stale?: boolean | null;
 };
+
+export const fetchProcessorBackpressure =
+  async (): Promise<ProcessorBackpressurePayload> =>
+    apiFetch(`${BASE_API_URL}/system/diagnostics/backpressure`);
+
+export const fetchObservability = async (): Promise<ObservabilityPayload> =>
+  apiFetch(`${BASE_API_URL}/system/observability`);
 
 export type MlRuntimeStatus = {
   schema: string;
   video: {
     encoding?: string;
-    record_with_vaapi?: boolean;
+    record_hw_encode?: boolean;
     capture_backend_config?: string;
   };
   processor: {
@@ -79,15 +170,48 @@ export type MlRuntimeStatus = {
     detector_weight_contract?: string;
     binary_imgsz?: number;
     frame_processing_warn_ms?: number;
+    reid_runtime_enabled?: boolean;
+    welfare_runtime_enabled?: boolean;
   };
 };
 
-export const fetchMlRuntimeStatus = async (): Promise<MlRuntimeStatus> => {
-  const response = await axios.get(`${BASE_API_URL}/system/ml-runtime`, {
-    withCredentials: true,
-  });
-  return response.data;
+export const fetchMlRuntimeStatus = async (): Promise<MlRuntimeStatus> =>
+  apiFetch(`${BASE_API_URL}/system/ml-runtime`);
+
+export type DatasetStreamSummary = {
+  stream: string;
+  contract_schema: string;
+  required_fields_count: number;
+  split_required_keys: string[];
+  versioning: Record<string, unknown>;
+  provenance_required_keys: string[];
+  export_policy: {
+    community_export_allowed: boolean;
+    private_backup_only: boolean;
+  };
+  ui_panel_route: string;
 };
+
+export type DatasetStreamsSummaryResponse = {
+  schema: string;
+  required_streams: string[];
+  streams: DatasetStreamSummary[];
+  api_jobs: Array<{
+    stream: string;
+    operations: string[];
+  }>;
+  gate: {
+    ok: boolean;
+    generated_at?: string | null;
+    checks?: Record<string, unknown>;
+    summary?: Record<string, unknown>;
+    drift?: Record<string, unknown>;
+  };
+};
+
+export const fetchDatasetStreamsSummary =
+  async (): Promise<DatasetStreamsSummaryResponse> =>
+    apiFetch(`${BASE_API_URL}/system/dataset-streams`);
 
 export type FeedbackLoopStatus = {
   schema: string;
@@ -104,16 +228,39 @@ export type FeedbackLoopStatus = {
   } | null;
 };
 
-export const fetchFeedbackLoopStatus = async (): Promise<FeedbackLoopStatus> => {
-  const response = await axios.get(`${BASE_API_URL}/system/feedback-loop/status`, {
-    withCredentials: true,
-  });
-  return response.data;
+export const fetchFeedbackLoopStatus = async (): Promise<FeedbackLoopStatus> =>
+  apiFetch(`${BASE_API_URL}/system/feedback-loop/status`);
+
+export type ClassifierCalibrationReport = {
+  schema: string;
+  available: boolean;
+  db?: string;
+  message?: string;
+  error?: string;
+  corrections_analyzed: number;
+  top_confusion_pairs: Array<{ from: string; to: string; count: number }>;
+  corrections_by_source: Record<string, number>;
+  threshold_recommendations: {
+    sample_corrections?: number;
+    recommended_processor_yaml?: Record<string, number>;
+    correction_confidence_p75?: number | null;
+  };
+};
+
+export const fetchClassifierCalibrationReport = async (
+  pairLimit = 15,
+): Promise<ClassifierCalibrationReport> => {
+  const q = new URLSearchParams({ pair_limit: String(pairLimit) });
+  return apiFetch(
+    `${BASE_API_URL}/system/classifier-calibration-report?${q}`,
+  );
 };
 
 export const trackSiteVisitor = async (browserId: string): Promise<void> => {
-  await axios.post(`${BASE_API_URL}/system/visitors/track`, {
-    browser_id: browserId,
+  await apiFetch(`${BASE_API_URL}/system/visitors/track`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ browser_id: browserId }),
   });
 };
 
@@ -149,28 +296,25 @@ export type SystemVisitorStats = {
   method: string;
 };
 
-export const fetchSystemMetricsLive = async (): Promise<SystemMetricsLive> => {
-  const response = await axios.get(`${BASE_API_URL}/system/metrics`);
-  return response.data;
-};
+export const fetchSystemMetricsLive = async (): Promise<SystemMetricsLive> =>
+  apiFetch(`${BASE_API_URL}/system/metrics`);
 
 export const fetchSystemMetricsHistory = async (
   hours: number,
   maxPoints = 500,
 ): Promise<SystemMetricsHistoryResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/system/metrics/history`, {
-    params: { hours, max_points: maxPoints },
+  const q = new URLSearchParams({
+    hours: String(hours),
+    max_points: String(maxPoints),
   });
-  return response.data;
+  return apiFetch(`${BASE_API_URL}/system/metrics/history?${q}`);
 };
 
 export const fetchSystemVisitors = async (
   days: number,
 ): Promise<SystemVisitorStats> => {
-  const response = await axios.get(`${BASE_API_URL}/system/visitors`, {
-    params: { days },
-  });
-  return response.data;
+  const q = new URLSearchParams({ days: String(days) });
+  return apiFetch(`${BASE_API_URL}/system/visitors?${q}`);
 };
 
 export type ProcessorLogsResponse = {
@@ -181,9 +325,128 @@ export type ProcessorLogsResponse = {
 export const fetchProcessorLogs = async (
   lines: number,
 ): Promise<ProcessorLogsResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/system/logs`, {
-    params: { lines },
-    withCredentials: true,
-  });
-  return response.data;
+  const q = new URLSearchParams({ lines: String(lines) });
+  return apiFetch(`${BASE_API_URL}/system/logs?${q}`);
+};
+
+export type QualityTimeseriesBucket = {
+  bucket: string;
+  detections: number;
+  yolo_rows: number;
+  frigate_rows: number;
+  avg_confidence: number;
+  frigate_ratio: number;
+};
+
+export type QualityTimeseriesResponse = {
+  bucket: 'hour' | 'day';
+  items: QualityTimeseriesBucket[];
+  count: number;
+};
+
+export type QualityHealthResponse = {
+  window_hours: number;
+  health_kpis: {
+    blind_score_current: number;
+    blind_score_avg: number;
+    fallback_ratio: number;
+    self_heal_action_counts: {
+      soft_clear: number;
+      reinit: number;
+      restart: number;
+      alert: number;
+    };
+    inference_latency_p95_ms_avg: number | null;
+  };
+  recent_events: Array<{
+    created_at: string;
+    event_type: string;
+    severity: string;
+    action: string | null;
+    dump_refs?: {
+      diagnostics_json?: string;
+      stack_dump?: string;
+    } | null;
+  }>;
+};
+
+export const fetchQualityTimeseries = async (
+  bucket: 'hour' | 'day' = 'hour',
+): Promise<QualityTimeseriesResponse> => {
+  const q = new URLSearchParams({ bucket });
+  return apiFetch(`${BASE_API_URL}/analytics/visits-timeseries?${q}`);
+};
+
+export const fetchQualityHealth = async (
+  hours = 24,
+): Promise<QualityHealthResponse> => {
+  const q = new URLSearchParams({ hours: String(hours) });
+  return apiFetch(`${BASE_API_URL}/analytics/quality-health?${q}`);
+};
+
+export type YoloDetectorHealthStatus = 'healthy' | 'degraded' | 'blind';
+
+export interface YoloDetectorHealthResponse {
+  window_hours: number;
+  updated_at?: string | null;
+  processor_snapshot_present: boolean;
+  health: {
+    status: YoloDetectorHealthStatus;
+    yolo_blind_alert: boolean;
+    yolo_blind_phase: string;
+    yolo_frames_with_tracks_session: number;
+    session_extended_by_frigate_only: number;
+    stream_probe_width?: number | null;
+    stream_probe_height?: number | null;
+    stream_probe_fps?: number | null;
+    reasons: string[];
+  };
+  gauges: Record<string, unknown>;
+  config_hints: Record<string, unknown>;
+  runbook_path?: string;
+}
+
+export interface TriggerSourceMetricsBlock {
+  recordings_initiated?: number;
+  session_extensions?: number;
+  species_persisted?: number;
+  candidates_rejected?: number;
+  mqtt_events?: number;
+  fp_empty_recording?: number;
+  fp_rejected_noise?: number;
+  fn_detector_silent?: number;
+  fn_no_persisted_species?: number;
+}
+
+export interface TriggerGraphResponse {
+  window_hours: number;
+  camera_filter?: string | null;
+  session_count: number;
+  nodes: string[];
+  recordings_initiated_by_source: Record<string, number>;
+  metrics_by_source: Record<string, TriggerSourceMetricsBlock>;
+  decision_reason_counts: Record<string, number>;
+  by_camera: Record<string, Record<string, TriggerSourceMetricsBlock>>;
+  recent_sessions: Array<{
+    created_at?: string;
+    camera_id?: string;
+    init_source?: string;
+    trigger_display?: string;
+    post_fusion_persisted?: number;
+    fp_empty_recording?: number;
+    fn_detector_silent?: number;
+    species_persisted?: number;
+  }>;
+}
+
+export const fetchTriggerGraph = async (hours = 24): Promise<TriggerGraphResponse> => {
+  const q = new URLSearchParams({ hours: String(hours) });
+  return apiFetch(`${BASE_API_URL}/analytics/trigger-graph?${q}`);
+};
+
+export const fetchYoloDetectorHealth = async (
+  hours = 24,
+): Promise<YoloDetectorHealthResponse> => {
+  const q = new URLSearchParams({ hours: String(hours) });
+  return apiFetch(`${BASE_API_URL}/system/yolo-detector-health?${q}`);
 };

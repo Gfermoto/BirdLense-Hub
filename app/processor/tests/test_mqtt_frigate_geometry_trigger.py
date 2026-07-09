@@ -21,7 +21,7 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         det = FrigateMotionFromAggregator(None, camera_filter=set(), label_filter={'bird'})
         det._on_motion('BirdBox', 'bird', 0.7, {'timestamp': '2026-01-01T00:00:00+00:00'})
         det._on_motion('BirdBox', 'bird', 0.8, {'timestamp': '2026-01-01T00:00:01+00:00'})
-        self.assertTrue(det.check_pending())
+        # Same camera bursts coalesce to one pending trigger (latest wins).
         self.assertTrue(det.check_pending())
         self.assertFalse(det.check_pending())
 

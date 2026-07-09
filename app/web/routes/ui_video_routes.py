@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import json
 from datetime import timedelta
 
 from flask import request, send_file
@@ -9,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from app_config.app_config import app_config
 from auth import contributor_or_admin_access, ui_sensitive_export_access
-from models import Species, SpeciesVisit, Video, VideoSpecies, db
+from models import ActiveLearningCase, Species, SpeciesVisit, Video, VideoSpecies, db
 from services.api_json_validation import parse_request_json_dict
 from services.cache import cache_get, cache_set
 from services.dataset_export_service import (
@@ -54,6 +55,7 @@ def register_ui_video_routes(app):
             db.session.query(Video)
             .options(
                 joinedload(Video.video_species).joinedload(VideoSpecies.species),
+                joinedload(Video.video_species).joinedload(VideoSpecies.bird_profile),
                 joinedload(Video.food),
             )
             .filter(Video.id == video_id)
@@ -62,17 +64,47 @@ def register_ui_video_routes(app):
 
         if not video:
             return {"error": "Video not found"}, 404
-        return build_video_detail_dict(video), 200
+        payload = build_video_detail_dict(video)
+        detection_ids = [row.get("id") for row in payload.get("species", []) if row.get("id") is not None]
+        if detection_ids:
+            rows = (
+                db.session.query(ActiveLearningCase)
+                .filter(
+                    ActiveLearningCase.video_id == video_id,
+                    ActiveLearningCase.video_species_id.in_(detection_ids),
+                )
+                .order_by(ActiveLearningCase.updated_at.desc())
+                .all()
+            )
+            history_map = {}
+            for case in rows:
+                try:
+                    p = json.loads(case.payload_json or "{}")
+                except Exception:
+                    p = {}
+                hist = p.get("semantic_review_history")
+                if not isinstance(hist, list):
+                    continue
+                history_map[int(case.video_species_id)] = hist[-10:]
+            for row in payload.get("species", []):
+                did = row.get("id")
+                if did is None:
+                    continue
+                row["semantic_review_history"] = history_map.get(int(did), [])
+                row["semantic_conflict"] = bool(row.get("classifier_needs_review")) or bool(
+                    row.get("review_reason") == "semantic_review_required"
+                )
+        return payload, 200
 
     @app.route("/api/ui/videos/<int:video_id>", methods=["PATCH"])
     def patch_video(video_id):
-        """Избранное и/или ручная правка поведения (#416). Только contributor/admin."""
+        """Избранное. Только contributor/admin."""
         if not contributor_or_admin_access():
             return {"error": "Access denied"}, 403
         data, v_err = parse_request_json_dict(request)
         if v_err is not None:
             return v_err, 400
-        allowed_keys = {"favorite", "behavior_label", "behavior_confidence"}
+        allowed_keys = {"favorite"}
         if not data or any(k not in allowed_keys for k in data):
             return {"error": "Invalid body"}, 400
         video = db.session.get(Video, video_id)
@@ -87,39 +119,13 @@ def register_ui_video_routes(app):
                 return {"error": "favorite must be a boolean"}, 400
             video.favorite = fav
 
-        if "behavior_label" in data:
-            raw = data["behavior_label"]
-            if raw is None or raw == "":
-                video.behavior_label = None
-                video.behavior_confidence = None
-            elif isinstance(raw, str):
-                lab = raw.strip().lower()[:32]
-                if not lab:
-                    video.behavior_label = None
-                else:
-                    video.behavior_label = lab
-            else:
-                return {"error": "behavior_label must be a string or null"}, 400
-
-        if "behavior_confidence" in data:
-            rawc = data["behavior_confidence"]
-            if rawc is None:
-                video.behavior_confidence = None
-            else:
-                try:
-                    cf = float(rawc)
-                except (TypeError, ValueError):
-                    return {"error": "behavior_confidence must be a number or null"}, 400
-                if cf < 0 or cf > 1:
-                    return {"error": "behavior_confidence must be between 0 and 1"}, 400
-                video.behavior_confidence = cf
-
         db.session.commit()
         bust_all_api_caches()
         video = (
             db.session.query(Video)
             .options(
                 joinedload(Video.video_species).joinedload(VideoSpecies.species),
+                joinedload(Video.video_species).joinedload(VideoSpecies.bird_profile),
                 joinedload(Video.food),
             )
             .filter(Video.id == video_id)

@@ -16,54 +16,6 @@ DOCS = ROOT / "docs"
 SUBDIRS = ("user", "contributor", "ru")
 
 REPO_MAIN = "https://github.com/Gfermoto/BirdLense-Hub/blob/main"
-ARCH = f"{REPO_MAIN}/archive/internal/docs-legacy"
-
-ARCHIVE_URL: dict[str, str] = {
-    "TRAINING.md": f"{ARCH}/TRAINING.md",
-    "TRAINING.ru.md": f"{ARCH}/TRAINING.ru.md",
-    "SITE_MAP.md": f"{ARCH}/SITE_MAP.md",
-    "SITE_MAP.ru.md": f"{ARCH}/SITE_MAP.ru.md",
-    "Documentation.md": f"{ARCH}/Documentation.md",
-    "I18N_STATUS.md": f"{ARCH}/I18N_STATUS.md",
-    "FEATURES.md": f"{ARCH}/FEATURES.md",
-    "DEFINITION_OF_DONE.md": f"{ARCH}/DEFINITION_OF_DONE.md",
-    "DEFINITION_OF_DONE.ru.md": f"{ARCH}/DEFINITION_OF_DONE.ru.md",
-    "SECRETS_ROTATION.md": f"{ARCH}/SECRETS_ROTATION.md",
-    "SECRETS_ROTATION.ru.md": f"{ARCH}/SECRETS_ROTATION.ru.md",
-    "POSTGRES_MIGRATION.md": f"{ARCH}/POSTGRES_MIGRATION.md",
-    "POSTGRES_MIGRATION.ru.md": f"{ARCH}/POSTGRES_MIGRATION.ru.md",
-    "RELEASE_READINESS.md": f"{REPO_MAIN}/release-readiness.md",
-    "RELEASE_READINESS.ru.md": f"{ARCH}/RELEASE_READINESS.ru.md",
-    "PUBLIC_RELEASE_CHECKLIST.md": f"{ARCH}/PUBLIC_RELEASE_CHECKLIST.md",
-    "PUBLIC_RELEASE_CHECKLIST.ru.md": f"{ARCH}/PUBLIC_RELEASE_CHECKLIST.ru.md",
-    "RUNTIME_COUPLING.md": f"{ARCH}/RUNTIME_COUPLING.md",
-    "RUNTIME_COUPLING.ru.md": f"{ARCH}/RUNTIME_COUPLING.ru.md",
-    "CV_ML_PREP.md": f"{ARCH}/CV_ML_PREP.md",
-    "CV_ML_PREP.ru.md": f"{ARCH}/CV_ML_PREP.ru.md",
-    "CV_ML_ROADMAP_PHASES.md": f"{ARCH}/CV_ML_ROADMAP_PHASES.md",
-    "CV_ML_ROADMAP_PHASES.ru.md": f"{ARCH}/CV_ML_ROADMAP_PHASES.ru.md",
-    "A11Y.md": f"{ARCH}/A11Y.md",
-    "VERSIONING.md": f"{ARCH}/VERSIONING.md",
-    "UX_UNKNOWN_VIDEO_CORRECTION.md": f"{ARCH}/UX_UNKNOWN_VIDEO_CORRECTION.md",
-    "HEIMDALL.ru.md": f"{ARCH}/HEIMDALL.ru.md",
-    "ROADMAP.ru.md": f"{ARCH}/ROADMAP.ru.md",
-    "CODEQL.ru.md": f"{ARCH}/CODEQL.ru.md",
-    "GITHUB_SETUP_GH.ru.md": f"{ARCH}/GITHUB_SETUP_GH.ru.md",
-    "CI_AND_QUALITY.ru.md": f"{ARCH}/CI_AND_QUALITY.ru.md",
-    "CV_ML_SCENARIOS.ru.md": f"{ARCH}/CV_ML_SCENARIOS.ru.md",
-    "DOMAIN_CONTRACT.ru.md": f"{ARCH}/DOMAIN_CONTRACT.ru.md",
-    "HEIMDALL.md": f"{ARCH}/HEIMDALL.md",
-    "ML_DETECTOR_COLAB.md": f"{ARCH}/ML_DETECTOR_COLAB.md",
-    "WIKI_AUTOMATION.md": f"{ARCH}/WIKI_AUTOMATION.md",
-    "GITHUB_SETUP_GH.md": f"{ARCH}/GITHUB_SETUP_GH.md",
-    "CODEQL.md": f"{ARCH}/CODEQL.md",
-    "DOMAIN_CONTRACT.md": f"{ARCH}/DOMAIN_CONTRACT.md",
-    "API_ERRORS.ru.md": f"{ARCH}/API_ERRORS.ru.md",
-    "DATASETS.ru.md": f"{ARCH}/DATASETS.ru.md",
-    "Documentation.ru.md": f"{ARCH}/Documentation.ru.md",
-    "README.ru.md": f"{ARCH}/README.ru.md",
-    "REPOSITORY_LAYOUT.ru.md": f"{ARCH}/REPOSITORY_LAYOUT.ru.md",
-}
 
 PROJECT_URL = {
     "project/openapi.md": f"{REPO_MAIN}/app/web/openapi.yaml",
@@ -210,8 +162,6 @@ def _rewrite_href(from_file: Path, href: str) -> str:
 
     if href.startswith("reference/"):
         base, anchor = _split_anchor(href)
-        if base == "reference/openapi.ru.md":
-            return f"{ARCH}/reference/openapi.ru.md" + anchor
         if base == "reference/openapi.md":
             return f"{REPO_MAIN}/app/web/openapi.yaml" + anchor
         return href
@@ -227,15 +177,6 @@ def _rewrite_href(from_file: Path, href: str) -> str:
     hit = _resolve(from_file, path_part)
     if hit is not None:
         return _relpath(from_file, hit) + anchor
-
-    leaf = Path(path_part).name
-    if leaf in ARCHIVE_URL:
-        return ARCHIVE_URL[leaf] + anchor
-
-    ul = leaf.upper()
-    for k, url in ARCHIVE_URL.items():
-        if k.upper() == ul:
-            return url + anchor
 
     return href
 

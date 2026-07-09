@@ -65,8 +65,36 @@ _DECISION_TRACE_FIELDS = (
     "fallback_used",
     "fallback_reason",
     "yolo_track_present",
+    "review_reason",
+    "reid_model",
+    "reid_similarity",
+    "individual_nickname",
+    "welfare_model",
+    "welfare_distance",
+    "welfare_needs_review",
 )
 _DECISION_TRACE_LIMIT = 40
+
+
+def _compact_runtime_signals(
+    runtime_signals: dict[str, Any] | None,
+    *,
+    max_items: int = 24,
+) -> dict[str, Any]:
+    """Keep only compact scalar runtime signals for trace payload."""
+    if not isinstance(runtime_signals, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for key in sorted(runtime_signals.keys()):
+        if len(out) >= max(1, int(max_items)):
+            break
+        value = runtime_signals.get(key)
+        if isinstance(value, (bool, int, float)):
+            out[str(key)] = value
+            continue
+        if isinstance(value, str) and len(value) <= 64:
+            out[str(key)] = value
+    return out
 
 
 def _policy_snapshot(app_config) -> dict[str, Any]:
@@ -97,14 +125,16 @@ def _policy_snapshot(app_config) -> dict[str, Any]:
         "generic_bird_min_frames": _int("processor.generic_bird_min_frames", 3),
         "generic_bird_min_area_frac": _flt("processor.generic_bird_min_area_frac", 0.01),
         "generic_bird_min_best_frame_score": _flt("processor.generic_bird_min_best_frame_score", 6.5),
-        # Runtime backend snapshot for GPU/OpenVINO observability.
+        # Runtime backend snapshot for GPU/ONNX observability.
         "inference_backend": str(_get("processor.inference_backend", "auto") or "auto"),
         "classifier_inference_backend": str(_get("processor.classifier_inference_backend", "auto") or "auto"),
         "inference_device": str(_get("processor.inference_device", "auto") or "auto"),
-        "video_encoding": str(_get("video.encoding", "cpu") or "cpu"),
+        "video_encoding": str(_get("video.encoding", "jetson") or "jetson"),
         "video_capture_backend": str(_get("video.capture_backend", "auto") or "auto"),
         "reid_runtime_enabled": bool(_get("processor.reid.runtime_enabled", True)),
         "reid_device": str(_get("processor.reid.device", "auto") or "auto"),
+        "welfare_runtime_enabled": bool(_get("processor.welfare.runtime_enabled", True)),
+        "welfare_device": str(_get("processor.welfare.device", "auto") or "auto"),
     }
 
 
@@ -204,7 +234,9 @@ def build_decision_trace_payload(
                 app_config.get("processor.min_seconds_between_recordings") or 0,
             ),
             "clip_duration_seconds": round(clip_duration_seconds, 3),
-            "runtime_signals": dict((recording_context or {}).get("runtime_signals") or {}),
+            "runtime_signals": _compact_runtime_signals(
+                (recording_context or {}).get("runtime_signals"),
+            ),
             "regen_profile": (recording_context or {}).get("regen_profile"),
             "policy_snapshot": _policy_snapshot(app_config),
         },

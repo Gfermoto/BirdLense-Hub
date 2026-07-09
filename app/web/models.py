@@ -35,19 +35,25 @@ class VideoSpecies(db.Model):
     source: Mapped[str] = mapped_column(String, nullable=False)  # video or audio
     detection_provider: Mapped[str] = mapped_column(String, nullable=True)  # yolo, frigate, birdnet_mqtt, legacy
     track_id: Mapped[int] = mapped_column(Integer, nullable=True)  # ByteTrack ID for stable identification
-    individual_nickname: Mapped[str] = mapped_column(String(64), nullable=True)
+    bird_profile_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("bird_profiles.id"), nullable=True)
     # JSON: [{t: 0.1, bbox: [x1,y1,x2,y2]}, ...] for track visualization
     frames: Mapped[str] = mapped_column(String, nullable=True)
     classifier_entropy: Mapped[float | None] = mapped_column(Float, nullable=True)
     classifier_top1_top2_margin: Mapped[float | None] = mapped_column(Float, nullable=True)
     classifier_needs_review: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     review_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    welfare_distance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    audio_evidence: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    birdnet_prior: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weighted_arbiter_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hint_trace: Mapped[str | None] = mapped_column(String, nullable=True)
     individual_nickname: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # True if user corrected species — track regen must not overwrite
     manually_corrected: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     video: Mapped["Video"] = relationship(back_populates="video_species")
     species: Mapped["Species"] = relationship(back_populates="video_species")
     species_visit: Mapped["SpeciesVisit"] = relationship(back_populates="video_species")
+    bird_profile: Mapped["BirdProfile | None"] = relationship(back_populates="video_species")
 
     __table_args__ = (
         # improves both queries: created_at/species_id and just species_id
@@ -94,10 +100,99 @@ class Species(db.Model):
     parent = relationship("Species", back_populates="children", remote_side=[id])
     species_visits: Mapped[List["SpeciesVisit"]] = relationship(back_populates="species")
     taxon: Mapped["SpeciesTaxon"] = relationship(back_populates="species")
+    bird_profiles: Mapped[List["BirdProfile"]] = relationship(back_populates="species")
 
     __table_args__ = (
         Index("ix_species_parent_id", "parent_id"),
         Index("ix_species_taxon_id", "taxon_id"),
+    )
+
+
+class ExpertReviewQueue(db.Model):
+    """Expert tasks: ReID duplicates, species confirm, profile merge (SOTA-13)."""
+
+    __tablename__ = "expert_review_queue"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    task_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", server_default="pending")
+    video_species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("video_species.id", ondelete="CASCADE"), nullable=True
+    )
+    related_video_species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("video_species.id", ondelete="SET NULL"), nullable=True
+    )
+    cluster_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    similarity: Mapped[float | None] = mapped_column(nullable=True)
+    species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("species.id", ondelete="SET NULL"), nullable=True
+    )
+    payload_json: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    resolved_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_expert_review_queue_status_created", "status", "created_at"),
+        Index("ix_expert_review_queue_cluster_key", "cluster_key"),
+    )
+
+
+class ReidTrainingPair(db.Model):
+    """Operator feedback for ReID triplet mining (auto-link confirm/reject)."""
+
+    __tablename__ = "reid_training_pairs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    anchor_profile_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("bird_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    candidate_profile_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("bird_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    anchor_video_species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("video_species.id", ondelete="SET NULL"), nullable=True
+    )
+    candidate_video_species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("video_species.id", ondelete="SET NULL"), nullable=True
+    )
+    similarity: Mapped[float | None] = mapped_column(nullable=True)
+    label: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="auto_link_ui", server_default="auto_link_ui"
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_reid_training_pairs_label", "label"),
+        Index("ix_reid_training_pairs_created_at", "created_at"),
+    )
+
+
+class BirdProfile(db.Model):
+    """Global bird identity profile for ReID and expert workflow."""
+
+    __tablename__ = "bird_profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    display_name: Mapped[str] = mapped_column(String(96), nullable=False)
+    species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("species.id"), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", server_default="active")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    species: Mapped["Species | None"] = relationship(back_populates="bird_profiles")
+    video_species: Mapped[List["VideoSpecies"]] = relationship(back_populates="bird_profile")
+
+    __table_args__ = (
+        Index("ix_bird_profiles_display_name", "display_name"),
+        Index("ix_bird_profiles_species_id", "species_id"),
+        Index("ix_bird_profiles_status", "status"),
     )
 
 
@@ -194,7 +289,11 @@ class Video(db.Model):
         default=lambda: uuid.uuid4().hex,
     )
     ingest_payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    spectrogram_path: Mapped[str] = mapped_column(String, nullable=True)  # spectrogram image
+    spectrogram_path: Mapped[str | None] = mapped_column(String, nullable=True)  # legacy, unused
+    trigger_source: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )  # opencv|frigate|motion_sensor|scales|track_regen|unknown
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     favorite: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Weather data
@@ -211,9 +310,12 @@ class Video(db.Model):
     weather_wind_speed: Mapped[int] = mapped_column(Float(precision=2), nullable=True)  # wind speed, meter/sec
     # Оценка изменения массы на весах за интервал записи (кг), issue #167
     scales_weight_delta_kg: Mapped[float | None] = mapped_column(Float(precision=6), nullable=True)
-    # Распознавание поведения: baseline из процессора (#416), nullable до первого включения.
-    behavior_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    behavior_confidence: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    # Распознавание поведения (удалено из ORM; колонки сохранены в БД для обратной
+    # совместимости, не управляются через SQLAlchemy).
+    # behavior_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # behavior_confidence: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    # behavior_model_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # behavior_model_version: Mapped[str | None] = mapped_column(String(96), nullable=True)
 
     # Relations
     video_species: Mapped[List["VideoSpecies"]] = relationship(back_populates="video")
@@ -224,6 +326,7 @@ class Video(db.Model):
         Index("ix_video_start_time", "start_time"),
         Index("ix_video_end_time", "end_time"),
         Index("ix_video_deleted_at", "deleted_at"),
+        Index("ix_video_camera_id", "camera_id"),
         Index(
             "ux_video_idempotency_active",
             "idempotency_key",
@@ -344,6 +447,143 @@ class BirdnetFifoEvent(db.Model):
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     __table_args__ = (Index("ix_birdnet_fifo_event_ts_epoch", "ts_epoch"),)
+
+
+class SessionRuntimeMetrics(db.Model):
+    """Persistent runtime session summaries from processor (survives restarts)."""
+
+    __tablename__ = "session_runtime_metrics"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    camera_slot: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    duration_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    frames_seen: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_frames_ran: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_frames_with_tracks: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_frames_with_raw_boxes: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_raw_boxes_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_accepted_boxes_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    low_light_blocked_frames: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    session_extended_by_frigate_only: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    bytetrack_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    post_fusion_persisted: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    rejected_decision_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    mqtt_events_in_window: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_blind_confirmed: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    trigger_to_first_bbox_latency_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    first_track_latency_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    finalize_duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    runtime_profile: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    video_file_ok: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    payload_json: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    __table_args__ = (
+        Index("ix_session_runtime_metrics_camera_created", "camera_id", desc("created_at")),
+        Index("ix_session_runtime_metrics_slot_created", "camera_slot", desc("created_at")),
+        Index("ix_session_runtime_metrics_created", desc("created_at")),
+    )
+
+
+class DetectorHealthEvent(db.Model):
+    """Health/self-healing events for detector pipeline."""
+
+    __tablename__ = "detector_health_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="info", server_default="info")
+    details_json: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    __table_args__ = (
+        Index("ix_detector_health_events_camera_created", "camera_id", desc("created_at")),
+        Index("ix_detector_health_events_type_created", "event_type", desc("created_at")),
+    )
+
+
+class AnalyticsHeatmapCell(db.Model):
+    """Pre-aggregated heatmap cells for long windows."""
+
+    __tablename__ = "analytics_heatmap_cell"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    bucket_hour: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    grid_size: Mapped[int] = mapped_column(Integer, nullable=False, default=12, server_default="12")
+    cell_x: Mapped[int] = mapped_column(Integer, nullable=False)
+    cell_y: Mapped[int] = mapped_column(Integer, nullable=False)
+    hits: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_analytics_heatmap_bucket", "bucket_hour", "camera_id", "grid_size"),
+        Index("ux_analytics_heatmap_cell", "bucket_hour", "camera_id", "grid_size", "cell_x", "cell_y", unique=True),
+    )
+
+
+class AnalyticsVisitHourly(db.Model):
+    """Hourly aggregates for visit quality trends."""
+
+    __tablename__ = "analytics_visit_hourly"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    bucket_hour: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    detections: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    frigate_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    blind_confirmed_sessions: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    avg_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ux_analytics_visit_hourly_bucket", "bucket_hour", "camera_id", unique=True),
+        Index("ix_analytics_visit_hourly_bucket", "bucket_hour", "camera_id"),
+    )
+
+
+class ActiveLearningCase(db.Model):
+    """Hard-example queue for labelling and dataset export."""
+
+    __tablename__ = "active_learning_case"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    video_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("video.id"), nullable=True)
+    video_species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("video_species.id"), nullable=True)
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reason_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    blind_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fallback_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending")
+    payload_json: Mapped[str | None] = mapped_column(String, nullable=True)
+    export_tag: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        Index("ix_active_learning_case_created", desc("created_at")),
+        Index("ix_active_learning_case_status_created", "status", desc("created_at")),
+        Index("ix_active_learning_case_reason_created", "reason_code", desc("created_at")),
+        Index("ux_active_learning_case_unique", "video_species_id", "reason_code", unique=True),
+    )
 
 
 class SpeciesVisit(db.Model):

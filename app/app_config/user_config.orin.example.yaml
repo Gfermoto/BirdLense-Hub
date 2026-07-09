@@ -1,0 +1,45 @@
+# BirdLense Hub — Orin NX/NANO ONNX GPU
+# Скопировать в user_config.yaml и настроить под свой Orin
+processor:
+  models:
+    binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+    classifier: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
+    reid_embedder: models/reid/ornimetrics/reid_embedder.onnx
+    welfare_embedder: models/welfare/ornimetrics/embedder.onnx
+    welfare_scorer: models/welfare/ornimetrics/welfare_scorer.npz
+  classifier_engine: birder_eu
+  inference_backend: onnxruntime
+  classifier_inference_backend: onnxruntime
+  inference_device: cuda:0
+  classifier_inference_device: cuda:0
+  binary_imgsz: 704
+  min_confidence_binary: 0.12
+  merge_window_seconds: 12
+  tracker: models/tracker/bytetrack_birdlense.yaml
+  tracker_profiles:
+    night: models/tracker/bytetrack_birdlense.yaml
+  auto_unstick_tracker: models/tracker/bytetrack_birdlense.yaml
+  auto_unstick_tracker_night: models/tracker/bytetrack_birdlense.yaml
+  reid:
+    device: cuda:0
+    inference_backend: onnxruntime
+    include_embedding_payload: true
+    nickname_similarity_threshold: 0.86
+  welfare:
+    device: cuda:0
+    inference_backend: onnxruntime
+    distance_review_threshold: 75.0
+  # finalize: record_hires TG preview seeks 2688p MP4 (~90s on Orin) — use lores crop
+  notify_preview_source: best_frame_lores
+  inference_lores_wh: [704, 704]
+  # feeder: spatial split duplicates one bird into parallel tracks/bboxes
+  track_spatial_split_enabled: false
+  classifier_crop_source: record_hires
+
+video:
+  encoding: jetson
+  capture_backend: auto
+  record_hw_encode: false
+
+species:
+  catalog_allowlist_file: models/classification/convnext_v2_tiny_eu-common256px/class_labels.txt
