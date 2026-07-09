@@ -42,6 +42,8 @@ services:
       - ./processor/models/classification/convnext_v2_tiny_eu-common256px:/app/processor/models/classification/convnext_v2_tiny_eu-common256px
       - ./processor/models/tracker:/app/processor/models/tracker
     depends_on: {}
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
     deploy:
       resources:
         limits:

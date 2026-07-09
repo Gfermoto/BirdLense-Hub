@@ -67,6 +67,8 @@ services:
       - BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=${BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT:-}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
     runtime: nvidia
     restart: unless-stopped
     stop_grace_period: 45s
