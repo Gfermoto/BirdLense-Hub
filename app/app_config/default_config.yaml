@@ -310,8 +310,9 @@ processor:
   # best_frame_lores only as fallback when MP4 seek fails.
   classifier_crop_source: record_hires
   reid_crop_source: auto
-  # record_hires seek: OpenCV VideoCapture reuse first (faster on Orin 2688p).
-  # ffmpeg soft/hw only as fallback when OpenCV cannot open/seek the MP4.
+  # record_hires seek: persistent GStreamer nvv4l2decoder (Orin NVDEC) when available.
+  # OpenCV VideoCapture reuse is CPU fallback; ffmpeg spawn is last resort.
+  record_hires_nvdec: true
   record_hires_ffmpeg_hw: false
   enrichment_crop_pad_frac: 0.06
   # Linear: TG/hires crop from best keyframe bbox+timestamp only (no blind mid-track seek).
@@ -662,7 +663,8 @@ video:
   encoding: jetson
   # true — аппаратная запись MP4 (NVENC/GStreamer на Jetson); false — libx264 (CPU).
   record_hw_encode: false
-  # Захват кадров для motion/detection: auto (определяет ffmpeg_nvmpi/opencv при старте)
+  # Захват кадров для motion/detection: auto → на jetson сначала GStreamer nvv4l2decoder (NVDEC),
+  # иначе OpenCV. Явно: opencv | ffmpeg_nvmpi (форс NVDEC).
   capture_backend: auto
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).

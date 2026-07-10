@@ -166,3 +166,34 @@ def test_prefer_lores_explicit_skips_video_path():
     )
     assert src == "best_frame_lores"
     assert crop is lores
+
+
+def test_record_hires_nvdec_defaults_on_for_jetson(monkeypatch):
+    import record_hires_crop as rhc
+
+    class _Cfg:
+        def get(self, key, default=None):
+            if key == "processor.record_hires_nvdec":
+                return None
+            if key == "video.encoding":
+                return "jetson"
+            return default
+
+    import app_config.app_config as ac
+
+    monkeypatch.setattr(ac, "app_config", _Cfg())
+    assert rhc._record_hires_nvdec_enabled() is True
+
+
+def test_record_hires_nvdec_can_disable(monkeypatch):
+    import record_hires_crop as rhc
+    import app_config.app_config as ac
+
+    class _Cfg:
+        def get(self, key, default=None):
+            if key == "processor.record_hires_nvdec":
+                return False
+            return default
+
+    monkeypatch.setattr(ac, "app_config", _Cfg())
+    assert rhc._record_hires_nvdec_enabled() is False

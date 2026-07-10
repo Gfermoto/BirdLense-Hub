@@ -136,6 +136,112 @@ def _gst_jetson_record_available() -> bool:
         return False
 
 
+def _gst_nvdec_capture_available() -> bool:
+    """True when nvv4l2decoder can decode live RTSP for detect/capture."""
+    try:
+        out = subprocess.run(
+            ["gst-inspect-1.0", "nvv4l2decoder"],
+            capture_output=True,
+            timeout=5,
+        )
+        return out.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+
+
+class _GstRtspNvdecCapture:
+    """Minimal VideoCapture-like wrapper: RTSP → nvv4l2decoder → BGR frames."""
+
+    def __init__(self, stream_url: str, *, latency_ms: int = 200):
+        import gi
+
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst, GLib
+
+        Gst.init(None)
+        self._Gst = Gst
+        self._GLib = GLib
+        safe_url = stream_url.replace("&", "%26").replace('"', "%22")
+        desc = (
+            f'rtspsrc location="{safe_url}" latency={int(latency_ms)} protocols=tcp ! '
+            "rtph264depay ! h264parse ! nvv4l2decoder enable-max-performance=1 ! "
+            "nvvidconv ! video/x-raw,format=BGRx ! "
+            "appsink name=sink emit-signals=false sync=false max-buffers=1 drop=true"
+        )
+        self._pipe = Gst.parse_launch(desc)
+        self._sink = self._pipe.get_by_name("sink")
+        self._bus = self._pipe.get_bus()
+        self._ctx = GLib.MainContext.default()
+        self._fps = 0.0
+        self._opened = False
+        ret = self._pipe.set_state(Gst.State.PLAYING)
+        if ret == Gst.StateChangeReturn.FAILURE:
+            self.release()
+            return
+        # Wait for first buffer (preroll / playing).
+        deadline = time.perf_counter() + 8.0
+        while time.perf_counter() < deadline:
+            while self._ctx.pending():
+                self._ctx.iteration(False)
+            msg = self._bus.timed_pop_filtered(50 * Gst.MSECOND, Gst.MessageType.ANY)
+            if msg is not None and msg.type == Gst.MessageType.ERROR:
+                self.release()
+                return
+            sample = self._sink.emit("try-pull-sample", 100 * Gst.MSECOND)
+            if sample is not None:
+                self._opened = True
+                # Keep first sample available via immediate re-pull after open — drop it.
+                break
+        if not self._opened:
+            self.release()
+
+    def isOpened(self) -> bool:
+        return bool(self._opened)
+
+    def set(self, _prop, _value) -> bool:
+        return True
+
+    def get(self, prop) -> float:
+        if prop == cv2.CAP_PROP_FPS:
+            return float(self._fps or 0.0)
+        return 0.0
+
+    def read(self):
+        if not self._opened:
+            return False, None
+        Gst = self._Gst
+        while self._ctx.pending():
+            self._ctx.iteration(False)
+        sample = self._sink.emit("try-pull-sample", 500 * Gst.MSECOND)
+        if sample is None:
+            return False, None
+        buf = sample.get_buffer()
+        caps = sample.get_caps().get_structure(0)
+        w = int(caps.get_value("width"))
+        h = int(caps.get_value("height"))
+        ok, mapinfo = buf.map(Gst.MapFlags.READ)
+        if not ok:
+            return False, None
+        try:
+            arr = np.frombuffer(mapinfo.data, dtype=np.uint8)
+            if arr.size < w * h * 4:
+                return False, None
+            bgrx = np.ascontiguousarray(arr[: w * h * 4].reshape((h, w, 4)))
+            return True, bgrx[:, :, :3].copy()
+        finally:
+            buf.unmap(mapinfo)
+
+    def release(self) -> None:
+        self._opened = False
+        try:
+            if getattr(self, "_pipe", None) is not None:
+                self._pipe.set_state(self._Gst.State.NULL)
+        except Exception:
+            pass
+        self._pipe = None
+        self._sink = None
+
+
 def _libx264_record_args() -> list[str]:
     """Standard libx264 recording args (CPU)."""
     return [
@@ -439,8 +545,40 @@ class Go2RTCStreamSource:
         return letterbox_bgr_to_wh(main_frame, out_wh)
 
     def _connect(self) -> bool:
-        """Open RTSP connection via OpenCV FFMPEG. Returns True if successful."""
+        """Open RTSP capture: Jetson NVDEC (GStreamer) when available, else OpenCV."""
         self._disconnect()
+        want_nvdec = (
+            self._capture_backend in ("auto", "ffmpeg_nvmpi")
+            and self._encoding_mode == "jetson"
+            and _gst_nvdec_capture_available()
+        )
+        if want_nvdec:
+            self.logger.info("Connecting to video stream (GStreamer nvv4l2decoder NVDEC, capture/detect)")
+            try:
+                cap = _GstRtspNvdecCapture(self._live_capture_url())
+            except Exception as exc:
+                self.logger.warning("GST NVDEC capture open failed: %s", exc)
+                cap = None
+            if cap is not None and cap.isOpened():
+                self._cap = cap
+                self._apply_stream_probe()
+                fps = cap.get(cv2.CAP_PROP_FPS)
+                if fps and fps > 0 and (self._source_fps or 0) <= 0.5:
+                    self._source_fps = float(fps)
+                self._capture_backend_used = "ffmpeg_nvmpi"
+                _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
+                _set_runtime_gauge("video_capture_backend_fallback_reason", "nvdec_ok")
+                self._reconnect_delay = INITIAL_RECONNECT_DELAY
+                self.logger.info("Connected (NVDEC). FPS: %s", self._source_fps)
+                return True
+            reason = _capture_fallback_reason(
+                requested_backend=self._capture_backend,
+                encoding_mode=self._encoding_mode,
+                nvmpi_available=True,
+            )
+            self.logger.warning("GST NVDEC capture unavailable, fallback OpenCV (%s)", reason)
+            _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
+
         self.logger.info("Connecting to video stream (OpenCV, capture/detect)")
         cap = cv2.VideoCapture(self._live_capture_url(), cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
@@ -454,6 +592,8 @@ class Go2RTCStreamSource:
             self._source_fps = float(fps)
         self._capture_backend_used = "opencv"
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
+        if want_nvdec:
+            _set_runtime_gauge("video_capture_backend_fallback_reason", "fallback_to_opencv")
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self.logger.info("Connected. FPS: %s", self._source_fps)
         return True

@@ -231,7 +231,7 @@ def _read_frame_ffmpeg(
     hwaccel: bool,
     deadline_mono: float | None = None,
 ) -> np.ndarray | None:
-    """Extract one frame via ffmpeg (optional CUDA NVDEC). Faster than OpenCV reopen+seek on 2688p."""
+    """Extract one frame via ffmpeg (optional CUDA). Spawn cost is high — last-resort fallback."""
     ff = _ffmpeg_bin()
     if not ff:
         return None
@@ -239,9 +239,7 @@ def _read_frame_ffmpeg(
         return None
     cmd: list[str] = [ff, "-hide_banner", "-loglevel", "error"]
     if hwaccel:
-        # Orin: NVDEC. -hwaccel_output_format cuda needs download filter; mjpeg pipe is simpler.
         cmd += ["-hwaccel", "cuda"]
-    # Input seek before -i: keyframe-accurate enough for classifier/ReID crops, much faster.
     cmd += [
         "-ss",
         f"{max(0.0, float(ts)):.3f}",
@@ -277,7 +275,7 @@ def _read_frame_ffmpeg(
 
 
 def _use_ffmpeg_hw_fallback() -> bool:
-    """Optional ffmpeg CUDA fallback after OpenCV miss (single-frame mjpeg+cuda is often slower)."""
+    """Optional ffmpeg CUDA fallback after OpenCV miss."""
     try:
         from app_config.app_config import app_config
 
@@ -289,12 +287,144 @@ def _use_ffmpeg_hw_fallback() -> bool:
         return False
 
 
+def _record_hires_nvdec_enabled() -> bool:
+    """Prefer persistent GStreamer nvv4l2decoder for hires MP4 seeks (Orin)."""
+    try:
+        from app_config.app_config import app_config
+
+        raw = app_config.get("processor.record_hires_nvdec")
+        if raw is not None:
+            return bool(raw)
+        enc = str(app_config.get("video.encoding") or "").strip().lower()
+        return enc in {"jetson", "orin", "nvenc", "nvmpi"}
+    except Exception:
+        return False
+
+
+_gst_probe: bool | None = None
+
+
+def _gst_nvdec_available() -> bool:
+    global _gst_probe
+    if _gst_probe is not None:
+        return _gst_probe
+    try:
+        import gi
+
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst
+
+        Gst.init(None)
+        _gst_probe = Gst.ElementFactory.find("nvv4l2decoder") is not None
+    except Exception:
+        _gst_probe = False
+    return _gst_probe
+
+
+class _GstNvdecSession:
+    """Persistent NVDEC pipeline: seek + appsink pull (BGRx → BGR)."""
+
+    def __init__(self, video_path: str):
+        import gi
+
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst, GLib
+
+        self._Gst = Gst
+        self._GLib = GLib
+        self.path = os.path.abspath(video_path)
+        loc = self.path.replace('"', '\\"')
+        desc = (
+            f'filesrc location="{loc}" ! qtdemux ! h264parse ! '
+            "nvv4l2decoder enable-max-performance=1 ! "
+            "nvvidconv ! video/x-raw,format=BGRx ! "
+            "appsink name=sink emit-signals=false sync=false max-buffers=2 drop=true"
+        )
+        self._pipe = Gst.parse_launch(desc)
+        self._sink = self._pipe.get_by_name("sink")
+        self._bus = self._pipe.get_bus()
+        self._ctx = GLib.MainContext.default()
+        self._pipe.set_state(Gst.State.PAUSED)
+        if not self._pump(8.0):
+            raise RuntimeError("gst nvdec preroll failed")
+        # Warm first buffer, then PLAYING for fast seeks.
+        self._sink.emit("try-pull-preroll", 3 * Gst.SECOND)
+        self._pipe.set_state(Gst.State.PLAYING)
+        self._pump(2.0)
+
+    def _pump(self, timeout_s: float) -> bool:
+        Gst = self._Gst
+        end = time.perf_counter() + timeout_s
+        while time.perf_counter() < end:
+            while self._ctx.pending():
+                self._ctx.iteration(False)
+            msg = self._bus.timed_pop_filtered(30 * Gst.MSECOND, Gst.MessageType.ANY)
+            if msg is None:
+                ret, state, _pending = self._pipe.get_state(0)
+                if ret != Gst.StateChangeReturn.ASYNC and state in (
+                    Gst.State.PAUSED,
+                    Gst.State.PLAYING,
+                ):
+                    return True
+                continue
+            if msg.type == Gst.MessageType.ERROR:
+                return False
+            if msg.type in (Gst.MessageType.ASYNC_DONE, Gst.MessageType.EOS):
+                return True
+        ret, state, _pending = self._pipe.get_state(0)
+        return state in (Gst.State.PAUSED, Gst.State.PLAYING)
+
+    @staticmethod
+    def _sample_to_bgr(sample) -> np.ndarray | None:
+        if sample is None:
+            return None
+        from gi.repository import Gst
+
+        buf = sample.get_buffer()
+        caps = sample.get_caps().get_structure(0)
+        w = int(caps.get_value("width"))
+        h = int(caps.get_value("height"))
+        ok, mapinfo = buf.map(Gst.MapFlags.READ)
+        if not ok:
+            return None
+        try:
+            arr = np.frombuffer(mapinfo.data, dtype=np.uint8)
+            if arr.size < w * h * 4:
+                return None
+            bgrx = np.ascontiguousarray(arr[: w * h * 4].reshape((h, w, 4)))
+            return bgrx[:, :, :3].copy()
+        finally:
+            buf.unmap(mapinfo)
+
+    def read_at(self, ts: float) -> np.ndarray | None:
+        Gst = self._Gst
+        ns = int(max(0.0, float(ts)) * Gst.SECOND)
+        if not self._pipe.seek_simple(
+            Gst.Format.TIME,
+            Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
+            ns,
+        ):
+            return None
+        self._pump(2.0)
+        sample = self._sink.emit("try-pull-sample", 2 * Gst.SECOND)
+        if sample is None:
+            sample = self._sink.emit("try-pull-preroll", 1 * Gst.SECOND)
+        return self._sample_to_bgr(sample)
+
+    def close(self) -> None:
+        try:
+            self._pipe.set_state(self._Gst.State.NULL)
+        except Exception:
+            pass
+
+
 _cap_cache: dict[str, cv2.VideoCapture] = {}
+_gst_cache: dict[str, _GstNvdecSession] = {}
 _cap_lock = threading.Lock()
 
 
 def release_record_hires_captures() -> None:
-    """Release cached OpenCV captures (call at end of finalize)."""
+    """Release cached OpenCV / GST NVDEC sessions (call at end of finalize)."""
     with _cap_lock:
         for cap in _cap_cache.values():
             try:
@@ -302,10 +432,42 @@ def release_record_hires_captures() -> None:
             except Exception:
                 pass
         _cap_cache.clear()
+        for sess in _gst_cache.values():
+            try:
+                sess.close()
+            except Exception:
+                pass
+        _gst_cache.clear()
+
+
+def _gst_read_frame(video_path: str, ts: float) -> np.ndarray | None:
+    """Seek via persistent nvv4l2decoder session (Orin NVDEC)."""
+    if not _record_hires_nvdec_enabled() or not _gst_nvdec_available():
+        return None
+    abspath = os.path.abspath(video_path)
+    with _cap_lock:
+        sess = _gst_cache.get(abspath)
+        if sess is None:
+            try:
+                sess = _GstNvdecSession(abspath)
+            except Exception as exc:
+                logger.debug("gst nvdec open failed path=%s: %s", video_path, exc)
+                return None
+            _gst_cache[abspath] = sess
+        try:
+            return sess.read_at(ts)
+        except Exception as exc:
+            logger.debug("gst nvdec seek failed path=%s ts=%.3f: %s", video_path, ts, exc)
+            try:
+                sess.close()
+            except Exception:
+                pass
+            _gst_cache.pop(abspath, None)
+            return None
 
 
 def _opencv_read_frame(video_path: str, ts: float) -> np.ndarray | None:
-    """Seek one frame via cached VideoCapture (reuse beats ffmpeg spawn on 2688p Orin)."""
+    """Seek one frame via cached VideoCapture (CPU decode fallback)."""
     with _cap_lock:
         cap = _cap_cache.get(video_path)
         if cap is None or not cap.isOpened():
@@ -338,9 +500,13 @@ def _read_frame_with_retries(
     max_attempts: int = 1,
     deadline_mono: float | None = None,
 ) -> np.ndarray | None:
-    """Seek one frame from MP4. OpenCV reuse first; ffmpeg soft/hw only as fallback."""
+    """Seek one frame: GST NVDEC → OpenCV reuse → ffmpeg fallback."""
     if deadline_mono is not None and time.perf_counter() >= deadline_mono:
         return None
+
+    frame = _gst_read_frame(video_path, ts)
+    if frame is not None:
+        return frame
 
     retry_delays = (0.05,)
     attempts = max(1, min(3, int(max_attempts)))
