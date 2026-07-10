@@ -143,7 +143,7 @@ def enrich_tracks_classifier_at_finalize(
         skipped = max(0, len(eligible) - max_tracks)
         eligible = eligible[:max_tracks]
         if skipped:
-            logger.debug(
+            logger.info(
                 "classifier finalize: max_tracks=%s skipped=%s kept=%s",
                 max_tracks,
                 skipped,

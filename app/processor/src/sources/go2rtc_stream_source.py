@@ -258,6 +258,14 @@ class _GstRtspNvdecCapture:
                 return False
             # Keep soft restart short so capture lock / MJPEG stay responsive.
             deadline = time.perf_counter() + 1.5
+            if ret == Gst.StateChangeReturn.ASYNC:
+                state_ret, state, _pending = self._pipe.get_state(int(0.8 * Gst.SECOND))
+                if state_ret == Gst.StateChangeReturn.FAILURE:
+                    self.release()
+                    return False
+                if state not in (Gst.State.PLAYING, Gst.State.PAUSED):
+                    self.release()
+                    return False
             while time.perf_counter() < deadline:
                 while self._ctx.pending():
                     self._ctx.iteration(False)
@@ -648,8 +656,8 @@ class Go2RTCStreamSource:
                 if fps and fps > 0 and (self._source_fps or 0) <= 0.5:
                     self._source_fps = float(fps)
                 self._capture_backend_used = "ffmpeg_nvmpi"
-                self._consecutive_read_failures = 0
-                self._soft_restart_success_streak = 0
+                # Do not reset consecutive here: open-ok/read-stall must still
+                # accumulate toward soft-restart / sticky OpenCV.
                 _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
                 _set_runtime_gauge("video_capture_backend_fallback_reason", "nvdec_ok")
                 self._reconnect_delay = INITIAL_RECONNECT_DELAY
@@ -671,7 +679,7 @@ class Go2RTCStreamSource:
         if fps and fps > 0 and (self._source_fps or 0) <= 0.5:
             self._source_fps = float(fps)
         self._capture_backend_used = "opencv"
-        self._consecutive_read_failures = 0
+        # OpenCV path: clear NVDEC soft-restart bookkeeping only.
         self._soft_restart_success_streak = 0
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         if want_nvdec or in_cooldown:
@@ -903,30 +911,39 @@ class Go2RTCStreamSource:
         ):
             _inc_runtime_counter("video_capture_reconnect_debounced_total", 1)
             return False
-        self._last_reconnect_attempt_ts = now
         while True:
             # Ожидаемое поведение при кратковременных обрывах RTSP; не WARNING — иначе шум в логах/алертах.
             self.logger.info("Reconnecting in %ss...", self._reconnect_delay)
             _inc_runtime_counter("video_capture_reconnect_total", 1)
             time.sleep(self._reconnect_delay)
-            if self._connect():
+            ok = self._connect()
+            # Debounce from connect completion (NVDEC open can take several seconds).
+            self._last_reconnect_attempt_ts = time.monotonic()
+            if ok:
                 self._capture_url_connected = self._live_capture_url()
                 self.refresh_record_stream_geometry()
                 return True
             self._reconnect_delay = min(self._reconnect_delay * 2, MAX_RECONNECT_DELAY)
 
-    def _read_frame(self):
-        """Read one frame. Returns (frame_bgr, success)."""
+    def _read_frame(self, *, track_health: bool = True):
+        """Read one frame. Returns (frame_bgr, success).
+
+        ``track_health=False`` for MJPEG feeder so it does not mutate soft-restart
+        / consecutive counters used by ``capture()``.
+        """
         if not self._cap or not self._cap.isOpened():
-            self._consecutive_read_failures += 1
+            if track_health:
+                self._consecutive_read_failures += 1
             return None, False
         ret, frame = self._cap.read()
         if not ret or frame is None:
-            self._consecutive_read_failures += 1
+            if track_health:
+                self._consecutive_read_failures += 1
             return None, False
-        self._consecutive_read_failures = 0
-        # Stable frame means soft-restart loop is broken; allow soft again later.
-        self._soft_restart_success_streak = 0
+        if track_health:
+            self._consecutive_read_failures = 0
+            # Stable frame means soft-restart loop is broken; allow soft again later.
+            self._soft_restart_success_streak = 0
         return frame, True
 
     def _update_streaming_output(self, frame):
@@ -1126,7 +1143,7 @@ class Go2RTCStreamSource:
         if not self._read_lock.acquire(blocking=False):
             return
         try:
-            frame, ok = self._read_frame()
+            frame, ok = self._read_frame(track_health=False)
             if ok and frame is not None:
                 if self._single_read_idle():
                     frame = self._derive_detect_frame(frame)

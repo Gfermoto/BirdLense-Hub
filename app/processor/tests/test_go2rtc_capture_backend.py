@@ -461,6 +461,103 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertEqual(calls["reconnect"], 1)
         self.assertEqual(armed["reason"], "nvdec_soft_restart_loop")
 
+    def test_mjpeg_read_does_not_mutate_health_counters(self):
+        from sources.go2rtc_stream_source import Go2RTCStreamSource
+
+        class _Cap:
+            def isOpened(self):
+                return True
+
+            def read(self):
+                return True, object()
+
+        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
+        src._cap = _Cap()
+        src._consecutive_read_failures = 2
+        src._soft_restart_success_streak = 1
+        frame, ok = src._read_frame(track_health=False)
+        self.assertTrue(ok)
+        self.assertIsNotNone(frame)
+        self.assertEqual(src._consecutive_read_failures, 2)
+        self.assertEqual(src._soft_restart_success_streak, 1)
+
+    def test_slow_connect_debounce_allows_soft_path(self):
+        """Debounce starts after connect completes so soft can accumulate."""
+        from sources.go2rtc_stream_source import Go2RTCStreamSource
+
+        class _Logger:
+            def info(self, *_args, **_kwargs):
+                return None
+
+            def warning(self, *_args, **_kwargs):
+                return None
+
+        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
+        src.logger = _Logger()
+        src.auto_reconnect = True
+        src._reconnect_debounce_sec = 3.0
+        src._last_reconnect_attempt_ts = 0.0
+        src._capture_url_connected = "rtsp://example/detect"
+        src._live_capture_url = lambda: "rtsp://example/detect"
+        src._reconnect_delay = 0.01
+        src._consecutive_read_failures = 0
+        connect_calls = {"n": 0}
+
+        def _slow_connect():
+            connect_calls["n"] += 1
+            time.sleep(0.05)  # simulate open latency inside connect
+            return True
+
+        src._connect = _slow_connect
+        src.refresh_record_stream_geometry = lambda: None
+        self.assertTrue(src._reconnect_if_needed())
+        self.assertEqual(connect_calls["n"], 1)
+        after = src._last_reconnect_attempt_ts
+        self.assertGreater(after, 0.0)
+        # Immediate second attempt must debounce (timestamp is post-connect).
+        self.assertFalse(src._reconnect_if_needed())
+        self.assertEqual(connect_calls["n"], 1)
+
+        # Capture path: consecutive accumulates across debounced reconnects → soft.
+        src._read_lock = threading.Lock()
+        src._frame_count = 0
+        src._last_frame_time = 0
+        src._capture_backend_used = "ffmpeg_nvmpi"
+        src._soft_restart_failures_threshold = 3
+        src._soft_restart_success_streak = 0
+        src._soft_restart_max_success_streak = 2
+        src._consecutive_read_failures = 2
+        src.lores_size = (640, 640)
+        src._single_rtsp_read = False
+        src._dual_stream = False
+        src._recording = False
+        src._update_streaming_output = lambda _frame: None
+        src._last_classifier_crop_skew_sec = 0.0
+        src._last_classifier_crop_mismatch = False
+        src._last_classifier_source_frame = None
+        src._record_frame_buffer = []
+        soft_calls = {"n": 0}
+
+        def _read_fail(*_a, **_k):
+            if soft_calls["n"] > 0:
+                src._consecutive_read_failures = 0
+                return object(), True
+            src._consecutive_read_failures += 1
+            return None, False
+
+        def _soft():
+            soft_calls["n"] += 1
+            src._consecutive_read_failures = 0
+            return True
+
+        src._read_frame = _read_fail
+        src._soft_restart_capture = _soft
+        # Debounce still active → reconnect skipped; soft should run (consec>=3).
+        frame = src.capture()
+        self.assertIsNotNone(frame)
+        self.assertEqual(soft_calls["n"], 1)
+        self.assertEqual(connect_calls["n"], 1)
+
     def test_encoding_utils_normalize_video_encoding(self):
         from encoding_utils import normalize_video_encoding
 
