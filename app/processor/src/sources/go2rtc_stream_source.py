@@ -515,7 +515,7 @@ class Go2RTCStreamSource:
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
         self._nvdec_opencv_cooldown_sec = 120.0
-        self._soft_restart_failures_threshold = 3
+        self._soft_restart_failures_threshold = 1
         self._reconnect_debounce_sec = 3.0
         self._consecutive_read_failures = 0
         self._soft_restart_success_streak = 0
@@ -528,7 +528,7 @@ class Go2RTCStreamSource:
                 5.0, float(_cfg.get("video.capture_nvdec_opencv_cooldown_sec") or 120)
             )
             self._soft_restart_failures_threshold = max(
-                1, int(_cfg.get("video.capture_soft_restart_failures") or 3)
+                1, int(_cfg.get("video.capture_soft_restart_failures") or 1)
             )
             self._reconnect_debounce_sec = max(
                 0.5, float(_cfg.get("video.capture_reconnect_debounce_sec") or 3)

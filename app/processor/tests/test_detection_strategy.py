@@ -860,6 +860,77 @@ class TestTrackMaybeRetry(unittest.TestCase):
         self.assertEqual(len(out[0].boxes.id), 1)
         self.assertEqual(confs, [0.12, 0.12])
 
+    def test_resets_tracker_after_two_id_none_attempts(self):
+        if _track_maybe_retry is None:
+            self.skipTest("detection_strategy import failed")
+        import numpy as np
+        import detection_strategy as ds
+
+        ds._last_bytetrack_reset_mono = 0.0
+        calls = 0
+        resets = 0
+
+        class _Boxes:
+            def __init__(self, *, with_id: bool):
+                self.id = [9] if with_id else None
+
+            def __len__(self):
+                return 1
+
+        class _Result:
+            def __init__(self, *, with_id: bool):
+                self.boxes = _Boxes(with_id=with_id)
+
+        class _Tracker:
+            def reset(self):
+                nonlocal resets
+                resets += 1
+
+        class _Model:
+            def __init__(self):
+                self.predictor = type("P", (), {"trackers": [_Tracker()]})()
+
+            def track(self, frame, **kwargs):
+                nonlocal calls
+                calls += 1
+                return [_Result(with_id=calls >= 3)]
+
+        frame = np.zeros((64, 64, 3), dtype=np.uint8)
+        out = _track_maybe_retry(_Model(), frame, conf=0.12, persist=True)
+        self.assertEqual(calls, 3)
+        self.assertEqual(resets, 1)
+        self.assertEqual(out[0].boxes.id, [9])
+
+    def test_reset_cooldown_skips_third_track_call(self):
+        if _track_maybe_retry is None:
+            self.skipTest("detection_strategy import failed")
+        import numpy as np
+        import detection_strategy as ds
+        import time as _time
+
+        ds._last_bytetrack_reset_mono = _time.monotonic()
+        calls = 0
+
+        class _Boxes:
+            id = None
+
+            def __len__(self):
+                return 1
+
+        class _Result:
+            boxes = _Boxes()
+
+        class _Model:
+            predictor = type("P", (), {"trackers": []})()
+
+            def track(self, frame, **kwargs):
+                nonlocal calls
+                calls += 1
+                return [_Result()]
+
+        frame = np.zeros((64, 64, 3), dtype=np.uint8)
+        _track_maybe_retry(_Model(), frame, conf=0.12, persist=True)
+        self.assertEqual(calls, 2)
 
 class TestTwoStageBirdSkipClassifier(unittest.TestCase):
     def test_tiny_bird_skips_classifier_when_area_limit_set(self):

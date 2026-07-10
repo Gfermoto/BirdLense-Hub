@@ -166,7 +166,7 @@ processor:
   classifier_async_enabled: true
   # Если track() вернул 0 боксов, сделать predict() с мягким conf как аварийный fallback.
   track_to_predict_fallback_enabled: true
-  track_to_predict_fallback_confidence: 0.002
+  track_to_predict_fallback_confidence: 0.01
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
   track_regen_video_timeout_sec: 900
   # Отдельный таймаут для точного fallback-прохода: не даём одному ролику блокировать весь recovery.
@@ -494,14 +494,14 @@ processor:
     feeder_far:
       # Distant / Forest-style: weak conf 0.03–0.12; must accept before ByteTrack IDs stabilize.
       detect_use_native_resolution: false
-      min_confidence_binary: 0.05
-      min_confidence_binary_bird: 0.04
-      min_confidence_to_process: 0.04
-      min_box_size_px: 8
-      min_center_dist: 0.012
+      min_confidence_binary: 0.04
+      min_confidence_binary_bird: 0.02
+      min_confidence_to_process: 0.03
+      min_box_size_px: 4
+      min_center_dist: 0.01
       max_box_area_norm: 0.92
       track_to_predict_fallback_enabled: true
-      min_track_duration: 0.15
+      min_track_duration: 0.0
       tracker_remember_seconds: 2.4
       detect_record_time_offset_sec: -0.12
       track_static_reject_enabled: false
@@ -511,13 +511,13 @@ processor:
       track_static_reject_min_frames: 3
       track_static_reject_min_frames_sparse: 2
       scoring_default_low_threshold: 0.08
-      scoring_relaxed_min_confidence: 0.05
+      scoring_relaxed_min_confidence: 0.02
       scoring_static_phantom_reject_enabled: false
       scoring_moving_roi_min_motion_score: 0.22
       scene_adaptive_conf_enabled: false
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на detect substream слабые conf 0.04–0.15 — иначе только review_only salvage.
-  generic_bird_min_detector_conf: 0.10
+  generic_bird_min_detector_conf: 0.03
   generic_bird_min_frames: 2
   generic_bird_min_area_frac: 0.006
   generic_bird_min_best_frame_score: 5.0
@@ -672,7 +672,7 @@ video:
   # After NVDEC open/read fail: sticky OpenCV for N seconds (avoid reconnect storms).
   capture_nvdec_opencv_cooldown_sec: 120
   # Consecutive no-frame on NVDEC before soft pipeline restart (same URL, no backoff sleep).
-  capture_soft_restart_failures: 3
+  capture_soft_restart_failures: 1
   # Soft-ok streak without stable reads → sticky OpenCV (anti soft-restart loop).
   capture_soft_restart_max_success_streak: 2
   # Min interval between full reconnect attempts when capture URL unchanged.

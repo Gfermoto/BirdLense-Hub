@@ -78,8 +78,8 @@ def adaptive_track_buffer_frames(
 def adaptive_match_thresh(stream_fps: float, base_thresh: float, low_fps_threshold: float) -> float:
     if stream_fps <= 0.5 or stream_fps > float(low_fps_threshold):
         return float(base_thresh)
-    # Slight tighten on low FPS; large bumps break small-motion association.
-    return min(0.88, max(0.68, float(base_thresh) + 0.02))
+    # Low FPS: birds move more between frames — loosen IoU association.
+    return min(0.75, max(0.50, float(base_thresh) - 0.12))
 
 
 def _track_conf_cap_from_config(cfg: Mapping[str, Any]) -> float | None:

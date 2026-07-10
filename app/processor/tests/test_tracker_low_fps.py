@@ -23,9 +23,10 @@ from tracker_low_fps import (
 
 
 class TestTrackerLowFps(unittest.TestCase):
-    def test_match_thresh_higher_at_low_fps(self):
-        self.assertGreater(adaptive_match_thresh(7.0, 0.82, 10.0), 0.82)
-        self.assertEqual(adaptive_match_thresh(15.0, 0.82, 10.0), 0.82)
+    def test_match_thresh_looser_at_low_fps(self):
+        self.assertLess(adaptive_match_thresh(7.0, 0.72, 10.0), 0.72)
+        self.assertGreaterEqual(adaptive_match_thresh(7.0, 0.72, 10.0), 0.50)
+        self.assertEqual(adaptive_match_thresh(15.0, 0.72, 10.0), 0.72)
 
     def test_clamp_bytetrack_thresholds_below_track_conf(self):
         doc = {

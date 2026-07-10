@@ -288,19 +288,41 @@ def _regional_class_ids(
     ]
 
 
+_TRACK_RESET_COOLDOWN_SEC = 3.0
+_last_bytetrack_reset_mono: float = 0.0
+
+
 def _track_maybe_retry(
     model,
     frame: np.ndarray,
     **kwargs,
 ):
-    """ByteTrack иногда возвращает ``boxes.id is None`` — повтор."""
+    """ByteTrack иногда возвращает ``boxes.id is None`` — повтор + редкий reset tracker."""
+    global _last_bytetrack_reset_mono
     results = model.track(frame, **kwargs)
     if not results or len(results[0].boxes) == 0:
         return results
     if results[0].boxes.id is not None:
         return results
     results = model.track(frame, **kwargs)
-    return results
+    if results and len(results[0].boxes) > 0 and results[0].boxes.id is not None:
+        return results
+    # Stuck tracker state (common after RTSP gaps): reset at most once per cooldown.
+    now = time.monotonic()
+    if (now - float(_last_bytetrack_reset_mono or 0.0)) < _TRACK_RESET_COOLDOWN_SEC:
+        return results
+    try:
+        pred = getattr(model, "predictor", None)
+        trackers = getattr(pred, "trackers", None) if pred is not None else None
+        if trackers:
+            for tr in trackers:
+                reset = getattr(tr, "reset", None)
+                if callable(reset):
+                    reset()
+            _last_bytetrack_reset_mono = now
+    except Exception:
+        logger.debug("ByteTrack reset before retry failed", exc_info=True)
+    return model.track(frame, **kwargs)
 
 
 def _bbox_iou_xyxy(a: np.ndarray, b: np.ndarray) -> float:
@@ -1190,13 +1212,16 @@ class TwoStageStrategy(DetectionStrategy):
                 _record_detect_metrics(raw_boxes=0, boxes_with_track_id=0, accepted=0)
                 return []
             try:
-                fallback_conf = float(runtime_cfg.get("processor.track_to_predict_fallback_confidence") or 0.005)
+                fallback_conf = float(runtime_cfg.get("processor.track_to_predict_fallback_confidence") or 0.01)
             except (TypeError, ValueError):
-                fallback_conf = 0.005
+                fallback_conf = 0.01
+            # Never predict below half of track_conf — otherwise we recover noise
+            # (conf≈0.002) that accept_min immediately discards.
+            predict_conf = max(0.001, min(0.20, max(float(fallback_conf), float(track_conf) * 0.5)))
             _pkw: dict[str, Any] = {
                 "verbose": False,
                 "imgsz": imgsz,
-                "conf": max(0.001, min(0.20, fallback_conf)),
+                "conf": predict_conf,
             }
             if _allow is not None:
                 _pkw["classes"] = sorted(_allow)
@@ -1208,27 +1233,38 @@ class TwoStageStrategy(DetectionStrategy):
                 return []
             boxes = pred[0].boxes
             boxes_from_predict_fallback = True
+            # Accept floor must be reachable by predict_conf (with tiny float slack).
             accept_min_confidence = min(
                 float(min_confidence),
-                max(float(fallback_conf) * 4.0, 0.04),
+                float(track_conf),
+                max(0.001, float(predict_conf) * 0.95),
             )
             self._track_predict_fallback_hits = int(getattr(self, "_track_predict_fallback_hits", 0)) + 1
             if self._track_predict_fallback_hits <= 3 or self._track_predict_fallback_hits % 60 == 0:
                 logger.warning(
-                    "Track->predict fallback recovered %s box(es) without ByteTrack ids. hits=%s",
+                    "Track->predict fallback recovered %s box(es) conf>=%.4f accept_min=%.4f hits=%s",
                     len(boxes),
+                    float(predict_conf),
+                    float(accept_min_confidence),
                     self._track_predict_fallback_hits,
                 )
 
-        if boxes.id is None and len(boxes) > 0 and not (track_regen_ctx and iou_fb):
-            logger.warning(
-                "ByteTrack: %s box(es) but no track ids after retry (live). "
-                "Usually tracker track_high_thresh/new_track_thresh in %r exceed YOLO track(conf=%.3f). "
-                "Keep high/new ~0.02 below that conf; raise min_confidence_binary floors if you tighten YAML.",
-                len(boxes),
-                tracker_config,
-                float(track_conf),
-            )
+        if (
+            boxes.id is None
+            and len(boxes) > 0
+            and not boxes_from_predict_fallback
+            and not (track_regen_ctx and iou_fb)
+        ):
+            _no_id_hits = int(getattr(self, "_bytetrack_no_id_hits", 0)) + 1
+            self._bytetrack_no_id_hits = _no_id_hits
+            if _no_id_hits <= 3 or _no_id_hits % 60 == 0:
+                logger.warning(
+                    "ByteTrack: %s box(es) but no track ids after retry (live). hits=%s tracker=%r track_conf=%.3f",
+                    len(boxes),
+                    _no_id_hits,
+                    tracker_config,
+                    float(track_conf),
+                )
 
         def _tensor_to_numpy(tensor_like):
             """Ultralytics torch tensor или unittest fake с ``.numpy()``."""
@@ -1304,6 +1340,16 @@ class TwoStageStrategy(DetectionStrategy):
             track_ids = synth
         else:
             track_ids = boxes.id.int().cpu().tolist()
+            # Keep IoU-fallback continuity across mixed ByteTrack/no-id frames.
+            try:
+                curr_xyxy = np.reshape(_tensor_to_numpy(boxes.xyxy), (-1, 4))
+                if not track_regen_ctx and len(track_ids) == len(curr_xyxy):
+                    self._live_iou_prev_boxes = curr_xyxy.copy()
+                    frame_copy_count += 1
+                    self._live_iou_prev_ids = [int(t) for t in track_ids]
+                    self._live_iou_next_id = max(int(t) for t in track_ids) + 1
+            except Exception:
+                logger.debug("live IoU prev update from ByteTrack ids failed", exc_info=True)
 
         class_indexes = boxes.cls.int().cpu().tolist()
         confidences = boxes.conf.cpu().tolist()
@@ -1403,9 +1449,14 @@ class TwoStageStrategy(DetectionStrategy):
                     runtime_cfg,
                     inference_backend=inference_backend,
                 )
+                # Never raise above what track()/accept already admitted.
+                eff_min = min(float(eff_min), float(accept_min_confidence))
                 eff_min = max(0.0, float(eff_min) - float(conf_delta))
                 if detector_label == "Bird":
-                    eff_min = max(float(eff_min), float(scene_bird_floor))
+                    eff_min = min(
+                        max(float(eff_min), float(scene_bird_floor)),
+                        float(accept_min_confidence),
+                    )
                 cmp_conf = float(conf)
                 if not self.is_valid_detection(
                     list(_overlay_norm_bbox(bbox_norm)),
@@ -1560,6 +1611,22 @@ class TwoStageStrategy(DetectionStrategy):
         if not valid_boxes:
             _raw_n = len(boxes) if boxes is not None else 0
             _tid_n = len(track_ids) if track_ids else 0
+            if _raw_n > 0 and (self._frame_index <= 3 or self._frame_index % 60 == 0):
+                try:
+                    max_conf = max((float(c) for c in confidences), default=0.0)
+                except Exception:
+                    max_conf = 0.0
+                logger.warning(
+                    "detect accept gap: raw=%s tid=%s max_conf=%.4f accept_min=%.4f "
+                    "scene_bird_floor=%.4f min_box=%s predict_fb=%s",
+                    _raw_n,
+                    _tid_n,
+                    max_conf,
+                    float(accept_min_confidence),
+                    float(scene_bird_floor),
+                    int(min_box_size_px),
+                    bool(boxes_from_predict_fallback),
+                )
             _record_detect_metrics(
                 raw_boxes=_raw_n,
                 boxes_with_track_id=_tid_n,
