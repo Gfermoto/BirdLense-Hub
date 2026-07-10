@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from types import SimpleNamespace
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -91,3 +92,55 @@ def test_enrich_skips_weak_classifier_below_best_guess_floor():
 
     assert appended == 0
     assert "classifier_events" not in tracks[8]
+
+
+def test_enrich_skips_empty_tracks():
+    strategy = _Strategy()
+    cfg = _Cfg(
+        {
+            "processor.pipeline_mode": "linear",
+            "processor.classifier_defer_to_finalize": True,
+        }
+    )
+    assert enrich_tracks_classifier_at_finalize({}, strategy, cfg) == 0
+    assert strategy.calls == 0
+
+
+def test_enrich_respects_max_runtime_budget():
+    """Wall-clock cap must stop before classifying every track."""
+    tracks = {
+        i: {
+            "detector_events": [{"label": "Bird", "confidence": 0.5}],
+            "best_frame": object(),
+            "best_frame_score": 2.0,
+            "end_time": 1.0,
+        }
+        for i in range(20)
+    }
+
+    class _SlowStrategy:
+        def __init__(self):
+            self.calls = 0
+
+        def _classify_crop(self, _crop):
+            self.calls += 1
+            time.sleep(0.05)
+            return SimpleNamespace(
+                species_name="Eurasian Jay",
+                top1_confidence=0.5,
+                entropy=1.0,
+                top1_top2_margin=0.2,
+            )
+
+    strategy = _SlowStrategy()
+    cfg = _Cfg(
+        {
+            "processor.pipeline_mode": "linear",
+            "processor.classifier_defer_to_finalize": True,
+            "processor.classifier_finalize_max_runtime_ms": 80,
+            "processor.classifier_best_guess_min_confidence": 0.10,
+        }
+    )
+    appended = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
+    assert strategy.calls < 20
+    assert appended == strategy.calls

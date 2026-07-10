@@ -337,11 +337,15 @@ def apply_runtime_reid_metadata(
         True,
     )
     try:
-        max_runtime_ms = float(_cfg_get("processor.reid.max_runtime_ms", 250.0))
+        max_runtime_ms = float(_cfg_get("processor.reid.max_runtime_ms", 1500.0))
     except (TypeError, ValueError):
-        max_runtime_ms = 250.0
+        max_runtime_ms = 1500.0
     max_runtime_ms = max(1.0, max_runtime_ms)
     started = time.perf_counter()
+    deadline_mono = started + (max_runtime_ms / 1000.0)
+    # Architecture: detect/track=lores, classify/ReID=hires crop. Never force lores for quality.
+    # Soft reserve: if almost out of budget, skip starting another hires seek (stop loop instead).
+    hires_min_remaining_ms = 40.0
     timed_out = False
     for det in detections:
         elapsed_ms = (time.perf_counter() - started) * 1000.0
@@ -355,6 +359,11 @@ def apply_runtime_reid_metadata(
             continue
         if float(det.get("best_frame_score") or 0.0) < float(min_best_frame_score):
             continue
+        remaining_ms = max_runtime_ms - (time.perf_counter() - started) * 1000.0
+        if remaining_ms < hires_min_remaining_ms:
+            timed_out = True
+            inc_counter("reid_runtime_timeout_total", 1)
+            break
         crop = det.get("best_frame")
         crop_source = "best_frame_lores"
         try:
@@ -379,23 +388,39 @@ def apply_runtime_reid_metadata(
                     mode=mode,
                     lores_crop=crop,
                     runtime_cfg=runtime_cfg,
+                    prefer_lores=False,
+                    deadline_mono=deadline_mono,
                 )
                 if resolved is not None:
                     crop = resolved
                     det["reid_crop_source"] = crop_source
         except ImportError:
             pass
+        # In-memory lores crop is free — still embed even if hires seek burned the budget.
         if crop is None:
+            if time.perf_counter() >= deadline_mono:
+                timed_out = True
+                inc_counter("reid_runtime_timeout_total", 1)
+                break
             continue
         embedding = embed_crop(crop)
         if embedding is None:
             continue
         processed += 1
+        if time.perf_counter() >= deadline_mono:
+            # Keep this detection's embedding, but stop the loop.
+            timed_out = True
+            inc_counter("reid_runtime_timeout_total", 1)
+            # fall through to write metadata then break after this det
         emb = np.asarray(embedding, dtype=np.float32)
         if emb.ndim != 1 or emb.shape[0] <= 0:
+            if timed_out:
+                break
             continue
         norm = float(np.linalg.norm(emb))
         if norm <= 1e-9:
+            if timed_out:
+                break
             continue
         emb = emb / norm
 
@@ -439,6 +464,8 @@ def apply_runtime_reid_metadata(
             )
             det["individual_nickname"] = generated
             auto_named += 1
+        if timed_out:
+            break
 
     inc_counter("reid_runtime_embeddings_total", processed)
     inc_counter("reid_runtime_auto_nickname_total", auto_named)

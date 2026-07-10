@@ -41,6 +41,8 @@ processor:
   # linear: Birder только на finalize (key_frames), не на каждом live-кадре
   classifier_defer_to_finalize: true
   classifier_finalize_max_key_frames: 3
+  # Cap deferred classify wall-clock (hires MP4 seeks); prefer lores when budget tight
+  classifier_finalize_max_runtime_ms: 2500
   # object_confirm_min_score / object_confirm_threshold — unset → min_confidence_binary_bird
   # Legacy compatibility toggles (kept for older user_config keys; runtime may ignore).
   adaptive_preprocess_enabled: false
@@ -304,10 +306,13 @@ processor:
   # TG preview: best_frame_lores (detect crop) | record_hires (main MP4) | auto (hires then lores)
   notify_preview_source: auto
   notify_preview_crop_pad_frac: 0.06
-  # Classifier uses lores best_frame until detect→record bbox/timing parity is calibrated.
-  # ReID/TG can still use hi-res MP4 crops below.
+  # Classifier/ReID: record_hires = main-stream crop after lores detect→bbox remap (dual-stream).
+  # best_frame_lores only as fallback when MP4 seek fails.
   classifier_crop_source: record_hires
   reid_crop_source: auto
+  # record_hires seek: OpenCV VideoCapture reuse first (faster on Orin 2688p).
+  # ffmpeg soft/hw only as fallback when OpenCV cannot open/seek the MP4.
+  record_hires_ffmpeg_hw: false
   enrichment_crop_pad_frac: 0.06
   # Linear: TG/hires crop from best keyframe bbox+timestamp only (no blind mid-track seek).
   enrichment_crop_require_keyframe: true
@@ -619,7 +624,8 @@ processor:
     candidate_cache_ttl_seconds: 120
     include_embedding_payload: true
     nickname_similarity_threshold: 0.86
-    max_runtime_ms: 250
+    # Wall-clock for hires crop (NVDEC) + ONNX embed; stop more dets — do not downgrade to lores.
+    max_runtime_ms: 1500
 
   # Runtime welfare — Ornimetrics ONNX embedder + Mahalanobis NPZ (Orin production path)
   welfare:
@@ -632,7 +638,7 @@ processor:
     flag_for_review: true
     max_detections_per_recording: 6
     min_best_frame_score: 0.0
-    max_runtime_ms: 250
+    max_runtime_ms: 1500
 
 # Video source: go2rtc | file
 video:

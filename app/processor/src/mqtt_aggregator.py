@@ -1051,7 +1051,10 @@ class MQTTEventAggregator:
                 self._client.on_disconnect = self._on_disconnect
                 self._client.on_message = self._on_message
                 self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
-                self._client.connect(self.broker, self.port, 60)
+                # Keepalive 120s: under heavy YOLO/OpenCV GIL load the paho network
+                # thread can miss 60s PINGREQ and drop with local disconnect, losing
+                # Frigate QoS0 snapshots during the reconnect gap.
+                self._client.connect(self.broker, self.port, 120)
                 self._client.subscribe(self.frigate_topic, qos=1)
                 logger.info("MQTT: subscribed Frigate events topic %s", self.frigate_topic)
                 if self._frigate_snapshot_topic and self._frigate_snapshot_topic != self.frigate_topic:

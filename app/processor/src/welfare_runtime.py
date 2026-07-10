@@ -231,11 +231,13 @@ def apply_runtime_welfare_metadata(
     processed = 0
     flagged = 0
     try:
-        max_runtime_ms = float(_cfg_get("processor.welfare.max_runtime_ms", 250.0))
+        max_runtime_ms = float(_cfg_get("processor.welfare.max_runtime_ms", 1500.0))
     except (TypeError, ValueError):
-        max_runtime_ms = 250.0
+        max_runtime_ms = 1500.0
     max_runtime_ms = max(1.0, max_runtime_ms)
     started = time.perf_counter()
+    deadline_mono = started + (max_runtime_ms / 1000.0)
+    hires_min_remaining_ms = 40.0
     timed_out = False
     for det in detections:
         elapsed_ms = (time.perf_counter() - started) * 1000.0
@@ -249,6 +251,11 @@ def apply_runtime_welfare_metadata(
             continue
         if float(det.get("best_frame_score") or 0.0) < float(min_best_frame_score):
             continue
+        remaining_ms = max_runtime_ms - (time.perf_counter() - started) * 1000.0
+        if remaining_ms < hires_min_remaining_ms:
+            timed_out = True
+            inc_counter("welfare_runtime_timeout_total", 1)
+            break
         crop = det.get("best_frame")
         try:
             from record_hires_crop import resolve_enrichment_crop, resolve_enrichment_crop_source
@@ -272,13 +279,20 @@ def apply_runtime_welfare_metadata(
                     mode=mode,
                     lores_crop=crop,
                     runtime_cfg=runtime_cfg,
+                    prefer_lores=False,
+                    deadline_mono=deadline_mono,
                 )
                 if resolved is not None:
                     crop = resolved
                     det["welfare_crop_source"] = crop_source
         except ImportError:
             pass
+        # In-memory lores crop is free — still score even if hires seek burned the budget.
         if crop is None:
+            if time.perf_counter() >= deadline_mono:
+                timed_out = True
+                inc_counter("welfare_runtime_timeout_total", 1)
+                break
             continue
         embedding = embed_crop(crop)
         if embedding is None:
@@ -303,6 +317,10 @@ def apply_runtime_welfare_metadata(
                 det["classifier_needs_review"] = True
                 if not str(det.get("review_reason") or "").strip():
                     det["review_reason"] = "welfare_anomaly"
+        if time.perf_counter() >= deadline_mono:
+            timed_out = True
+            inc_counter("welfare_runtime_timeout_total", 1)
+            break
 
     inc_counter("welfare_runtime_embeddings_total", processed)
     inc_counter("welfare_runtime_review_flagged_total", flagged)

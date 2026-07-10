@@ -257,6 +257,9 @@ INITIAL_RECONNECT_DELAY = 1
 FFMPEG_CAPTURE_FAILURE_THRESHOLD = 3  # fdsink async=false даёт стабильные кадры
 CLASSIFIER_RECORD_BUFFER_SIZE = 8
 DEFAULT_CLASSIFIER_RECORD_MAX_SKEW_SEC = 0.35
+# Avoid WARN spam when main/record RTSP is briefly unavailable (go2rtc busy / FFmpeg holds it).
+RECORD_CAP_OPEN_COOLDOWN_SEC = 15.0
+RECORD_CAP_FAIL_LOG_INTERVAL_SEC = 60.0
 
 
 def _build_stream_url(
@@ -363,6 +366,9 @@ class Go2RTCStreamSource:
         self._force_opencv_until_ts = 0.0
         self._last_classifier_source_frame = None
         self._record_cap = None
+        self._record_cap_fail_until_ts = 0.0
+        self._record_cap_fail_log_ts = 0.0
+        self._record_cap_fail_suppressed = 0
         self.record_stream_capabilities = None
         self._dual_stream = self._capture_stream_url != self.stream_url
         self._record_frame_buffer: deque[tuple[float, np.ndarray]] = deque(
@@ -547,12 +553,37 @@ class Go2RTCStreamSource:
             return False
         if self._recording:
             return False
+        now = time.monotonic()
+        if now < float(self._record_cap_fail_until_ts or 0.0):
+            return False
         self._disconnect_record_cap()
         cap = cv2.VideoCapture(self.stream_url, cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         if not cap.isOpened():
-            self.logger.warning("Failed to open record stream for classifier crops")
+            self._record_cap_fail_until_ts = now + RECORD_CAP_OPEN_COOLDOWN_SEC
+            suppressed = int(self._record_cap_fail_suppressed or 0)
+            if now - float(self._record_cap_fail_log_ts or 0.0) >= RECORD_CAP_FAIL_LOG_INTERVAL_SEC:
+                if suppressed:
+                    self.logger.warning(
+                        "Failed to open record stream for classifier crops "
+                        "(suppressed %s similar in last %.0fs; cooldown %.0fs)",
+                        suppressed,
+                        RECORD_CAP_FAIL_LOG_INTERVAL_SEC,
+                        RECORD_CAP_OPEN_COOLDOWN_SEC,
+                    )
+                else:
+                    self.logger.warning("Failed to open record stream for classifier crops")
+                self._record_cap_fail_log_ts = now
+                self._record_cap_fail_suppressed = 0
+            else:
+                self._record_cap_fail_suppressed = suppressed + 1
+            _inc_runtime_counter("record_stream_open_fail_total", 1)
+            try:
+                cap.release()
+            except Exception:
+                pass
             return False
+        self._record_cap_fail_until_ts = 0.0
         self._record_cap = cap
         return True
 

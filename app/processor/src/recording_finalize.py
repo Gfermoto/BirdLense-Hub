@@ -117,6 +117,9 @@ def finalize_motion_recording(
     persist_finished_ts: float | None = None
     decision_trace_started_ts: float | None = None
     decision_trace_finished_ts: float | None = None
+    classifier_finalize_duration_ms: float | None = None
+    blind_probe_duration_ms: float | None = None
+    video_gate_duration_ms: float | None = None
     merge_window = int(app_config.get("detection.merge_window_seconds") or 5)
     session_tracks = _tracks_for_finalize(frame_processor, recording_context)
     yolo_tracks_count = len(session_tracks)
@@ -127,12 +130,17 @@ def finalize_motion_recording(
         from finalize_classification import enrich_tracks_classifier_at_finalize, defer_classifier_to_finalize
 
         if defer_classifier_to_finalize(app_config):
+            _clf_started = time.perf_counter()
             enrich_tracks_classifier_at_finalize(
                 session_tracks,
                 getattr(frame_processor, "strategy", None),
                 app_config,
                 video_path=video_output,
                 camera_id=session_camera_id,
+            )
+            classifier_finalize_duration_ms = round(
+                max(0.0, (time.perf_counter() - _clf_started) * 1000.0),
+                3,
             )
     except ImportError:
         pass
@@ -226,6 +234,7 @@ def finalize_motion_recording(
     blind_score = 0.0
     blind_suspected = False
     blind_recovered = False
+    _blind_started = time.perf_counter()
     try:
         yolo_ran_now = int(rs_ctx.get("yolo_frames_ran") or 0)
         yolo_raw_now = int(rs_ctx.get("yolo_raw_boxes_total") or 0)
@@ -288,6 +297,10 @@ def finalize_motion_recording(
                 blind_recovered = True
     except Exception:
         logging.debug("finalize: blind-state probe failed", exc_info=True)
+    blind_probe_duration_ms = round(
+        max(0.0, (time.perf_counter() - _blind_started) * 1000.0),
+        3,
+    )
     fusion_started_ts = time.perf_counter()
     video_detections = build_fused_video_detections(
         video_detections,
@@ -705,7 +718,12 @@ def finalize_motion_recording(
             rejected_reason_counts=final_rejected_reason_counts,
         )
 
+    _video_gate_started = time.perf_counter()
     video_file_ok = _is_playable_video_file(video_output)
+    video_gate_duration_ms = round(
+        max(0.0, (time.perf_counter() - _video_gate_started) * 1000.0),
+        3,
+    )
     if len(video_detections) > 0 and not video_file_ok:
         logging.error(
             "Finalize: %s detection(s) but video file missing: %s",
@@ -981,6 +999,9 @@ def finalize_motion_recording(
             "finalize_duration_ms": finalize_duration_ms,
             "finalize_critical_path_ms": finalize_critical_path_ms,
             "pre_fusion_duration_ms": pre_fusion_duration_ms,
+            "classifier_finalize_duration_ms": classifier_finalize_duration_ms,
+            "blind_probe_duration_ms": blind_probe_duration_ms,
+            "video_gate_duration_ms": video_gate_duration_ms,
             "decision_trace_duration_ms": decision_trace_duration_ms,
             "fusion_duration_ms": fusion_duration_ms,
             "persist_duration_ms": persist_duration_ms,
@@ -1224,3 +1245,9 @@ def finalize_motion_recording(
             logging.warning("recording_session_summary persist skipped", exc_info=True)
     except Exception:
         logging.warning("recording_session_summary skipped", exc_info=True)
+    try:
+        from record_hires_crop import release_record_hires_captures
+
+        release_record_hires_captures()
+    except Exception:
+        logging.debug("record_hires capture release skipped", exc_info=True)

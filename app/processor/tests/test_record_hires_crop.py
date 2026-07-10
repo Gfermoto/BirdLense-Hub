@@ -145,3 +145,24 @@ def test_resolve_enrichment_crop_falls_back_to_lores():
     crop, src = resolve_enrichment_crop(det, video_path=None, mode="best_frame_lores", lores_crop=lores)
     assert src == "best_frame_lores"
     assert crop is lores
+
+
+def test_read_frame_ffmpeg_hw_helper_handles_missing_binary(monkeypatch):
+    import record_hires_crop as rhc
+
+    monkeypatch.setattr(rhc, "_ffmpeg_bin", lambda: None)
+    assert rhc._read_frame_ffmpeg("/nope.mp4", 1.0, hwaccel=True) is None
+
+
+def test_prefer_lores_explicit_skips_video_path():
+    lores = np.zeros((16, 16, 3), dtype=np.uint8)
+    det = {"best_frame": lores, "frames": [{"t": 1.0, "bbox": [0.1, 0.1, 0.2, 0.2]}]}
+    crop, src = resolve_enrichment_crop(
+        det,
+        video_path="/would/seek.mp4",
+        mode="record_hires",
+        lores_crop=lores,
+        prefer_lores=True,
+    )
+    assert src == "best_frame_lores"
+    assert crop is lores

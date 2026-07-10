@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import logging
+import os
+import shutil
+import subprocess
+import threading
 import time
 from typing import Any, Mapping
 
@@ -216,35 +220,146 @@ def pick_bbox_and_timestamp(
     return bbox, float(t)
 
 
-def _read_frame_with_retries(video_path: str, ts: float) -> np.ndarray | None:
-    retry_delays = (0.2, 0.5)
-    max_attempts = 1 + len(retry_delays)
-    for attempt in range(max_attempts):
-        if attempt > 0:
-            time.sleep(retry_delays[attempt - 1])
-        cap = cv2.VideoCapture(video_path)
-        try:
+def _ffmpeg_bin() -> str | None:
+    return shutil.which("ffmpeg")
+
+
+def _read_frame_ffmpeg(
+    video_path: str,
+    ts: float,
+    *,
+    hwaccel: bool,
+    deadline_mono: float | None = None,
+) -> np.ndarray | None:
+    """Extract one frame via ffmpeg (optional CUDA NVDEC). Faster than OpenCV reopen+seek on 2688p."""
+    ff = _ffmpeg_bin()
+    if not ff:
+        return None
+    if deadline_mono is not None and time.perf_counter() >= deadline_mono:
+        return None
+    cmd: list[str] = [ff, "-hide_banner", "-loglevel", "error"]
+    if hwaccel:
+        # Orin: NVDEC. -hwaccel_output_format cuda needs download filter; mjpeg pipe is simpler.
+        cmd += ["-hwaccel", "cuda"]
+    # Input seek before -i: keyframe-accurate enough for classifier/ReID crops, much faster.
+    cmd += [
+        "-ss",
+        f"{max(0.0, float(ts)):.3f}",
+        "-i",
+        video_path,
+        "-frames:v",
+        "1",
+        "-f",
+        "image2pipe",
+        "-vcodec",
+        "mjpeg",
+        "pipe:1",
+    ]
+    try:
+        timeout = None
+        if deadline_mono is not None:
+            timeout = max(0.05, deadline_mono - time.perf_counter())
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0 or not proc.stdout:
+        return None
+    arr = np.frombuffer(proc.stdout, dtype=np.uint8)
+    if arr.size == 0:
+        return None
+    frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    return frame if frame is not None and getattr(frame, "size", 0) > 0 else None
+
+
+def _use_ffmpeg_hw_fallback() -> bool:
+    """Optional ffmpeg CUDA fallback after OpenCV miss (single-frame mjpeg+cuda is often slower)."""
+    try:
+        from app_config.app_config import app_config
+
+        raw = app_config.get("processor.record_hires_ffmpeg_hw")
+        if raw is None:
+            return False
+        return bool(raw)
+    except Exception:
+        return False
+
+
+_cap_cache: dict[str, cv2.VideoCapture] = {}
+_cap_lock = threading.Lock()
+
+
+def release_record_hires_captures() -> None:
+    """Release cached OpenCV captures (call at end of finalize)."""
+    with _cap_lock:
+        for cap in _cap_cache.values():
+            try:
+                cap.release()
+            except Exception:
+                pass
+        _cap_cache.clear()
+
+
+def _opencv_read_frame(video_path: str, ts: float) -> np.ndarray | None:
+    """Seek one frame via cached VideoCapture (reuse beats ffmpeg spawn on 2688p Orin)."""
+    with _cap_lock:
+        cap = _cap_cache.get(video_path)
+        if cap is None or not cap.isOpened():
+            cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
+                _cap_cache.pop(video_path, None)
+                return None
+            _cap_cache[video_path] = cap
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+        if fps > 0.01:
+            n = max(0, int(float(ts) * fps))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, n)
+        else:
+            cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, float(ts) * 1000.0))
+        ok_local, frame = cap.read()
+        if not ok_local:
+            frame = None
+        if frame is None and float(ts) > 0:
+            cap.set(cv2.CAP_PROP_POS_MSEC, 0.0)
+            ok_local, frame = cap.read()
+            if not ok_local:
                 frame = None
-            else:
-                fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
-                if fps > 0.01:
-                    n = max(0, int(ts * fps))
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, n)
-                else:
-                    cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, ts * 1000.0))
-                ok_local, frame = cap.read()
-                if not ok_local:
-                    frame = None
-                if frame is None and ts > 0:
-                    cap.set(cv2.CAP_PROP_POS_MSEC, 0.0)
-                    ok_local, frame = cap.read()
-                    if not ok_local:
-                        frame = None
-            if frame is not None:
-                return frame
-        finally:
-            cap.release()
+        return frame
+
+
+def _read_frame_with_retries(
+    video_path: str,
+    ts: float,
+    *,
+    max_attempts: int = 1,
+    deadline_mono: float | None = None,
+) -> np.ndarray | None:
+    """Seek one frame from MP4. OpenCV reuse first; ffmpeg soft/hw only as fallback."""
+    if deadline_mono is not None and time.perf_counter() >= deadline_mono:
+        return None
+
+    retry_delays = (0.05,)
+    attempts = max(1, min(3, int(max_attempts)))
+    for attempt in range(attempts):
+        if deadline_mono is not None and time.perf_counter() >= deadline_mono:
+            return None
+        if attempt > 0:
+            time.sleep(retry_delays[min(attempt - 1, len(retry_delays) - 1)])
+        frame = _opencv_read_frame(video_path, ts)
+        if frame is not None:
+            return frame
+
+    if deadline_mono is not None and time.perf_counter() >= deadline_mono:
+        return None
+    frame = _read_frame_ffmpeg(video_path, ts, hwaccel=False, deadline_mono=deadline_mono)
+    if frame is not None:
+        return frame
+    if _use_ffmpeg_hw_fallback():
+        return _read_frame_ffmpeg(video_path, ts, hwaccel=True, deadline_mono=deadline_mono)
     return None
 
 
@@ -288,15 +403,21 @@ def read_record_hires_crop(
     *,
     pad_frac: float | None = None,
     runtime_cfg: Mapping[str, Any] | None = None,
+    deadline_mono: float | None = None,
 ) -> np.ndarray | None:
     """Return BGR crop from main MP4 or None."""
     if not video_path:
+        return None
+    if deadline_mono is not None and time.perf_counter() >= deadline_mono:
+        return None
+    # Missing file: fail instantly (no OpenCV/GStreamer/ffmpeg burn of finalize budget).
+    if not os.path.isfile(video_path):
         return None
     bbox, ts = pick_bbox_and_timestamp(detection, runtime_cfg=runtime_cfg)
     cam = str(detection.get("camera_id") or detection.get("triggered_camera") or "").strip()
     pad = resolve_crop_pad_frac(runtime_cfg=runtime_cfg) if pad_frac is None else max(0.0, min(0.25, float(pad_frac)))
     try:
-        frame = _read_frame_with_retries(video_path, ts)
+        frame = _read_frame_with_retries(video_path, ts, max_attempts=1, deadline_mono=deadline_mono)
         if frame is None:
             logger.warning(
                 "record_hires: video seek failed path=%s ts=%.3f camera=%s synced=%s",
@@ -379,40 +500,36 @@ def resolve_enrichment_crop(
     lores_crop: Any = None,
     pad_frac: float | None = None,
     runtime_cfg: Mapping[str, Any] | None = None,
+    prefer_lores: bool = False,
+    deadline_mono: float | None = None,
 ) -> tuple[Any, str]:
     """(crop ndarray, source tag): record_hires | best_frame_lores | none."""
     mode_norm = mode if mode in _CROP_SOURCES else "auto"
     lores = lores_crop if lores_crop is not None else detection.get("best_frame")
 
-    if mode_norm in {"record_hires", "auto"} and video_path:
-        hires = read_record_hires_crop(
-            video_path,
-            detection,
-            pad_frac=pad_frac,
-            runtime_cfg=runtime_cfg,
-        )
-        if hires is not None:
-            return hires, "record_hires"
-
-    if mode_norm == "record_hires":
+    def _lores_fallback() -> tuple[Any, str]:
         if isinstance(lores, np.ndarray) and lores.size > 0:
             return lores, "best_frame_lores"
         return None, "none"
 
-    if isinstance(lores, np.ndarray) and lores.size > 0:
-        return lores, "best_frame_lores"
+    # Explicit prefer_lores only (caller opt-in). Do NOT use as silent quality downgrade:
+    # detect/track stay on lores; classifier/ReID/welfare target record_hires crop.
+    if prefer_lores or (deadline_mono is not None and time.perf_counter() >= deadline_mono):
+        return _lores_fallback()
 
-    if mode_norm == "auto" and video_path:
+    if mode_norm in {"record_hires", "auto"} and video_path and not prefer_lores:
         hires = read_record_hires_crop(
             video_path,
             detection,
             pad_frac=pad_frac,
             runtime_cfg=runtime_cfg,
+            deadline_mono=deadline_mono,
         )
         if hires is not None:
             return hires, "record_hires"
 
-    return None, "none"
+    # Hires miss → in-memory lores crop (architecture fallback, not a budget "optimization").
+    return _lores_fallback()
 
 
 def track_as_detection(

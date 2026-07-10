@@ -29,7 +29,9 @@ services:
       - BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE=${BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE:-cuda:0}
       - BIRDLENSE_REID_BACKEND=onnxruntime
       - BIRDLENSE_REID_DEVICE=${BIRDLENSE_REID_DEVICE:-cuda:0}
-      - API_URL_BASE=http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/processor
+      # Direct to gunicorn (8000), not public nginx port — avoids proxy queue + ReadTimeout
+      # during finalize create_video / activity_log when the single gthread worker is busy.
+      - API_URL_BASE=http://127.0.0.1:8000/api/processor
       - GO2RTC_URL=${GO2RTC_URL:-}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video

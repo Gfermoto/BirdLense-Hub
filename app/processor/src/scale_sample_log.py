@@ -47,6 +47,11 @@ def append_feeder_scale_sample(data_dir: str, weight: float, unit: str, *, max_l
 def _trim_head_if_needed(path: str, max_lines: int) -> None:
     """Обрезать начало файла, если строк больше max_lines (соблюдение лимита, не только после 512 KiB)."""
     try:
+        # Fast path: skip full read when file is small enough that it cannot exceed max_lines
+        # (assume ~80 bytes/line average for scale JSONL).
+        size = os.path.getsize(path)
+        if size < max(4096, max_lines * 40):
+            return
         with open(path, encoding="utf-8") as f:
             lines = f.readlines()
     except OSError:
@@ -81,6 +86,34 @@ def _parse_line(obj: dict[str, Any]) -> tuple[datetime | None, float | None]:
     return ts, _to_kg(w, unit)
 
 
+# Recording windows are short; reading the whole 10k-line JSONL on every finalize
+# was a multi-second stall. Tail-read recent bytes and stop once timestamps leave the window.
+_ESTIMATE_TAIL_MAX_BYTES = 512 * 1024
+_ESTIMATE_MAX_RUNTIME_SEC = 0.75
+
+
+def _iter_jsonl_lines_from_tail(path: str, *, max_bytes: int = _ESTIMATE_TAIL_MAX_BYTES):
+    """Yield non-empty lines from the end of a JSONL file (oldest→newest within the tail)."""
+    with open(path, "rb") as f:
+        f.seek(0, os.SEEK_END)
+        size = f.tell()
+        if size <= 0:
+            return
+        start = max(0, size - max(4096, int(max_bytes)))
+        f.seek(start)
+        raw = f.read()
+    text = raw.decode("utf-8", errors="replace")
+    if start > 0:
+        # Drop partial first line when we mid-seeked into the file.
+        nl = text.find("\n")
+        if nl >= 0:
+            text = text[nl + 1 :]
+    for line in text.splitlines():
+        s = line.strip()
+        if s:
+            yield s
+
+
 def estimate_weight_delta_kg(
     data_dir: str,
     start: datetime,
@@ -89,13 +122,19 @@ def estimate_weight_delta_kg(
     min_delta_kg: float,
     min_samples: int = 2,
     require_consecutive_spike: bool = True,
+    max_runtime_sec: float = _ESTIMATE_MAX_RUNTIME_SEC,
+    tail_max_bytes: int = _ESTIMATE_TAIL_MAX_BYTES,
 ) -> tuple[float | None, int]:
     """Оценка размаха веса за окно [start, end] (UTC).
 
     По умолчанию сохраняем оценку только если был **скачок**: максимальный шаг между
     соседними по времени показаниями >= min_delta_kg (отсекает медленный дрейф при почти
     нулевой платформе после тары). Величина в БД — по-прежнему max-min по всем точкам окна.
+
+    Reads only a recent tail of the history file (O(tail) not O(full file)).
     """
+    import time as _time
+
     path = os.path.join(data_dir, FEEDER_SCALE_HISTORY_FILE)
     if not os.path.isfile(path):
         return None, 0
@@ -108,25 +147,30 @@ def estimate_weight_delta_kg(
     else:
         end = end.astimezone(timezone.utc)
 
+    deadline = _time.perf_counter() + max(0.05, float(max_runtime_sec or _ESTIMATE_MAX_RUNTIME_SEC))
     pairs: list[tuple[datetime, float]] = []
     try:
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    obj = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(obj, dict):
-                    continue
-                ts, w_kg = _parse_line(obj)
-                if ts is None or w_kg is None:
-                    continue
-                if ts < start or ts > end:
-                    continue
-                pairs.append((ts, w_kg))
+        # Walk newest→oldest so we can stop once we leave the window's past edge.
+        lines = list(_iter_jsonl_lines_from_tail(path, max_bytes=tail_max_bytes))
+        for line in reversed(lines):
+            if _time.perf_counter() >= deadline:
+                logger.debug("estimate_weight_delta_kg: runtime budget exhausted")
+                break
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            ts, w_kg = _parse_line(obj)
+            if ts is None or w_kg is None:
+                continue
+            if ts > end:
+                continue
+            if ts < start:
+                # Further older lines (still going backward) are also < start.
+                break
+            pairs.append((ts, w_kg))
     except OSError as e:
         logger.debug("estimate_weight_delta_kg read: %s", e)
         return None, 0
