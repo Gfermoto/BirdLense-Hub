@@ -40,8 +40,11 @@ processor:
   linear_live_scoring_engine_enabled: true
   # linear: Birder только на finalize (key_frames), не на каждом live-кадре
   classifier_defer_to_finalize: true
-  classifier_finalize_max_key_frames: 3
-  # Cap deferred classify wall-clock (hires MP4 seeks); prefer lores when budget tight
+  # One hires (or lores fallback) crop per track at finalize
+  classifier_finalize_max_key_frames: 1
+  # Top-N tracks by best_frame_score (0 = all eligible). Cuts classifier_finalize wall time.
+  classifier_finalize_max_tracks: 2
+  # Cap deferred classify wall-clock (hires MP4 seeks)
   classifier_finalize_max_runtime_ms: 2500
   # object_confirm_min_score / object_confirm_threshold — unset → min_confidence_binary_bird
   # Legacy compatibility toggles (kept for older user_config keys; runtime may ignore).
@@ -666,6 +669,14 @@ video:
   # Захват кадров для motion/detection: auto → на jetson сначала GStreamer nvv4l2decoder (NVDEC),
   # иначе OpenCV. Явно: opencv | ffmpeg_nvmpi (форс NVDEC).
   capture_backend: auto
+  # After NVDEC open/read fail: sticky OpenCV for N seconds (avoid reconnect storms).
+  capture_nvdec_opencv_cooldown_sec: 120
+  # Consecutive no-frame on NVDEC before soft pipeline restart (same URL, no backoff sleep).
+  capture_soft_restart_failures: 3
+  # Soft-ok streak without stable reads → sticky OpenCV (anti soft-restart loop).
+  capture_soft_restart_max_success_streak: 2
+  # Min interval between full reconnect attempts when capture URL unchanged.
+  capture_reconnect_debounce_sec: 3
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
   record_stream_codec: h264

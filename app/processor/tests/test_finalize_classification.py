@@ -49,7 +49,8 @@ def test_enrich_tracks_classifier_at_finalize_uses_top1_confidence():
         {
             "processor.pipeline_mode": "linear",
             "processor.classifier_defer_to_finalize": True,
-            "processor.classifier_finalize_max_key_frames": 3,
+            "processor.classifier_finalize_max_key_frames": 1,
+            "processor.classifier_finalize_max_tracks": 0,
             "processor.classifier_best_guess_min_confidence": 0.10,
         }
     )
@@ -84,6 +85,7 @@ def test_enrich_skips_weak_classifier_below_best_guess_floor():
         {
             "processor.pipeline_mode": "linear",
             "processor.classifier_defer_to_finalize": True,
+            "processor.classifier_finalize_max_tracks": 0,
             "processor.classifier_best_guess_min_confidence": 0.10,
         }
     )
@@ -104,6 +106,44 @@ def test_enrich_skips_empty_tracks():
     )
     assert enrich_tracks_classifier_at_finalize({}, strategy, cfg) == 0
     assert strategy.calls == 0
+
+
+def test_enrich_respects_max_tracks_top_score():
+    tracks = {
+        1: {
+            "detector_events": [{"label": "Bird", "confidence": 0.5}],
+            "best_frame": object(),
+            "best_frame_score": 1.0,
+            "end_time": 1.0,
+        },
+        2: {
+            "detector_events": [{"label": "Bird", "confidence": 0.5}],
+            "best_frame": object(),
+            "best_frame_score": 9.0,
+            "end_time": 1.0,
+        },
+        3: {
+            "detector_events": [{"label": "Bird", "confidence": 0.5}],
+            "best_frame": object(),
+            "best_frame_score": 5.0,
+            "end_time": 1.0,
+        },
+    }
+    strategy = _Strategy()
+    cfg = _Cfg(
+        {
+            "processor.pipeline_mode": "linear",
+            "processor.classifier_defer_to_finalize": True,
+            "processor.classifier_finalize_max_tracks": 2,
+            "processor.classifier_best_guess_min_confidence": 0.10,
+        }
+    )
+    appended = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
+    assert appended == 2
+    assert strategy.calls == 2
+    assert "classifier_events" in tracks[2]
+    assert "classifier_events" in tracks[3]
+    assert "classifier_events" not in tracks[1]
 
 
 def test_enrich_respects_max_runtime_budget():
@@ -137,6 +177,7 @@ def test_enrich_respects_max_runtime_budget():
         {
             "processor.pipeline_mode": "linear",
             "processor.classifier_defer_to_finalize": True,
+            "processor.classifier_finalize_max_tracks": 0,
             "processor.classifier_finalize_max_runtime_ms": 80,
             "processor.classifier_best_guess_min_confidence": 0.10,
         }

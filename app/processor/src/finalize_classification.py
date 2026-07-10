@@ -37,6 +37,35 @@ def _finalize_max_runtime_ms(app_config) -> float:
         return DEFAULT_CLASSIFIER_FINALIZE_MAX_RUNTIME_MS
 
 
+def _finalize_max_tracks(app_config) -> int:
+    """Top-N eligible tracks by best_frame_score; 0 = no limit."""
+    try:
+        raw = app_config.get("processor.classifier_finalize_max_tracks")
+        if raw is None:
+            return 2
+        return max(0, min(32, int(raw)))
+    except (TypeError, ValueError):
+        return 2
+
+
+def _finalize_max_key_frames(app_config) -> int:
+    try:
+        raw = app_config.get("processor.classifier_finalize_max_key_frames")
+        if raw is None:
+            return 1
+        return max(1, min(8, int(raw)))
+    except (TypeError, ValueError):
+        return 1
+
+
+def _track_has_bird_detector(track: dict[str, Any]) -> bool:
+    return any(
+        str((ev or {}).get("label") or "").strip().lower() == "bird"
+        for ev in (track.get("detector_events") or [])
+        if isinstance(ev, dict)
+    )
+
+
 def enrich_tracks_classifier_at_finalize(
     tracks: dict[int | str, dict[str, Any]],
     strategy: Any,
@@ -53,7 +82,7 @@ def enrich_tracks_classifier_at_finalize(
       Lores best_frame/key_frames are fallback only when hires seek fails.
 
     Latency: wall-clock ``processor.classifier_finalize_max_runtime_ms`` stops more tracks;
-    does **not** silently downgrade to lores while budget remains.
+    ``classifier_finalize_max_tracks`` keeps only top-N by best_frame_score.
     """
     if not defer_classifier_to_finalize(app_config):
         return 0
@@ -62,17 +91,14 @@ def enrich_tracks_classifier_at_finalize(
     if strategy is None or not hasattr(strategy, "_classify_crop"):
         return 0
 
-    try:
-        max_kf = int(app_config.get("processor.classifier_finalize_max_key_frames") or 3)
-    except (TypeError, ValueError):
-        max_kf = 3
-    max_kf = max(1, min(8, max_kf))
+    max_kf = _finalize_max_key_frames(app_config)
     min_guess = config_float(
         app_config,
         "processor.classifier_best_guess_min_confidence",
         CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
     )
     max_runtime_ms = _finalize_max_runtime_ms(app_config)
+    max_tracks = _finalize_max_tracks(app_config)
     started = time.perf_counter()
     deadline_mono = started + (max_runtime_ms / 1000.0)
     runtime_cfg = getattr(app_config, "config", None) or app_config
@@ -96,23 +122,40 @@ def enrich_tracks_classifier_at_finalize(
         resolve_enrichment_crop = None  # type: ignore[assignment,misc]
         track_as_detection = None  # type: ignore[assignment,misc]
 
-    appended = 0
-    timed_out = False
+    eligible: list[tuple[Any, dict[str, Any]]] = []
     for track_id, track in tracks.items():
-        if time.perf_counter() >= deadline_mono:
-            timed_out = True
-            break
         if not isinstance(track, dict):
             continue
         if track.get("classifier_events"):
             continue
-        bird_det = any(
-            str((ev or {}).get("label") or "").strip().lower() == "bird"
-            for ev in (track.get("detector_events") or [])
-            if isinstance(ev, dict)
-        )
-        if not bird_det:
+        if not _track_has_bird_detector(track):
             continue
+        eligible.append((track_id, track))
+
+    def _score(item: tuple[Any, dict[str, Any]]) -> float:
+        try:
+            return float(item[1].get("best_frame_score") or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    eligible.sort(key=_score, reverse=True)
+    if max_tracks > 0:
+        skipped = max(0, len(eligible) - max_tracks)
+        eligible = eligible[:max_tracks]
+        if skipped:
+            logger.debug(
+                "classifier finalize: max_tracks=%s skipped=%s kept=%s",
+                max_tracks,
+                skipped,
+                len(eligible),
+            )
+
+    appended = 0
+    timed_out = False
+    for track_id, track in eligible:
+        if time.perf_counter() >= deadline_mono:
+            timed_out = True
+            break
 
         crops: list[tuple[Any, float, str]] = []
 

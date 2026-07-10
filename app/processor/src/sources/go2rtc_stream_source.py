@@ -149,6 +149,10 @@ def _gst_nvdec_capture_available() -> bool:
         return False
 
 
+# Process-wide sticky OpenCV window after NVDEC fail (survives source rebuild).
+_NVDEC_OPENCV_COOLDOWN_UNTIL_MONO: float = 0.0
+
+
 class _GstRtspNvdecCapture:
     """Minimal VideoCapture-like wrapper: RTSP → nvv4l2decoder → BGR frames."""
 
@@ -240,6 +244,38 @@ class _GstRtspNvdecCapture:
             pass
         self._pipe = None
         self._sink = None
+
+    def soft_restart(self) -> bool:
+        """NULL → PLAYING on the same pipeline; rebuild if state change fails."""
+        if not self._opened or self._pipe is None:
+            return False
+        Gst = self._Gst
+        try:
+            self._pipe.set_state(Gst.State.NULL)
+            ret = self._pipe.set_state(Gst.State.PLAYING)
+            if ret == Gst.StateChangeReturn.FAILURE:
+                self.release()
+                return False
+            # Keep soft restart short so capture lock / MJPEG stay responsive.
+            deadline = time.perf_counter() + 1.5
+            while time.perf_counter() < deadline:
+                while self._ctx.pending():
+                    self._ctx.iteration(False)
+                msg = self._bus.timed_pop_filtered(50 * Gst.MSECOND, Gst.MessageType.ANY)
+                if msg is not None and msg.type == Gst.MessageType.ERROR:
+                    self.release()
+                    return False
+                sample = self._sink.emit("try-pull-sample", 100 * Gst.MSECOND)
+                if sample is not None:
+                    return True
+            self.release()
+            return False
+        except Exception:
+            try:
+                self.release()
+            except Exception:
+                pass
+            return False
 
 
 def _libx264_record_args() -> list[str]:
@@ -470,6 +506,30 @@ class Go2RTCStreamSource:
             self._record_hw_encode = parse_bool_config_flag(record_hw_encode, default=True)
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
+        self._nvdec_opencv_cooldown_sec = 120.0
+        self._soft_restart_failures_threshold = 3
+        self._reconnect_debounce_sec = 3.0
+        self._consecutive_read_failures = 0
+        self._soft_restart_success_streak = 0
+        self._soft_restart_max_success_streak = 2
+        self._last_reconnect_attempt_ts = 0.0
+        try:
+            from app_config.app_config import app_config as _cfg
+
+            self._nvdec_opencv_cooldown_sec = max(
+                5.0, float(_cfg.get("video.capture_nvdec_opencv_cooldown_sec") or 120)
+            )
+            self._soft_restart_failures_threshold = max(
+                1, int(_cfg.get("video.capture_soft_restart_failures") or 3)
+            )
+            self._reconnect_debounce_sec = max(
+                0.5, float(_cfg.get("video.capture_reconnect_debounce_sec") or 3)
+            )
+            self._soft_restart_max_success_streak = max(
+                1, int(_cfg.get("video.capture_soft_restart_max_success_streak") or 2)
+            )
+        except Exception:
+            pass
         self._last_classifier_source_frame = None
         self._record_cap = None
         self._record_cap_fail_until_ts = 0.0
@@ -544,11 +604,33 @@ class Go2RTCStreamSource:
             return np.ascontiguousarray(main_frame)
         return letterbox_bgr_to_wh(main_frame, out_wh)
 
+    def _arm_nvdec_opencv_cooldown(self, reason: str) -> None:
+        global _NVDEC_OPENCV_COOLDOWN_UNTIL_MONO
+        until = time.monotonic() + float(self._nvdec_opencv_cooldown_sec)
+        self._force_opencv_until_ts = until
+        _NVDEC_OPENCV_COOLDOWN_UNTIL_MONO = max(float(_NVDEC_OPENCV_COOLDOWN_UNTIL_MONO or 0.0), until)
+        _inc_runtime_counter("video_capture_nvdec_fail_total", 1)
+        _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
+        self.logger.warning(
+            "GST NVDEC → sticky OpenCV for %.0fs (%s)",
+            self._nvdec_opencv_cooldown_sec,
+            reason,
+        )
+
     def _connect(self) -> bool:
         """Open RTSP capture: Jetson NVDEC (GStreamer) when available, else OpenCV."""
         self._disconnect()
+        now = time.monotonic()
+        # Instance + process-wide cooldown (multi-camera / source rebuild).
+        cooldown_until = max(
+            float(self._force_opencv_until_ts or 0.0),
+            float(_NVDEC_OPENCV_COOLDOWN_UNTIL_MONO or 0.0),
+        )
+        self._force_opencv_until_ts = cooldown_until
+        in_cooldown = now < cooldown_until
         want_nvdec = (
-            self._capture_backend in ("auto", "ffmpeg_nvmpi")
+            not in_cooldown
+            and self._capture_backend in ("auto", "ffmpeg_nvmpi")
             and self._encoding_mode == "jetson"
             and _gst_nvdec_capture_available()
         )
@@ -566,18 +648,16 @@ class Go2RTCStreamSource:
                 if fps and fps > 0 and (self._source_fps or 0) <= 0.5:
                     self._source_fps = float(fps)
                 self._capture_backend_used = "ffmpeg_nvmpi"
+                self._consecutive_read_failures = 0
+                self._soft_restart_success_streak = 0
                 _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
                 _set_runtime_gauge("video_capture_backend_fallback_reason", "nvdec_ok")
                 self._reconnect_delay = INITIAL_RECONNECT_DELAY
                 self.logger.info("Connected (NVDEC). FPS: %s", self._source_fps)
                 return True
-            reason = _capture_fallback_reason(
-                requested_backend=self._capture_backend,
-                encoding_mode=self._encoding_mode,
-                nvmpi_available=True,
-            )
-            self.logger.warning("GST NVDEC capture unavailable, fallback OpenCV (%s)", reason)
-            _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
+            self._arm_nvdec_opencv_cooldown("nvdec_open_fail")
+        elif in_cooldown:
+            _set_runtime_gauge("video_capture_backend_fallback_reason", "nvdec_cooldown")
 
         self.logger.info("Connecting to video stream (OpenCV, capture/detect)")
         cap = cv2.VideoCapture(self._live_capture_url(), cv2.CAP_FFMPEG)
@@ -591,9 +671,14 @@ class Go2RTCStreamSource:
         if fps and fps > 0 and (self._source_fps or 0) <= 0.5:
             self._source_fps = float(fps)
         self._capture_backend_used = "opencv"
+        self._consecutive_read_failures = 0
+        self._soft_restart_success_streak = 0
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
-        if want_nvdec:
-            _set_runtime_gauge("video_capture_backend_fallback_reason", "fallback_to_opencv")
+        if want_nvdec or in_cooldown:
+            _set_runtime_gauge(
+                "video_capture_backend_fallback_reason",
+                "nvdec_cooldown" if in_cooldown else "fallback_to_opencv",
+            )
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self.logger.info("Connected. FPS: %s", self._source_fps)
         return True
@@ -786,27 +871,62 @@ class Go2RTCStreamSource:
             self._cap = None
         self._capture_backend_used = "opencv"
 
+    def _soft_restart_capture(self) -> bool:
+        """NVDEC soft restart on same URL without backoff sleep."""
+        if self._capture_backend_used != "ffmpeg_nvmpi":
+            return False
+        cap = self._cap
+        if not isinstance(cap, _GstRtspNvdecCapture):
+            return False
+        ok = bool(cap.soft_restart())
+        _inc_runtime_counter("video_capture_soft_restart_total", 1)
+        if ok:
+            self._consecutive_read_failures = 0
+            self._soft_restart_success_streak = int(self._soft_restart_success_streak or 0) + 1
+            self.logger.info(
+                "NVDEC soft restart ok (streak=%s)",
+                self._soft_restart_success_streak,
+            )
+            return True
+        self.logger.warning("NVDEC soft restart failed")
+        self._soft_restart_success_streak = 0
+        return False
+
     def _reconnect_if_needed(self) -> bool:
         """Attempt reconnect with backoff. Returns True if connected."""
         if not self.auto_reconnect:
             return False
+        now = time.monotonic()
+        same_url = self._live_capture_url() == getattr(self, "_capture_url_connected", None)
+        if same_url and (now - float(self._last_reconnect_attempt_ts or 0.0)) < float(
+            self._reconnect_debounce_sec
+        ):
+            _inc_runtime_counter("video_capture_reconnect_debounced_total", 1)
+            return False
+        self._last_reconnect_attempt_ts = now
         while True:
             # Ожидаемое поведение при кратковременных обрывах RTSP; не WARNING — иначе шум в логах/алертах.
             self.logger.info("Reconnecting in %ss...", self._reconnect_delay)
             _inc_runtime_counter("video_capture_reconnect_total", 1)
             time.sleep(self._reconnect_delay)
             if self._connect():
+                self._capture_url_connected = self._live_capture_url()
                 self.refresh_record_stream_geometry()
                 return True
             self._reconnect_delay = min(self._reconnect_delay * 2, MAX_RECONNECT_DELAY)
 
     def _read_frame(self):
-        """Read one frame via OpenCV. Returns (frame_bgr, success)."""
+        """Read one frame. Returns (frame_bgr, success)."""
         if not self._cap or not self._cap.isOpened():
+            self._consecutive_read_failures += 1
             return None, False
         ret, frame = self._cap.read()
         if not ret or frame is None:
+            self._consecutive_read_failures += 1
             return None, False
+        self._consecutive_read_failures = 0
+        # Stable frame means soft-restart loop is broken; allow soft again later.
+        self._soft_restart_success_streak = 0
         return frame, True
 
     def _update_streaming_output(self, frame):
@@ -928,8 +1048,30 @@ class Go2RTCStreamSource:
                 frame, ok = self._read_frame()
             if ok and frame is not None:
                 break
-            if attempt == 0 and self._reconnect_if_needed():
-                continue
+            if attempt == 0:
+                # Soft restart NVDEC before full reconnect/backoff.
+                if (
+                    self._consecutive_read_failures >= int(self._soft_restart_failures_threshold)
+                    and self._capture_backend_used == "ffmpeg_nvmpi"
+                    and self._live_capture_url() == getattr(self, "_capture_url_connected", None)
+                ):
+                    streak = int(getattr(self, "_soft_restart_success_streak", 0) or 0)
+                    max_streak = int(getattr(self, "_soft_restart_max_success_streak", 2) or 2)
+                    if streak >= max_streak:
+                        # Soft keeps "succeeding" but reads still fail → sticky OpenCV.
+                        self._arm_nvdec_opencv_cooldown("nvdec_soft_restart_loop")
+                        self._last_reconnect_attempt_ts = 0.0
+                    else:
+                        with self._read_lock:
+                            soft_ok = self._soft_restart_capture()
+                        if soft_ok:
+                            continue
+                        # Soft restart exhausted → sticky OpenCV cooldown then reconnect.
+                        self._arm_nvdec_opencv_cooldown("nvdec_read_stall")
+                        # Bypass debounce so we leave broken NVDEC immediately.
+                        self._last_reconnect_attempt_ts = 0.0
+                if self._reconnect_if_needed():
+                    continue
             return None
         self._frame_count += 1
         self._last_frame_time = time.time()

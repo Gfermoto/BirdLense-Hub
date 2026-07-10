@@ -2126,6 +2126,36 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Finalize key-frame cap; performance tuning.",
         "next_step": "Advanced Processor classifier block.",
     },
+    "processor.classifier_finalize_max_tracks": {
+        "category": "advanced",
+        "reason": "Top-N tracks for deferred classify; latency tuning.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "processor.classifier_finalize_max_runtime_ms": {
+        "category": "advanced",
+        "reason": "Wall-clock cap for deferred classify; latency tuning.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "video.capture_nvdec_opencv_cooldown_sec": {
+        "category": "advanced",
+        "reason": "Sticky OpenCV after NVDEC fail; anti-reconnect-storm.",
+        "next_step": "YAML-only until capture backend advanced panel.",
+    },
+    "video.capture_soft_restart_failures": {
+        "category": "advanced",
+        "reason": "NVDEC soft-restart threshold; capture stability.",
+        "next_step": "YAML-only until capture backend advanced panel.",
+    },
+    "video.capture_soft_restart_max_success_streak": {
+        "category": "advanced",
+        "reason": "Cap soft-ok streak before sticky OpenCV; anti soft-restart loop.",
+        "next_step": "YAML-only until capture backend advanced panel.",
+    },
+    "video.capture_reconnect_debounce_sec": {
+        "category": "advanced",
+        "reason": "Reconnect debounce for same capture URL; anti-storm.",
+        "next_step": "YAML-only until capture backend advanced panel.",
+    },
     "processor.detect_first_anchor_only_persist_enabled": {
         "category": "advanced",
         "reason": "Anchor-only persist mode; detect-first expert knob.",
