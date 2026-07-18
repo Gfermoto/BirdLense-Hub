@@ -915,6 +915,14 @@ class TwoStageStrategy(DetectionStrategy):
 
     def _classify_crop(self, crop: np.ndarray | RoiCropRef) -> ClassifierOutput:
         """Классификация кропа: вид, top1 conf, энтропия и top1−top2 margin по полному вектору probs."""
+        lock = getattr(self, "_classifier_async_lock", None)
+        if lock is not None:
+            with lock:
+                return self._classify_crop_unlocked(crop)
+        return self._classify_crop_unlocked(crop)
+
+    def _classify_crop_unlocked(self, crop: np.ndarray | RoiCropRef) -> ClassifierOutput:
+        """ORT/YOLO classify; caller must hold ``_classifier_async_lock`` when shared across threads."""
         crop_bgr, _copied = crop_for_classifier(crop)
         if crop_bgr.size == 0:
             return ClassifierOutput(None, 0.0, 0.0, 0.0)

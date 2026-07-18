@@ -39,13 +39,32 @@ def _max_hint_score(hints_for_species: list[HintPayload], source: HintSource) ->
     return max(scores) if scores else 0.0
 
 
+_GENERIC_SPECIES = frozenset({"", "bird", "unknown", "unknown bird", "unidentified"})
+
+
+def _best_named_frigate_hint(hints: Iterable[HintPayload]) -> HintPayload | None:
+    best: HintPayload | None = None
+    for hint in hints or []:
+        if hint.source != HintSource.FRIGATE_LABEL:
+            continue
+        if _norm(hint.species) in _GENERIC_SPECIES:
+            continue
+        if best is None or hint.score > best.score:
+            best = hint
+    return best
+
+
 def apply_hints_to_rows(
     rows: list[dict],
     hints: list[HintPayload],
     *,
     app_config: Mapping,
 ) -> list[dict]:
-    """Adjust row confidence from weighted hints. Never creates rows."""
+    """Adjust row confidence from weighted hints. Never creates rows.
+
+    When YOLO/Birder left a generic Bird/Unknown row and Frigate has a named
+    sub_label, optionally promote that label onto the existing track row.
+    """
     if not rows:
         return rows
     if not hints_enabled(app_config):
@@ -54,6 +73,13 @@ def apply_hints_to_rows(
     weights = load_hint_weights(app_config)
     hint_idx = _hint_index(hints)
     regional_keys = {_norm(h.species) for h in hints if h.source == HintSource.EBIRD_REGIONAL}
+    promote_enabled = bool(app_config.get("detection.frigate_promote_generic_enabled", True))
+    try:
+        promote_min = float(app_config.get("detection.frigate_promote_generic_min_score") or 0.55)
+    except (TypeError, ValueError):
+        promote_min = 0.55
+    promote_min = max(0.0, min(1.0, promote_min))
+    best_frigate = _best_named_frigate_hint(hints) if promote_enabled else None
     out: list[dict] = []
 
     for row in rows:
@@ -124,6 +150,29 @@ def apply_hints_to_rows(
         new_row = dict(row)
         new_row["_weighted_arbiter_score"] = round(weighted, 6)
         new_row["confidence"] = round((0.7 * base_conf) + (0.3 * weighted), 6)
+        if (
+            best_frigate is not None
+            and species in _GENERIC_SPECIES
+            and float(best_frigate.score) >= promote_min
+        ):
+            promoted = str(best_frigate.species).strip()
+            new_row["species_name"] = promoted
+            new_row["species"] = promoted
+            new_row["frigate_species_promoted"] = True
+            new_row["classifier_confidence"] = max(classifier_conf, float(best_frigate.score))
+            new_row["confidence"] = max(
+                float(new_row["confidence"]),
+                float(best_frigate.score),
+            )
+            trace.append(
+                HintTraceEntry(
+                    "frigate_promote",
+                    promoted,
+                    float(best_frigate.score),
+                    1.0,
+                    float(best_frigate.score),
+                ).__dict__
+            )
         if trace:
             new_row["hint_trace"] = trace
         out.append(new_row)

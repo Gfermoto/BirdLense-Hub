@@ -136,7 +136,7 @@ def _build_frigate_trigger_review_salvage_row(
             conf = float(app_config.get("detection.frigate_standalone_missing_score_fallback") or 0.68)
         except (TypeError, ValueError):
             conf = 0.68
-    return {
+    row = {
         "track_id": -9001,
         "accepted": True,
         "visit_eligible": False,
@@ -155,6 +155,18 @@ def _build_frigate_trigger_review_salvage_row(
         "source": "video",
         "frigate_trigger_salvage": True,
     }
+    bbox = ev.get("frigate_bbox_norm")
+    if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
+        try:
+            row["frames"] = [
+                {
+                    "t": round(max(0.0, float(duration_s) * 0.5), 3),
+                    "bbox": [float(x) for x in bbox[:4]],
+                }
+            ]
+        except (TypeError, ValueError):
+            pass
+    return row
 
 
 def _yolo_anchor_row_score(row: dict[str, Any]) -> tuple[float, float, int]:

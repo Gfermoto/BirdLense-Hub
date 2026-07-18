@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 # Wall-clock cap for deferred classify at finalize (multiple hires crops + ONNX).
 DEFAULT_CLASSIFIER_FINALIZE_MAX_RUNTIME_MS = 2500.0
 
+_UNKNOWN_SPECIES = frozenset({"", "bird", "unknown", "unknown bird"})
+
 
 def defer_classifier_to_finalize(app_config) -> bool:
     if not is_linear_pipeline(app_config):
@@ -66,6 +68,30 @@ def _track_has_bird_detector(track: dict[str, Any]) -> bool:
     )
 
 
+def _unknown_labels(app_config) -> set[str]:
+    unknown = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird").strip().lower()
+    return set(_UNKNOWN_SPECIES) | {unknown}
+
+
+def _collect_lores_crops(
+    track: dict[str, Any],
+    *,
+    max_kf: int,
+) -> list[tuple[Any, float, str]]:
+    crops: list[tuple[Any, float, str]] = []
+    best = track.get("best_frame")
+    if best is not None:
+        crops.append((best, float(track.get("best_frame_score") or 0.0), "best_frame_lores"))
+    for kf in (track.get("key_frames") or [])[:max_kf]:
+        if not isinstance(kf, dict):
+            continue
+        crop = kf.get("crop")
+        if crop is None:
+            continue
+        crops.append((crop, float(kf.get("score") or 0.0), "key_frame_lores"))
+    return crops
+
+
 def enrich_tracks_classifier_at_finalize(
     tracks: dict[int | str, dict[str, Any]],
     strategy: Any,
@@ -78,8 +104,9 @@ def enrich_tracks_classifier_at_finalize(
     Run Birder on key crops per track. Returns count of classifier events appended.
 
     Architecture (dual-stream):
-      detect/track on lores → bbox remapped to record → classify on **record_hires** crop.
-      Lores best_frame/key_frames are fallback only when hires seek fails.
+      detect/track on lores → bbox remapped to record → classify on crops.
+      Prefer **in-memory lores** first (no NVDEC contention with live YOLO), then
+      record_hires for sharper crops when budget remains.
 
     Latency: wall-clock ``processor.classifier_finalize_max_runtime_ms`` stops more tracks;
     ``classifier_finalize_max_tracks`` keeps only top-N by best_frame_score.
@@ -99,6 +126,7 @@ def enrich_tracks_classifier_at_finalize(
     )
     max_runtime_ms = _finalize_max_runtime_ms(app_config)
     max_tracks = _finalize_max_tracks(app_config)
+    unknown_labels = _unknown_labels(app_config)
     started = time.perf_counter()
     deadline_mono = started + (max_runtime_ms / 1000.0)
     runtime_cfg = getattr(app_config, "config", None) or app_config
@@ -152,6 +180,11 @@ def enrich_tracks_classifier_at_finalize(
 
     appended = 0
     timed_out = False
+    no_crop_tracks = 0
+    classify_errors = 0
+    low_conf_skips = 0
+    unknown_skips = 0
+
     for track_id, track in eligible:
         if time.perf_counter() >= deadline_mono:
             timed_out = True
@@ -159,42 +192,54 @@ def enrich_tracks_classifier_at_finalize(
 
         crops: list[tuple[Any, float, str]] = []
 
-        # 1) Primary: record_hires (scaled bbox on main MP4) — dual-stream contract.
-        if resolve_enrichment_crop is not None and track_as_detection is not None and video_path:
-            det_like = track_as_detection(track, camera_id=camera_id)
-            hires_crop, src = resolve_enrichment_crop(
-                det_like,
-                video_path=video_path,
-                mode=crop_mode,
-                lores_crop=track.get("best_frame"),
-                pad_frac=pad_frac,
-                runtime_cfg=runtime_cfg,
-                prefer_lores=False,
-                deadline_mono=deadline_mono,
-            )
+        # 1) Prefer in-memory lores — avoid NVDEC/CUDA contention with live detect.
+        crops.extend(_collect_lores_crops(track, max_kf=max_kf))
+
+        # 2) Optional hires upgrade when budget remains (sharper crop).
+        if (
+            resolve_enrichment_crop is not None
+            and track_as_detection is not None
+            and video_path
+            and time.perf_counter() < deadline_mono
+        ):
+            try:
+                det_like = track_as_detection(track, camera_id=camera_id)
+                hires_crop, src = resolve_enrichment_crop(
+                    det_like,
+                    video_path=video_path,
+                    mode=crop_mode,
+                    lores_crop=track.get("best_frame"),
+                    pad_frac=pad_frac,
+                    runtime_cfg=runtime_cfg,
+                    prefer_lores=False,
+                    deadline_mono=deadline_mono,
+                )
+            except Exception:
+                logger.warning(
+                    "finalize hires crop failed track=%s",
+                    track_id,
+                    exc_info=True,
+                )
+                hires_crop, src = None, None
             if hires_crop is not None:
                 score = float(track.get("best_frame_score") or 0.0)
                 if src == "record_hires":
-                    score += 1.0  # prefer hires when sorting
-                crops.append((hires_crop, score, src))
-
-        # 2) Fallback only: in-memory lores (if hires missing/failed).
-        if not crops:
-            best = track.get("best_frame")
-            if best is not None:
-                crops.append((best, float(track.get("best_frame_score") or 0.0), "best_frame_lores"))
-            for kf in (track.get("key_frames") or [])[:max_kf]:
-                if not isinstance(kf, dict):
-                    continue
-                crop = kf.get("crop")
-                if crop is None:
-                    continue
-                crops.append((crop, float(kf.get("score") or 0.0), "key_frame_lores"))
+                    score += 0.5  # slight preference after lores attempts
+                crops.append((hires_crop, score, src or "record_hires"))
 
         if not crops:
+            no_crop_tracks += 1
             continue
-        crops.sort(key=lambda x: x[1], reverse=True)
+
+        # Lores first by source, then by score within each group.
+        def _crop_order(item: tuple[Any, float, str]) -> tuple[int, float]:
+            _crop, score, src = item
+            lores_rank = 0 if "lores" in str(src) else 1
+            return (lores_rank, -float(score))
+
+        crops.sort(key=_crop_order)
         seen = 0
+        named_appended_for_track = 0
         for crop, _score, crop_src in crops:
             if time.perf_counter() >= deadline_mono:
                 timed_out = True
@@ -204,10 +249,17 @@ def enrich_tracks_classifier_at_finalize(
             try:
                 out = strategy._classify_crop(crop)
             except Exception:
-                logger.debug("finalize classify crop failed track=%s", track_id, exc_info=True)
+                classify_errors += 1
+                logger.warning(
+                    "finalize classify crop failed track=%s src=%s",
+                    track_id,
+                    crop_src,
+                    exc_info=True,
+                )
                 continue
             if out is None or not getattr(out, "species_name", None):
                 continue
+            species = str(out.species_name).strip()
             try:
                 det_conf = max(
                     float(ev.get("confidence") or 0.0)
@@ -221,11 +273,27 @@ def enrich_tracks_classifier_at_finalize(
                 if getattr(out, "top1_confidence", None) is not None
                 else getattr(out, "confidence", 0.0) or 0.0
             )
+            if species.lower() in unknown_labels:
+                unknown_skips += 1
+                seen += 1
+                # Keep searching other crops for a named species.
+                continue
             if cls_conf < min_guess:
+                low_conf_skips += 1
+                if low_conf_skips <= 8:
+                    logger.info(
+                        "finalize classify low_conf track=%s species=%s conf=%.3f min_guess=%.3f src=%s",
+                        track_id,
+                        species,
+                        cls_conf,
+                        min_guess,
+                        crop_src,
+                    )
+                seen += 1
                 continue
             track.setdefault("classifier_events", []).append(
                 {
-                    "species_name": str(out.species_name),
+                    "species_name": species,
                     "confidence": cls_conf,
                     "detector_confidence": det_conf,
                     "combined_confidence": det_conf * cls_conf,
@@ -237,7 +305,11 @@ def enrich_tracks_classifier_at_finalize(
                 }
             )
             appended += 1
+            named_appended_for_track += 1
             seen += 1
+            # One strong named hit is enough per track under tight budget.
+            if named_appended_for_track >= 1 and time.perf_counter() >= (deadline_mono - 0.15):
+                break
         if timed_out:
             break
 
@@ -249,4 +321,15 @@ def enrich_tracks_classifier_at_finalize(
         )
     elif appended:
         logger.info("Linear pipeline: deferred classifier appended %s event(s)", appended)
+    else:
+        logger.info(
+            "Linear pipeline: deferred classifier appended 0 "
+            "(eligible=%s no_crop=%s classify_errors=%s low_conf=%s unknown=%s runtime_ms=%.0f)",
+            len(eligible),
+            no_crop_tracks,
+            classify_errors,
+            low_conf_skips,
+            unknown_skips,
+            (time.perf_counter() - started) * 1000.0,
+        )
     return appended

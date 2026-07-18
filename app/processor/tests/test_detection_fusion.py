@@ -1832,3 +1832,45 @@ def test_binary_track_first_keeps_yolo_row_below_store_floor():
     )
     assert len(out) == 1
     assert out[0]["track_id"] == 3
+
+
+def test_linear_pipeline_honors_explicit_frigate_standalone():
+    """Linear must not hard-disable standalone when user_config opts in."""
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig(
+        {
+            "processor.pipeline_mode": "linear",
+            "detection.merge_window_seconds": 5,
+            "detection.dedup_window_seconds": 45,
+            "detection.one_per_species": True,
+            "detection.source_priority": ["yolo", "frigate"],
+            "detection.cross_source_confidence_bonus": 0.0,
+            "detection.min_confidence_to_store": 0.36,
+            "detection.frigate_standalone_when_no_yolo": True,
+            "detection.frigate_standalone_require_blind_yolo": False,
+            "detection.frigate_standalone_min_score": 0.4,
+            "detection.frigate_standalone_missing_score_fallback": 0.0,
+            "processor.multi_camera_groups": [],
+        }
+    )
+    mqtt = [
+        {
+            "source": "frigate",
+            "species": "Lesser Goldfinch",
+            "label": "bird",
+            "confidence": 0.84,
+            "timestamp": (start + timedelta(seconds=2)).isoformat(),
+            "_session_trigger_snapshot": True,
+        },
+    ]
+    out = build_fused_video_detections(
+        [],
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert len(out) == 1
+    assert out[0]["species_name"] == "Lesser Goldfinch"
+    assert out[0].get("frigate_standalone") is True

@@ -103,6 +103,33 @@ class TestApplyHints(unittest.TestCase):
         out = apply_classifier_hints([], mqtt_events=events, app_config={})
         self.assertEqual(out, [])
 
+    def test_frigate_sub_label_promotes_generic_bird_row(self):
+        rows = [
+            {
+                "species_name": "Bird",
+                "confidence": 0.2,
+                "detector_confidence": 0.3,
+                "classifier_confidence": 0.0,
+            }
+        ]
+        events = [
+            {
+                "source": "frigate",
+                "label": "bird",
+                "sub_label": "Lesser Goldfinch",
+                "confidence": 0.84,
+            }
+        ]
+        out = apply_classifier_hints(
+            rows,
+            mqtt_events=events,
+            app_config={"detection.classifier_hints_enabled": True},
+        )
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["species_name"], "Lesser Goldfinch")
+        self.assertTrue(out[0].get("frigate_species_promoted"))
+        self.assertGreaterEqual(out[0]["confidence"], 0.84)
+
 
 if __name__ == "__main__":
     unittest.main()

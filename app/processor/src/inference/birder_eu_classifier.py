@@ -210,21 +210,41 @@ class BirderEuClassifier:
         probs = self._infer_probs(crop_bgr)
         ent, margin = _entropy_margin(probs)
 
+        def _is_unknown_label(label: str) -> bool:
+            return str(label or "").strip().lower() in ("unknown", "unknown bird")
+
         if self._allowed_ids is not None:
             valid = {i: probs[i] for i in self._allowed_ids if i < len(probs)}
             if not valid:
                 return BirderEuClassifierResult(self.unknown_label, 0.0, ent, margin)
-            best_id = max(valid, key=valid.get)
-            conf = float(valid[best_id])
+            # Prefer a named species over the catalog "Unknown" class.
+            named = {
+                i: p
+                for i, p in valid.items()
+                if not _is_unknown_label(self.id2label.get(i, ""))
+            }
+            pool = named or valid
+            best_id = max(pool, key=pool.get)
+            conf = float(pool[best_id])
         else:
-            best_id = int(np.argmax(probs))
-            conf = float(probs[best_id])
+            # Skip catalog Unknown ids when any named class has mass.
+            named_ids = [
+                i
+                for i in range(len(probs))
+                if not _is_unknown_label(self.id2label.get(i, ""))
+            ]
+            if named_ids:
+                best_id = max(named_ids, key=lambda i: float(probs[i]))
+                conf = float(probs[best_id])
+            else:
+                best_id = int(np.argmax(probs))
+                conf = float(probs[best_id])
 
         if conf < self.min_confidence:
             return BirderEuClassifierResult(self.unknown_label, conf, ent, margin)
 
         label = self.id2label.get(best_id, self.unknown_label)
-        if str(label).strip().lower() in ("unknown", "unknown bird"):
+        if _is_unknown_label(label):
             return BirderEuClassifierResult(self.unknown_label, conf, ent, margin)
         return BirderEuClassifierResult(label, conf, ent, margin)
 

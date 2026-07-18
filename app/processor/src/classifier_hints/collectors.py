@@ -19,7 +19,8 @@ def _safe_float(value, default: float = 0.0) -> float:
 
 
 def _frigate_species(ev: dict) -> str:
-    for key in ("species", "label", "sub_label"):
+    # Prefer Frigate sub_label (named species) over generic label=bird.
+    for key in ("species", "sub_label", "label"):
         raw = str(ev.get(key) or "").strip()
         if raw and raw.lower() not in {"bird", "unknown"}:
             return raw
@@ -55,7 +56,7 @@ def collect_frigate_hints(
     default_weight: float,
     camera_id: str | None = None,
 ) -> list[HintPayload]:
-    best: dict[str, float] = {}
+    best: dict[str, tuple[str, float]] = {}
     camera_key = _norm(camera_id)
     for ev in mqtt_events or []:
         if _norm(ev.get("source")) != "frigate":
@@ -68,17 +69,18 @@ def collect_frigate_hints(
             continue
         key = _norm(species)
         score = _safe_float(ev.get("confidence"), 0.7)
-        if score > best.get(key, 0.0):
-            best[key] = score
+        prev = best.get(key)
+        if prev is None or score > prev[1]:
+            best[key] = (species, score)
     return [
         HintPayload(
             source=HintSource.FRIGATE_LABEL,
-            species=species,
+            species=display,
             weight=default_weight,
             score=score,
             raw_confidence=score,
         )
-        for species, score in best.items()
+        for display, score in best.values()
     ]
 
 

@@ -40,12 +40,12 @@ processor:
   linear_live_scoring_engine_enabled: true
   # linear: Birder только на finalize (key_frames), не на каждом live-кадре
   classifier_defer_to_finalize: true
-  # One hires (or lores fallback) crop per track at finalize
-  classifier_finalize_max_key_frames: 1
+  # Lores-first + optional hires crops per track at finalize
+  classifier_finalize_max_key_frames: 3
   # Top-N tracks by best_frame_score (0 = all eligible). Cuts classifier_finalize wall time.
-  classifier_finalize_max_tracks: 2
-  # Cap deferred classify wall-clock (hires MP4 seeks)
-  classifier_finalize_max_runtime_ms: 2500
+  classifier_finalize_max_tracks: 6
+  # Cap deferred classify wall-clock (lores + optional hires MP4 seeks)
+  classifier_finalize_max_runtime_ms: 8000
   # object_confirm_min_score / object_confirm_threshold — unset → min_confidence_binary_bird
   # Legacy compatibility toggles (kept for older user_config keys; runtime may ignore).
   adaptive_preprocess_enabled: false
@@ -550,8 +550,8 @@ processor:
   birder_eu_unknown_label: "Unknown Bird"
   # Ниже порога Birder, но выше min — сохранить best-guess вид + review (classification-first).
   classifier_best_guess_enabled: true
-  classifier_best_guess_min_confidence: 0.20
-  classifier_best_guess_min_events: 2
+  classifier_best_guess_min_confidence: 0.06
+  classifier_best_guess_min_events: 1
   # Trapper Rodent → каталог Rodent (не birder_eu)
   squirrel_species_label: "Rodent"
   # ONNX Runtime CUDA EP (Orin).
@@ -899,7 +899,11 @@ detection:
   # Слой «судья» между classifier и persist — выкл. по умолчанию (упрощение live path).
   hypothesis_arbitration_enabled: false
   # deprecated: Frigate as persist source — hints/prior only (standalone-first); keep false
+  # Explicit true in user_config is honored even in linear pipeline (YOLO-blind sites).
   frigate_standalone_when_no_yolo: false
+  # When YOLO/Birder leave generic Bird/Unknown, rename row from Frigate sub_label (hints path).
+  frigate_promote_generic_enabled: true
+  frigate_promote_generic_min_score: 0.55
   # Off by default: one MQTT bbox frame can look like a stuck overlay across the whole clip.
   frigate_standalone_preserve_bbox_frames: false
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).

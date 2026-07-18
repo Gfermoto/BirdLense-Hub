@@ -146,6 +146,53 @@ def test_enrich_respects_max_tracks_top_score():
     assert "classifier_events" not in tracks[1]
 
 
+def test_enrich_skips_unknown_and_tries_next_crop():
+    tracks = {
+        9: {
+            "detector_events": [{"label": "Bird", "confidence": 0.5}],
+            "best_frame": object(),
+            "best_frame_score": 2.0,
+            "key_frames": [{"crop": object(), "score": 3.0}],
+            "end_time": 3.5,
+        }
+    }
+
+    class _MixedStrategy:
+        def __init__(self):
+            self.calls = 0
+
+        def _classify_crop(self, _crop):
+            self.calls += 1
+            if self.calls == 1:
+                return SimpleNamespace(
+                    species_name="Unknown Bird",
+                    top1_confidence=0.9,
+                    entropy=0.5,
+                    top1_top2_margin=0.8,
+                )
+            return SimpleNamespace(
+                species_name="Great Tit",
+                top1_confidence=0.35,
+                entropy=1.1,
+                top1_top2_margin=0.12,
+            )
+
+    cfg = _Cfg(
+        {
+            "processor.pipeline_mode": "linear",
+            "processor.classifier_defer_to_finalize": True,
+            "processor.classifier_finalize_max_key_frames": 3,
+            "processor.classifier_finalize_max_tracks": 0,
+            "processor.classifier_best_guess_min_confidence": 0.10,
+        }
+    )
+    strategy = _MixedStrategy()
+    appended = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
+    assert appended == 1
+    assert strategy.calls >= 2
+    assert tracks[9]["classifier_events"][0]["species_name"] == "Great Tit"
+
+
 def test_enrich_respects_max_runtime_budget():
     """Wall-clock cap must stop before classifying every track."""
     tracks = {
