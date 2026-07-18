@@ -111,22 +111,25 @@ Decision log template:
   - #<id> <title> (owner: <name>, due: <date>)
 ```
 
-## Weekly SOTA reality check (mandatory while #517 is open)
+## Weekly SOTA reality check (mandatory while #666 is open)
 
-Use this ritual until acceptance epic [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517) is closed.
+Use this ritual until acceptance epic [#666](https://github.com/Gfermoto/BirdLense-Hub/issues/666) is closed.
+(Replaces closed [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517).)
 
 1. Generate/refresh artifacts:
    - `docs/reports/error_budget_gate/error_budget_gate_latest.json`
    - `docs/reports/golden_set_gate/golden_set_gate_latest.json`
    - `docs/reports/quality_outcome/quality_outcome_metrics_latest.json`
    - `docs/reports/sota_reality/sota_reality_check_latest.md`
-2. Validate P0 blockers status:
-   - [#555](https://github.com/Gfermoto/BirdLense-Hub/issues/555)
-   - [#556](https://github.com/Gfermoto/BirdLense-Hub/issues/556)
-   - [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557)
+   - `docs/reports/sota_reality/sota_consilium_baseline_*.json` (Orin funnel + named_share)
+2. Validate acceptance SLO on Orin (24h window):
+   - `yolo_blind_confirmed` ≤ 0.15 per camera
+   - `db_persist_success` ≥ 0.90 among sessions with tracks
+   - named species share ≥ 0.40 among persisted rows
+   - `classifier_finalize_outcome` present in session summaries
 3. Confirm no skipped critical ML gates (unless explicit override ticket is attached).
-4. Attach one weekly comment to the governance issue with:
-   - outcome metrics trend (blind_rate, tracks_coverage, empty_bbox_rate),
+4. Attach one weekly comment to [#666](https://github.com/Gfermoto/BirdLense-Hub/issues/666) with:
+   - outcome metrics trend (blind_rate, tracks_coverage, named_share, empty_bbox_rate),
    - backend+ui parity verification notes,
    - decision (`hold` / `go` / `rollback`) and linked issues.
 

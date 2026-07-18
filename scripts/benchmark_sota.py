@@ -39,17 +39,31 @@ def _metric_int(metrics: dict[str, Any], key: str) -> int:
         return 0
 
 
+def _clip_role(clip_id: str, thresholds: dict[str, Any], manifest_role: str | None = None) -> str:
+    th = thresholds.get(clip_id) or {}
+    role = str(th.get("role") or manifest_role or "").strip().lower()
+    if role:
+        return role
+    if clip_id == "1816":
+        return "noise_fp"
+    if clip_id == "1819":
+        return "birds_recall"
+    return "noise_fp"
+
+
 def evaluate_clip(
     clip_id: str,
     metrics: dict[str, Any],
     *,
     thresholds: dict[str, Any],
     baseline_metrics: dict[str, Any],
+    role: str | None = None,
 ) -> list[str]:
     """Return list of failure messages (empty = pass)."""
     failures: list[str] = []
     th = thresholds.get(clip_id) or {}
     base = baseline_metrics.get(clip_id) or {}
+    role_name = _clip_role(clip_id, thresholds, role)
 
     fused = _metric_int(metrics, "fused_track_count")
     accepted = _metric_int(metrics, "yolo_accepted_boxes_total")
@@ -57,47 +71,47 @@ def evaluate_clip(
     frames_tracks = _metric_int(metrics, "frames_with_tracks")
     base_fused = max(0, _metric_int(base, "fused_track_count"))
 
-    if clip_id == "1816":
+    if role_name == "noise_fp":
         max_tracks = int(th.get("max_fused_track_count", 0))
         if fused > max_tracks:
-            failures.append(f"1816 FP: fused_track_count={fused} > max {max_tracks}")
+            failures.append(f"{clip_id} FP: fused_track_count={fused} > max {max_tracks}")
         max_acc = int(th.get("max_yolo_accepted_boxes_total", 0))
         if accepted > max_acc:
-            failures.append(f"1816 FP: yolo_accepted_boxes_total={accepted} > max {max_acc}")
+            failures.append(f"{clip_id} FP: yolo_accepted_boxes_total={accepted} > max {max_acc}")
         max_sp = int(th.get("max_species_detected_count", 0))
         if species_n > max_sp:
-            failures.append(f"1816 FP: species_detected_count={species_n} > max {max_sp}")
-    elif clip_id == "1819":
+            failures.append(f"{clip_id} FP: species_detected_count={species_n} > max {max_sp}")
+    elif role_name == "birds_recall":
         min_tracks = int(th.get("min_fused_track_count", 1))
         if fused < min_tracks:
-            failures.append(f"1819 recall: fused_track_count={fused} < min {min_tracks}")
+            failures.append(f"{clip_id} recall: fused_track_count={fused} < min {min_tracks}")
         min_frames = int(th.get("min_frames_with_tracks", 1))
         if frames_tracks < min_frames:
-            failures.append(f"1819 recall: frames_with_tracks={frames_tracks} < min {min_frames}")
+            failures.append(f"{clip_id} recall: frames_with_tracks={frames_tracks} < min {min_frames}")
         min_sp = int(th.get("min_species_detected_count", 1))
         if species_n < min_sp:
-            failures.append(f"1819 recall: species_detected_count={species_n} < min {min_sp}")
+            failures.append(f"{clip_id} recall: species_detected_count={species_n} < min {min_sp}")
         ratio = float(th.get("min_recall_ratio", 0.9))
         if base_fused > 0:
             recall = float(fused) / float(base_fused)
             if recall < ratio:
                 failures.append(
-                    f"1819 recall: ratio={recall:.3f} < min_recall_ratio={ratio} "
+                    f"{clip_id} recall: ratio={recall:.3f} < min_recall_ratio={ratio} "
                     f"(baseline fused={base_fused}, current={fused})"
                 )
         elif fused < min_tracks:
-            failures.append("1819 recall: no baseline fused_track_count and current below min")
+            failures.append(f"{clip_id} recall: no baseline fused_track_count and current below min")
         max_switches = int(th.get("max_track_id_switches", 999999))
         switches = _metric_int(metrics, "track_id_switches_count")
         if switches > max_switches:
             failures.append(
-                f"1819 stability: track_id_switches_count={switches} > max {max_switches}"
+                f"{clip_id} stability: track_id_switches_count={switches} > max {max_switches}"
             )
         min_dur = float(th.get("min_avg_track_duration_sec", 0.0))
         dur = float(metrics.get("avg_track_duration_sec") or 0.0)
         if min_dur > 0 and dur < min_dur:
             failures.append(
-                f"1819 stability: avg_track_duration_sec={dur:.3f} < min {min_dur}"
+                f"{clip_id} stability: avg_track_duration_sec={dur:.3f} < min {min_dur}"
             )
     require_unified = bool(th.get("require_tracking_unified_with_live", False))
     if require_unified and not bool(metrics.get("tracking_unified_with_live")):
@@ -181,8 +195,15 @@ def main() -> int:
         os.environ.setdefault("SOTA_GOLDEN_CLIP_1819", args.clip_1819)
 
     db = Path(args.db)
+    manifest = load_json(args.manifest)
+    clip_meta = manifest.get("clips") or {}
+    required_ids = ["1816", "1819"]
+    optional_ids = [cid for cid in sorted(clip_meta) if cid not in required_ids]
     paths: dict[str, Path] = {}
-    for clip_id in ("1816", "1819"):
+    roles: dict[str, str] = {}
+    for clip_id in list(clip_meta.keys()):
+        entry = clip_meta.get(clip_id) or {}
+        roles[clip_id] = str(entry.get("role") or "").strip().lower()
         p = resolve_clip_path(clip_id, db=db)
         if p is not None:
             paths[clip_id] = p
@@ -198,18 +219,24 @@ def main() -> int:
             paths.setdefault("1816", sp)
             paths.setdefault("1819", sp)
 
-    missing = [cid for cid in ("1816", "1819") if cid not in paths]
-    if missing:
+    missing_required = [cid for cid in required_ids if cid not in paths]
+    if missing_required:
         msg = (
-            f"Golden clips missing: {missing}. "
-            "Set SOTA_GOLDEN_CLIP_1816/1819, run scripts/fetch-golden-clips.py, "
-            "or place files under benchmarks/fixtures/."
+            f"Golden clips missing: {missing_required}. "
+            "Set SOTA_GOLDEN_CLIP_1816/1819, run scripts/generate_golden_noise_fixtures.py "
+            "+ fetch bird clip, or place files under benchmarks/fixtures/."
         )
         if args.skip_if_missing:
             print(f"SKIP: {msg}", file=sys.stderr)
             return 0
         print(f"FAIL: {msg}", file=sys.stderr)
         return 2
+    missing_optional = [cid for cid in optional_ids if cid not in paths]
+    if missing_optional:
+        print(
+            f"WARN: optional golden clips missing (skipped): {missing_optional}",
+            file=sys.stderr,
+        )
 
     thresholds = baseline_doc.get("thresholds") or {}
     baseline_metrics = baseline_doc.get("metrics") or {}
@@ -228,6 +255,7 @@ def main() -> int:
             metrics,
             thresholds=thresholds,
             baseline_metrics=baseline_metrics,
+            role=roles.get(clip_id),
         )
         status = "PASS" if not failures else "FAIL"
         report_clips[clip_id] = {

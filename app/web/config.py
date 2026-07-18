@@ -17,9 +17,18 @@ if not _SECRET_KEY:
 if _is_production:
     if not (os.environ.get("PROCESSOR_SECRET") or "").strip():
         raise RuntimeError("PROCESSOR_SECRET is required in production. Set it in app/.env or environment.")
-    # STRICT_API_AUTH не требуется принудительно — middleware включается
-    # только при явном BIRDLENSE_STRICT_API_AUTH=1. Без пароля в user_config
-    # UI работает свободно; после задания пароля — авторизация.
+    # Production fail-closed (#666): API auth middleware must be on.
+    # Override only for emergency break-glass: BIRDLENSE_ALLOW_OPEN_API=1.
+    if (os.environ.get("BIRDLENSE_STRICT_API_AUTH") or "").strip() != "1":
+        if (os.environ.get("BIRDLENSE_ALLOW_OPEN_API") or "").strip() == "1":
+            logging.warning(
+                "BIRDLENSE_STRICT_API_AUTH unset but BIRDLENSE_ALLOW_OPEN_API=1 — open API allowed"
+            )
+        else:
+            raise RuntimeError(
+                "BIRDLENSE_STRICT_API_AUTH=1 is required in production. "
+                "Set it in app/.env (or BIRDLENSE_ALLOW_OPEN_API=1 break-glass)."
+            )
 
 # Локальная разработка (Vite, LAN): не хранить в app.py — один источник для CORS.
 _CORS_LOCAL_DEV_ORIGINS_DEV = (

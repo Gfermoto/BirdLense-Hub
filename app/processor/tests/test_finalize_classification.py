@@ -55,9 +55,11 @@ def test_enrich_tracks_classifier_at_finalize_uses_top1_confidence():
         }
     )
 
-    appended = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
+    outcome = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
 
-    assert appended == 1
+    assert outcome["appended"] == 1
+    assert outcome["eligible"] == 1
+    assert outcome["no_crop"] == 0
     assert strategy.calls == 1
     event = tracks[7]["classifier_events"][0]
     assert event["species_name"] == "Eurasian Jay"
@@ -90,9 +92,10 @@ def test_enrich_skips_weak_classifier_below_best_guess_floor():
         }
     )
 
-    appended = enrich_tracks_classifier_at_finalize(tracks, _WeakStrategy(), cfg)
+    outcome = enrich_tracks_classifier_at_finalize(tracks, _WeakStrategy(), cfg)
 
-    assert appended == 0
+    assert outcome["appended"] == 0
+    assert outcome["low_conf"] >= 1
     assert "classifier_events" not in tracks[8]
 
 
@@ -104,7 +107,9 @@ def test_enrich_skips_empty_tracks():
             "processor.classifier_defer_to_finalize": True,
         }
     )
-    assert enrich_tracks_classifier_at_finalize({}, strategy, cfg) == 0
+    outcome = enrich_tracks_classifier_at_finalize({}, strategy, cfg)
+    assert outcome["appended"] == 0
+    assert outcome["skip_reason"] == "no_tracks"
     assert strategy.calls == 0
 
 
@@ -138,8 +143,9 @@ def test_enrich_respects_max_tracks_top_score():
             "processor.classifier_best_guess_min_confidence": 0.10,
         }
     )
-    appended = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
-    assert appended == 2
+    outcome = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
+    assert outcome["appended"] == 2
+    assert outcome["skipped_budget"] == 1
     assert strategy.calls == 2
     assert "classifier_events" in tracks[2]
     assert "classifier_events" in tracks[3]
@@ -187,8 +193,9 @@ def test_enrich_skips_unknown_and_tries_next_crop():
         }
     )
     strategy = _MixedStrategy()
-    appended = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
-    assert appended == 1
+    outcome = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
+    assert outcome["appended"] == 1
+    assert outcome["unknown"] >= 1
     assert strategy.calls >= 2
     assert tracks[9]["classifier_events"][0]["species_name"] == "Great Tit"
 
@@ -229,6 +236,7 @@ def test_enrich_respects_max_runtime_budget():
             "processor.classifier_best_guess_min_confidence": 0.10,
         }
     )
-    appended = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
+    outcome = enrich_tracks_classifier_at_finalize(tracks, strategy, cfg)
     assert strategy.calls < 20
-    assert appended == strategy.calls
+    assert outcome["appended"] == strategy.calls
+    assert outcome["timed_out"] is True

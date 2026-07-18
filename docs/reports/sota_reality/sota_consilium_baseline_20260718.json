@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-07-18T18:30:00Z",
+  "window": "48h_logs+24h_db",
+  "epic": "#666",
+  "sessions_48h": 298,
+  "db_videos_24h": 127,
+  "named_share_24h": 0.0406,
+  "generic_bird_24h": 378,
+  "species_rows_24h": 394,
+  "by_camera": {
+    "BirdBox": {
+      "n": 102,
+      "blind_confirmed_rate": 0.0098,
+      "persist_rate": 0.4216,
+      "tracks_gt0_rate": 0.4314,
+      "persist_given_tracks": 0.9773
+    },
+    "Forest": {
+      "n": 196,
+      "blind_confirmed_rate": 0.0255,
+      "persist_rate": 0.75,
+      "tracks_gt0_rate": 0.7653,
+      "persist_given_tracks": 0.98
+    }
+  },
+  "decision_reasons": [
+    [
+      "rejected_detector_below_binary_floor",
+      978
+    ],
+    [
+      "accepted_binary_track_classifier_deferred",
+      844
+    ],
+    [
+      "rejected_non_bird",
+      577
+    ],
+    [
+      "rejected_short_track",
+      255
+    ],
+    [
+      "review_only_frigate_trigger_salvage",
+      32
+    ],
+    [
+      "accepted_species",
+      17
+    ]
+  ],
+  "p95_finalize_ms": 87644.3,
+  "runtime": {
+    "video_capture_nvdec_fail_total": 8,
+    "video_capture_backend_fallback_reason": "nvdec_cooldown"
+  },
+  "slo": {
+    "blind_le_0_15": true,
+    "named_share_ge_0_40": false,
+    "persist_given_tracks_ge_0_90": true,
+    "verdict": "hold"
+  },
+  "benchmark_sota": "SKIP golden clips 1816/1819 missing"
+}

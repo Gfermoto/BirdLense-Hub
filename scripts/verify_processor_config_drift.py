@@ -38,21 +38,13 @@ _CONF_KEYS = (
 )
 
 # P0 forbidden merged values — block deploy/CI (#626).
+# Frigate standalone/salvage opt-in is allowed for Frigate-site installs (#666);
+# defaults stay false. Weak YOLO salvage remains forbidden.
 _CRITICAL_FORBIDDEN: tuple[tuple[str, ...], Any, str] = (
     (("processor", "pipeline_mode"), "legacy", "use linear pipeline (#621)"),
     (("detection", "persist_mode"), "legacy", "use binary_track_first (#621)"),
     (
-        ("detection", "frigate_standalone_when_no_yolo"),
-        True,
-        "Frigate must remain prior-only, not standalone detector (ADR #634)",
-    ),
-    (
-        ("processor", "frigate_trigger_review_salvage_allow_without_yolo_tracks"),
-        True,
-        "Frigate must not persist without YOLO tracks (ADR #634 classifier hints)",
-    ),
-    (
-        ("processor", "yolo_weak_track_salvage_enabled"),
+        ("detection", "yolo_weak_track_salvage_enabled"),
         True,
         "weak salvage must not bypass YOLO+ByteTrack primary persist (ADR #634)",
     ),

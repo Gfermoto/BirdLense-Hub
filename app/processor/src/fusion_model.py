@@ -76,12 +76,31 @@ class FusionScorer:
             except Exception:
                 self._use_torch = False
                 _logger.debug("fusion_model: failed to load torch weights %s", model_path, exc_info=True)
+        self.degraded = False
+        self.degraded_reason: str | None = None
         if not self._use_torch:
             # deterministic fallback weights (tuned heuristically)
             # higher weight to classifier confidence, moderate to detector and birdnet
             self._weights = np.array([0.15, 0.5, 0.15, 0.1, 0.05, 0.05], dtype=float)
             self._bias = 0.0
             self._temp = 1.0
+            self.degraded = True
+            self.degraded_reason = (
+                "numpy_fallback_no_torch"
+                if not _TORCH_AVAILABLE
+                else ("numpy_fallback_weights_missing" if model_path else "numpy_fallback_no_model_path")
+            )
+            _logger.warning(
+                "fusion_model: degraded scorer active reason=%s model_path=%s",
+                self.degraded_reason,
+                model_path,
+            )
+            try:
+                from processor_runtime_stats import inc_counter
+
+                inc_counter("fusion_model_numpy_fallback_total")
+            except Exception:
+                pass
 
     def _vec_from_features(self, features: Mapping[str, float]):
         vals = []
@@ -104,11 +123,21 @@ class FusionScorer:
                     prob = torch.sigmoid(logit / (self.temperature + 1e-12))
                 return float(prob.cpu().item())
             except Exception:
-                _logger.debug("fusion_model: torch forward failed, numpy fallback", exc_info=True)
-                # fallback deterministic
-                pass
+                self.degraded = True
+                self.degraded_reason = "numpy_fallback_torch_forward_failed"
+                _logger.warning("fusion_model: torch forward failed, numpy fallback", exc_info=True)
+                try:
+                    from processor_runtime_stats import inc_counter
+
+                    inc_counter("fusion_model_numpy_fallback_total")
+                except Exception:
+                    pass
         # numpy fallback
         try:
+            if not hasattr(self, "_weights"):
+                self._weights = np.array([0.15, 0.5, 0.15, 0.1, 0.05, 0.05], dtype=float)
+                self._bias = 0.0
+                self._temp = 1.0
             x = np.array(vals, dtype=float)
             z = float(np.dot(self._weights, x) + self._bias)
             # temperature scaling

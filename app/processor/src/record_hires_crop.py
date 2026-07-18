@@ -615,7 +615,25 @@ def read_record_hires_crop(
             runtime_cfg=runtime_cfg,
         )
         if crop_bbox is None:
-            crop_bbox = bbox_list
+            # Prefer skip over classifying an unmapped lores bbox on main MP4
+            # (wrong crop → false Unknown / wrong species).
+            try:
+                from processor_runtime_stats import inc_counter
+
+                inc_counter("record_hires_remap_failed_total")
+            except Exception:
+                pass
+            logger.warning(
+                "record_hires: remap failed, skip crop path=%s ts=%.3f camera=%s "
+                "shape=%sx%s bbox=%s",
+                video_path,
+                ts,
+                cam or "?",
+                crop_hw[0],
+                crop_hw[1],
+                [round(v, 4) for v in bbox_list],
+            )
+            return None
         for extra_pad in (pad, min(0.25, pad + 0.06), min(0.25, pad + 0.12)):
             crop = _crop_from_frame(frame, crop_bbox, pad_frac=extra_pad)
             if crop is not None:

@@ -515,6 +515,11 @@ processor:
       scoring_static_phantom_reject_enabled: false
       scoring_moving_roi_min_motion_score: 0.22
       scene_adaptive_conf_enabled: false
+    # Frigate-heavy sites: opt-in salvage/standalone helpers (linear exception).
+    # Global detection.frigate_standalone_* still required for fusion standalone.
+    frigate_site:
+      frigate_trigger_review_salvage_enabled: true
+      frigate_trigger_review_salvage_allow_without_yolo_tracks: true
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на detect substream слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.03

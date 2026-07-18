@@ -92,6 +92,21 @@ def _collect_lores_crops(
     return crops
 
 
+def _empty_finalize_outcome(*, reason: str = "skipped") -> dict[str, Any]:
+    return {
+        "appended": 0,
+        "eligible": 0,
+        "skipped_budget": 0,
+        "no_crop": 0,
+        "classify_errors": 0,
+        "low_conf": 0,
+        "unknown": 0,
+        "timed_out": False,
+        "runtime_ms": 0.0,
+        "skip_reason": reason,
+    }
+
+
 def enrich_tracks_classifier_at_finalize(
     tracks: dict[int | str, dict[str, Any]],
     strategy: Any,
@@ -99,9 +114,13 @@ def enrich_tracks_classifier_at_finalize(
     *,
     video_path: str | None = None,
     camera_id: str | None = None,
-) -> int:
+) -> dict[str, Any]:
     """
-    Run Birder on key crops per track. Returns count of classifier events appended.
+    Run Birder on key crops per track.
+
+    Returns outcome counters for ``recording_session_summary``:
+    ``appended``, ``eligible``, ``skipped_budget``, ``no_crop``, ``classify_errors``,
+    ``low_conf``, ``unknown``, ``timed_out``, ``runtime_ms``.
 
     Architecture (dual-stream):
       detect/track on lores → bbox remapped to record → classify on crops.
@@ -112,11 +131,11 @@ def enrich_tracks_classifier_at_finalize(
     ``classifier_finalize_max_tracks`` keeps only top-N by best_frame_score.
     """
     if not defer_classifier_to_finalize(app_config):
-        return 0
+        return _empty_finalize_outcome(reason="defer_disabled")
     if not tracks:
-        return 0
+        return _empty_finalize_outcome(reason="no_tracks")
     if strategy is None or not hasattr(strategy, "_classify_crop"):
-        return 0
+        return _empty_finalize_outcome(reason="no_strategy")
 
     max_kf = _finalize_max_key_frames(app_config)
     min_guess = config_float(
@@ -167,14 +186,15 @@ def enrich_tracks_classifier_at_finalize(
             return 0.0
 
     eligible.sort(key=_score, reverse=True)
+    skipped_budget = 0
     if max_tracks > 0:
-        skipped = max(0, len(eligible) - max_tracks)
+        skipped_budget = max(0, len(eligible) - max_tracks)
         eligible = eligible[:max_tracks]
-        if skipped:
+        if skipped_budget:
             logger.info(
                 "classifier finalize: max_tracks=%s skipped=%s kept=%s",
                 max_tracks,
-                skipped,
+                skipped_budget,
                 len(eligible),
             )
 
@@ -184,6 +204,7 @@ def enrich_tracks_classifier_at_finalize(
     classify_errors = 0
     low_conf_skips = 0
     unknown_skips = 0
+    eligible_count = len(eligible)
 
     for track_id, track in eligible:
         if time.perf_counter() >= deadline_mono:
@@ -313,6 +334,7 @@ def enrich_tracks_classifier_at_finalize(
         if timed_out:
             break
 
+    runtime_ms = round(max(0.0, (time.perf_counter() - started) * 1000.0), 3)
     if timed_out:
         logger.info(
             "Linear pipeline: deferred classifier hit max_runtime_ms=%.0f (appended=%s)",
@@ -325,11 +347,22 @@ def enrich_tracks_classifier_at_finalize(
         logger.info(
             "Linear pipeline: deferred classifier appended 0 "
             "(eligible=%s no_crop=%s classify_errors=%s low_conf=%s unknown=%s runtime_ms=%.0f)",
-            len(eligible),
+            eligible_count,
             no_crop_tracks,
             classify_errors,
             low_conf_skips,
             unknown_skips,
-            (time.perf_counter() - started) * 1000.0,
+            runtime_ms,
         )
-    return appended
+    return {
+        "appended": int(appended),
+        "eligible": int(eligible_count),
+        "skipped_budget": int(skipped_budget),
+        "no_crop": int(no_crop_tracks),
+        "classify_errors": int(classify_errors),
+        "low_conf": int(low_conf_skips),
+        "unknown": int(unknown_skips),
+        "timed_out": bool(timed_out),
+        "runtime_ms": runtime_ms,
+        "skip_reason": None,
+    }

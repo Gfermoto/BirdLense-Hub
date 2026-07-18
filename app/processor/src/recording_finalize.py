@@ -118,6 +118,7 @@ def finalize_motion_recording(
     decision_trace_started_ts: float | None = None
     decision_trace_finished_ts: float | None = None
     classifier_finalize_duration_ms: float | None = None
+    classifier_finalize_outcome: dict[str, Any] | None = None
     blind_probe_duration_ms: float | None = None
     video_gate_duration_ms: float | None = None
     merge_window = int(app_config.get("detection.merge_window_seconds") or 5)
@@ -131,7 +132,7 @@ def finalize_motion_recording(
 
         if defer_classifier_to_finalize(app_config):
             _clf_started = time.perf_counter()
-            enrich_tracks_classifier_at_finalize(
+            outcome = enrich_tracks_classifier_at_finalize(
                 session_tracks,
                 getattr(frame_processor, "strategy", None),
                 app_config,
@@ -142,6 +143,10 @@ def finalize_motion_recording(
                 max(0.0, (time.perf_counter() - _clf_started) * 1000.0),
                 3,
             )
+            if isinstance(outcome, dict):
+                classifier_finalize_outcome = dict(outcome)
+                if classifier_finalize_outcome.get("runtime_ms") is None:
+                    classifier_finalize_outcome["runtime_ms"] = classifier_finalize_duration_ms
     except ImportError:
         pass
     decisions = decision_maker.get_decisions(session_tracks)
@@ -1000,6 +1005,7 @@ def finalize_motion_recording(
             "finalize_critical_path_ms": finalize_critical_path_ms,
             "pre_fusion_duration_ms": pre_fusion_duration_ms,
             "classifier_finalize_duration_ms": classifier_finalize_duration_ms,
+            "classifier_finalize_outcome": classifier_finalize_outcome,
             "blind_probe_duration_ms": blind_probe_duration_ms,
             "video_gate_duration_ms": video_gate_duration_ms,
             "decision_trace_duration_ms": decision_trace_duration_ms,
@@ -1242,8 +1248,16 @@ def finalize_motion_recording(
                         details=maintenance_res,
                     )
         except Exception:
+            try:
+                inc_counter("recording_session_summary_persist_fail_total")
+            except Exception:
+                pass
             logging.warning("recording_session_summary persist skipped", exc_info=True)
     except Exception:
+        try:
+            inc_counter("recording_session_summary_fail_total")
+        except Exception:
+            pass
         logging.warning("recording_session_summary skipped", exc_info=True)
     try:
         from record_hires_crop import release_record_hires_captures

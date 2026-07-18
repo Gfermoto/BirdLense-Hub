@@ -284,3 +284,8 @@ docs/reports/*-stack-baseline-*.md
 docs/reports/agent-*.md
 # RTSP пароли — не коммитить!
 scripts/smoke_detect_subtype_compare.py
+
+# Large golden bird visit fixtures (fetch/generate locally; noise stubs stay tracked)
+benchmarks/fixtures/clip_1819.mp4
+benchmarks/fixtures/clip_birdbox_visit.mp4
+benchmarks/fixtures/clip_forest_visit.mp4

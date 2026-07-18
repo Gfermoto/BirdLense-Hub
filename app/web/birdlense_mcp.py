@@ -2,12 +2,15 @@
 BirdLense Hub MCP server — экспортирует OpenAPI-эндпоинты как MCP-инструменты.
 Запуск: python birdlense_mcp.py [--transport stdio|http|streamable-http] [--port 8001]
 В контейнере: entrypoint запускает при mcp.enabled=true через streamable HTTP на /mcp.
-Защита: mcp.token или MCP_TOKEN env. Пусто — без аутентификации.
+Защита: mcp.token или MCP_TOKEN env.
+В production / HTTP transport без токена — fail-closed (#666).
 """
 
 import argparse
 import asyncio
+import logging
 import os
+import sys
 
 import httpx
 import yaml
@@ -17,6 +20,8 @@ from app_config.app_config import app_config
 
 from fastmcp import FastMCP
 from fastmcp.server.providers.openapi import RouteMap, MCPType
+
+logger = logging.getLogger(__name__)
 
 OPENAPI_PATH = os.path.join(os.path.dirname(__file__), "openapi.yaml")
 with open(OPENAPI_PATH, "r") as f:
@@ -50,8 +55,31 @@ def get_api_base_url() -> str:
     return "http://127.0.0.1:8000/api/ui"
 
 
+def _is_production_runtime() -> bool:
+    try:
+        from services.runtime_env import is_production_runtime
+
+        return bool(is_production_runtime())
+    except Exception:
+        env = (os.environ.get("BIRDLENSE_ENV") or "").strip().lower()
+        return env in {"production", "prod"}
+
+
+def require_mcp_token_for_http(*, transport: str) -> None:
+    """Fail-closed: HTTP MCP in production must have MCP_TOKEN / mcp.token."""
+    if transport not in {"http", "streamable-http"}:
+        return
+    if get_mcp_token():
+        return
+    if _is_production_runtime() or (os.environ.get("BIRDLENSE_REQUIRE_MCP_TOKEN") or "").strip() == "1":
+        raise RuntimeError(
+            "MCP HTTP transport requires MCP_TOKEN (or mcp.token) in production. "
+            "Refusing to start unauthenticated /mcp endpoint."
+        )
+
+
 def create_mcp_server() -> FastMCP:
-    """Собрать FastMCP из openapi.yaml с HTTP-клиентом к Hub и опциональной проверкой токена."""
+    """Собрать FastMCP из openapi.yaml с HTTP-клиентом к Hub и проверкой токена."""
     api_url = get_api_base_url()
     token = get_mcp_token()
     headers = {"Authorization": f"Bearer {token}"} if token else {}
@@ -68,6 +96,8 @@ def create_mcp_server() -> FastMCP:
 
         verifier = DebugTokenVerifier(validate=lambda t: t == token)
         mcp_kwargs["auth"] = verifier
+    elif _is_production_runtime():
+        logger.error("MCP token missing in production — HTTP MCP must not start without auth")
 
     return FastMCP.from_openapi(**mcp_kwargs)
 
@@ -95,6 +125,12 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transport")
     parser.add_argument("--check", action="store_true", help="Only check tools and exit")
     args = parser.parse_args()
+
+    try:
+        require_mcp_token_for_http(transport=args.transport)
+    except RuntimeError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
 
     mcp = create_mcp_server()
 

@@ -1,20 +1,82 @@
 {
-  "schema": "sota_golden_clips@v1",
-  "description": "Golden regression clips: 1816 noise/FP, 1819 birds/recall. Paths via env or benchmarks/fixtures/.",
+  "schema": "sota_golden_clips@v2",
+  "description": "Golden regression set for Orin SOTA (#666). Roles: noise_fp (zero detections), birds_recall (must track).",
   "clips": {
     "1816": {
       "role": "noise_fp",
       "video_id": 1816,
       "env_var": "SOTA_GOLDEN_CLIP_1816",
       "legacy_env_var": "YOLO_GOLDEN_CLIP_1816",
-      "fixture_path": "benchmarks/fixtures/clip_1816.mp4"
+      "fixture_path": "benchmarks/fixtures/clip_1816.mp4",
+      "scenario": "empty_day_legacy"
     },
     "1819": {
       "role": "birds_recall",
       "video_id": 1819,
       "env_var": "SOTA_GOLDEN_CLIP_1819",
       "legacy_env_var": "YOLO_GOLDEN_CLIP_1819",
-      "fixture_path": "benchmarks/fixtures/clip_1819.mp4"
+      "fixture_path": "benchmarks/fixtures/clip_1819.mp4",
+      "scenario": "birds_legacy"
+    },
+    "empty_day": {
+      "role": "noise_fp",
+      "env_var": "SOTA_GOLDEN_CLIP_EMPTY_DAY",
+      "fixture_path": "benchmarks/fixtures/clip_empty_day.mp4",
+      "scenario": "empty_day"
+    },
+    "empty_night": {
+      "role": "noise_fp",
+      "env_var": "SOTA_GOLDEN_CLIP_EMPTY_NIGHT",
+      "fixture_path": "benchmarks/fixtures/clip_empty_night.mp4",
+      "scenario": "empty_night"
+    },
+    "feeder_static_noise": {
+      "role": "noise_fp",
+      "env_var": "SOTA_GOLDEN_CLIP_FEEDER_STATIC",
+      "fixture_path": "benchmarks/fixtures/clip_feeder_static_noise.mp4",
+      "scenario": "feeder_static_noise"
+    },
+    "forest_far_empty": {
+      "role": "noise_fp",
+      "env_var": "SOTA_GOLDEN_CLIP_FOREST_EMPTY",
+      "fixture_path": "benchmarks/fixtures/clip_forest_far_empty.mp4",
+      "scenario": "forest_far_empty"
+    },
+    "birdbox_close_empty": {
+      "role": "noise_fp",
+      "env_var": "SOTA_GOLDEN_CLIP_BIRDBOX_EMPTY",
+      "fixture_path": "benchmarks/fixtures/clip_birdbox_close_empty.mp4",
+      "scenario": "birdbox_close_empty"
+    },
+    "low_light_empty": {
+      "role": "noise_fp",
+      "env_var": "SOTA_GOLDEN_CLIP_LOW_LIGHT",
+      "fixture_path": "benchmarks/fixtures/clip_low_light_empty.mp4",
+      "scenario": "low_light_empty"
+    },
+    "dual_cam_empty_a": {
+      "role": "noise_fp",
+      "env_var": "SOTA_GOLDEN_CLIP_DUAL_A",
+      "fixture_path": "benchmarks/fixtures/clip_dual_cam_empty_a.mp4",
+      "scenario": "dual_cam_empty_a"
+    },
+    "dual_cam_empty_b": {
+      "role": "noise_fp",
+      "env_var": "SOTA_GOLDEN_CLIP_DUAL_B",
+      "fixture_path": "benchmarks/fixtures/clip_dual_cam_empty_b.mp4",
+      "scenario": "dual_cam_empty_b"
+    },
+    "birdbox_visit": {
+      "role": "birds_recall",
+      "env_var": "SOTA_GOLDEN_CLIP_BIRDBOX_VISIT",
+      "fixture_path": "benchmarks/fixtures/clip_birdbox_visit.mp4",
+      "scenario": "birdbox_close_visit"
+    },
+    "forest_visit": {
+      "role": "birds_recall",
+      "env_var": "SOTA_GOLDEN_CLIP_FOREST_VISIT",
+      "fixture_path": "benchmarks/fixtures/clip_forest_visit.mp4",
+      "scenario": "forest_far_visit"
     }
   }
 }
