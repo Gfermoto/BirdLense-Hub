@@ -21,9 +21,12 @@ def is_linear_pipeline(app_config: Any) -> bool:
         global _legacy_mode_warned
         if not _legacy_mode_warned:
             _log.warning(
-                "processor.pipeline_mode=legacy is unsupported (#621); use linear (migrate user_config)",
+                "processor.pipeline_mode=legacy is unsupported (#621); forcing linear",
             )
             _legacy_mode_warned = True
+        # Force linear — legacy cascade is test-only (pipeline_mode=dual).
+        return True
+    if mode == "dual":
         return False
     return mode in {"linear", "simple"}
 

@@ -166,6 +166,34 @@ class TestVisitContract(unittest.TestCase):
         }
         self.assertFalse(is_frigate_sourced_row(row))
 
+    def test_uncertain_named_not_hub_taxonomy_win_or_auto_accept(self):
+        q = compute_visit_quality(
+            persisted_rows=[
+                {
+                    "species_name": "Eurasian Jay",
+                    "decision_kind": "review_only_uncertain_species",
+                    "outcome_bucket": "review_only",
+                    "classifier_needs_review": True,
+                    "detection_provider": "yolo",
+                    "classifier_species_name": "Eurasian Jay",
+                },
+                {
+                    "species_name": "Great Tit",
+                    "decision_kind": "accepted_species",
+                    "outcome_bucket": "auto_accept",
+                    "classifier_needs_review": False,
+                    "detection_provider": "yolo",
+                    "classifier_species_name": "Great Tit",
+                },
+            ],
+        )
+        self.assertEqual(q["named_rows"], 2)
+        self.assertEqual(q["hub_named_rows"], 1)
+        self.assertEqual(q["hub_taxonomy_wins"], 1)
+        self.assertEqual(q["named_share_hub"], 0.5)
+        self.assertEqual(q["auto_accept_rows"], 1)
+        self.assertEqual(q["review_only_rows"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

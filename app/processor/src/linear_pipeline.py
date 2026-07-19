@@ -27,7 +27,9 @@ from processor_config_defaults import (
     config_float,
 )
 from app_config.visit_eligibility import GENERIC_BIRD_SPECIES, visit_eligible_for_named_species
+from camera_tuning_roles import role_preset as _role_preset
 from pipeline_mode_utils import is_linear_pipeline
+from recognition_outcome import stamp_recognition_outcome
 from runtime_contract import track_id_sort_key
 from runtime_contract import apply_runtime_contract
 
@@ -39,35 +41,6 @@ STAGE_CLASSIFY_ENRICH = "classify_enrich"
 STAGE_REID_ENRICH = "reid_enrich"
 STAGE_WELFARE_ENRICH = "welfare_enrich"
 STAGE_PERSIST = "persist"
-
-
-def _resolve_camera_tuning_role(app_config, camera_id: str | None) -> str | None:
-    cam = str(camera_id or "").strip()
-    if not cam:
-        return None
-    try:
-        from app_config.cameras import get_valid_cameras
-    except ImportError:
-        return None
-    cameras = get_valid_cameras(video_config=(app_config.get("video") or {}))
-    for row in cameras:
-        if not isinstance(row, dict):
-            continue
-        row_id = str(row.get("id") or "").strip()
-        legacy_id = str(row.get("legacy_id") or "").strip()
-        if cam not in {row_id, legacy_id}:
-            continue
-        role = str(row.get("tuning_role") or "").strip()
-        return role or None
-    return None
-
-
-def _role_preset(app_config, camera_id: str | None) -> dict[str, Any]:
-    role = _resolve_camera_tuning_role(app_config, camera_id)
-    if not role:
-        return {}
-    raw = app_config.get(f"processor.camera_tuning_by_role.{role}")
-    return dict(raw) if isinstance(raw, dict) else {}
 
 
 def frigate_salvage_opted_in(app_config, *, camera_id: str | None = None) -> bool:
@@ -333,8 +306,9 @@ def evaluate_track_linear(
         birder_unknown_label=birder_unknown,
     )
     if not named:
+        # Presence persist only — not a SpeciesVisit product win.
         decision_kind = "review_only_generic"
-        # Persist for UI/review; product SLO uses outcome_bucket=review_only.
+        visit_ok = False
         notification_eligible = False
     elif needs_review:
         decision_kind = "review_only_uncertain_species"
@@ -415,51 +389,66 @@ def build_linear_decisions(decision_maker, tracks: dict, app_config) -> list[dic
         accepted = bool(ev["accepted"])
         decision_reason = str(ev["decision_reason"])
         reject_code = ev.get("reject_reason_code")
+        decision_kind = str(ev["decision_kind"])
+        visit_eligible = bool(ev["visit_eligible"])
+        notification_eligible = bool(ev["notification_eligible"])
+        needs_review = bool(ev["classifier_needs_review"]) or bool(clf_needs)
+        birder_unknown = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird")
+        from visit_contract import is_named_product_species
 
-        decisions.append(
-            apply_runtime_contract(
-                {
-                    "track_id": track_id,
-                    "accepted": accepted,
-                    "outcome_bucket": decision_maker._outcome_bucket(
-                        accepted=accepted,
-                        visit_eligible=bool(ev["visit_eligible"]),
-                        decision_kind=str(ev["decision_kind"]),
-                    ),
-                    "visit_eligible": bool(ev["visit_eligible"]),
-                    "notification_eligible": bool(ev["notification_eligible"]),
-                    "species_name": ev["out_species"],
-                    "start_time": track["start_time"],
-                    "end_time": track["end_time"],
-                    "confidence": float(ev["out_conf"]),
-                    "best_frame": track.get("best_frame"),
-                    "best_frame_score": float(track.get("best_frame_score") or 0.0),
-                    "key_frame_count": len(track.get("key_frames") or []),
-                    "source": "video",
-                    "detection_provider": "yolo",
-                    "frames": track.get("frames", []),
-                    "decision_reason": decision_reason,
-                    "detector_label": ev["detector_label"],
-                    "detector_confidence": float(ev["detector_conf"]),
-                    "detector_event_count": int(ev["detector_event_count"]),
-                    "classifier_threshold": None,
-                    "classifier_species_name": clf.get("species_name") if isinstance(clf, dict) else None,
-                    "classifier_confidence": clf.get("combined_confidence") if isinstance(clf, dict) else None,
-                    "classifier_event_count": int(clf.get("event_count") or 0) if isinstance(clf, dict) else 0,
-                    "classifier_vote_share": float(clf.get("vote_share") or 0.0) if isinstance(clf, dict) else 0.0,
-                    "classifier_entropy": clf_entropy,
-                    "classifier_top1_top2_margin": clf_margin,
-                    "classifier_needs_review": bool(ev["classifier_needs_review"]) or clf_needs,
-                    "decision_kind": str(ev["decision_kind"]),
-                    "reject_reason_code": reject_code,
-                    "evidence_state": str(ev["evidence_state"]),
-                    "trust_band": decision_maker._trust_band_for_decision(
-                        accepted, decision_reason, float(ev["out_conf"]), reject_code
-                    ),
-                    "pipeline_stage": STAGE_DETECT_TRACK,
-                }
-            )
+        named = is_named_product_species(ev["out_species"], birder_unknown_label=birder_unknown)
+        # Entropy/margin OR-flag must downgrade silent accepted_species.
+        if accepted and needs_review and named and decision_kind == "accepted_species":
+            decision_kind = "review_only_uncertain_species"
+            visit_eligible = False
+            notification_eligible = False
+            if decision_reason == "accepted_species":
+                decision_reason = "accepted_binary_track_classifier_uncertain"
+
+        row = apply_runtime_contract(
+            {
+                "track_id": track_id,
+                "accepted": accepted,
+                "outcome_bucket": decision_maker._outcome_bucket(
+                    accepted=accepted,
+                    visit_eligible=visit_eligible,
+                    decision_kind=decision_kind,
+                ),
+                "visit_eligible": visit_eligible,
+                "notification_eligible": notification_eligible,
+                "species_name": ev["out_species"],
+                "start_time": track["start_time"],
+                "end_time": track["end_time"],
+                "confidence": float(ev["out_conf"]),
+                "best_frame": track.get("best_frame"),
+                "best_frame_score": float(track.get("best_frame_score") or 0.0),
+                "key_frame_count": len(track.get("key_frames") or []),
+                "source": "video",
+                "detection_provider": "yolo",
+                "frames": track.get("frames", []),
+                "decision_reason": decision_reason,
+                "detector_label": ev["detector_label"],
+                "detector_confidence": float(ev["detector_conf"]),
+                "detector_event_count": int(ev["detector_event_count"]),
+                "classifier_threshold": None,
+                "classifier_species_name": clf.get("species_name") if isinstance(clf, dict) else None,
+                "classifier_confidence": clf.get("combined_confidence") if isinstance(clf, dict) else None,
+                "classifier_event_count": int(clf.get("event_count") or 0) if isinstance(clf, dict) else 0,
+                "classifier_vote_share": float(clf.get("vote_share") or 0.0) if isinstance(clf, dict) else 0.0,
+                "classifier_entropy": clf_entropy,
+                "classifier_top1_top2_margin": clf_margin,
+                "classifier_needs_review": needs_review,
+                "decision_kind": decision_kind,
+                "reject_reason_code": reject_code,
+                "evidence_state": str(ev["evidence_state"]),
+                "trust_band": decision_maker._trust_band_for_decision(
+                    accepted, decision_reason, float(ev["out_conf"]), reject_code
+                ),
+                "pipeline_stage": STAGE_DETECT_TRACK,
+                "classify_skip_reason": track.get("classify_skip_reason"),
+            }
         )
+        decisions.append(stamp_recognition_outcome(row, birder_unknown_label=birder_unknown))
 
     decisions.sort(
         key=lambda item: (

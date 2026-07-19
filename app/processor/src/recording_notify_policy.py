@@ -10,6 +10,7 @@ from processor_config_defaults import MIN_CONFIDENCE_TO_PROCESS, config_float
 _INELIGIBLE_DECISION_KINDS = frozenset(
     {
         "review_only_generic",
+        "review_only_uncertain_species",
         "frigate_standalone_excluded",
     }
 )

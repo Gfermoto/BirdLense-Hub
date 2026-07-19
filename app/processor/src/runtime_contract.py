@@ -123,8 +123,17 @@ def infer_primary_signal(row: dict) -> str:
     kind = str(row.get("decision_kind") or "").strip().lower()
     reason = str(row.get("decision_reason") or "").strip().lower()
     provider = choose_primary_provider(row)
-    if kind == "accepted_species":
+    # Uncertain named / review-only classifier band — not a detector primary win.
+    if kind == "review_only_uncertain_species" or (
+        bool(row.get("classifier_needs_review"))
+        and kind in {"accepted_species", "review_only_uncertain_species"}
+        and row.get("classifier_species_name") is not None
+    ):
+        return "species_classifier_review"
+    if kind == "accepted_species" and not bool(row.get("classifier_needs_review")):
         return "species_classifier"
+    if kind == "accepted_species" and bool(row.get("classifier_needs_review")):
+        return "species_classifier_review"
     if provider == "frigate" and bool(row.get("frigate_standalone")):
         return "frigate_standalone"
     if kind == "review_only_generic":
@@ -147,6 +156,10 @@ def infer_threshold_path(row: dict) -> str:
     reason = str(row.get("decision_reason") or "").strip().lower()
     previous = str(row.get("decision_reason_before_arbitration") or "").strip().lower()
     classifier_present = row.get("classifier_species_name") is not None
+    if kind == "review_only_uncertain_species":
+        return "classifier_threshold_review"
+    if kind == "accepted_species" and bool(row.get("classifier_needs_review")):
+        return "classifier_threshold_review"
     if kind == "accepted_species":
         return "classifier_threshold"
     if reason == "rejected_classifier_fallback_disabled":

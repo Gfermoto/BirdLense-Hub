@@ -31,9 +31,21 @@ class TestDetectionQualityLinearScoring(unittest.TestCase):
         dqc = DetectionQualityConfig.from_runtime_cfg(cfg)
         self.assertFalse(dqc.scoring_engine_enabled)
 
-    def test_legacy_pipeline_not_treated_as_linear(self):
+    def test_legacy_pipeline_forced_to_linear_gates(self):
+        """legacy is forced linear (#621): motion-global veto stays off."""
         cfg = {
             "processor.pipeline_mode": "legacy",
+            "processor.scoring_engine_enabled": True,
+            "processor.linear_live_scoring_engine_enabled": True,
+            "processor.motion_global_static_reject_enabled": True,
+        }
+        dqc = DetectionQualityConfig.from_runtime_cfg(cfg)
+        self.assertTrue(dqc.scoring_engine_enabled)
+        self.assertFalse(dqc.motion_global_static_reject)
+
+    def test_dual_pipeline_keeps_legacy_quality_gates(self):
+        cfg = {
+            "processor.pipeline_mode": "dual",
             "processor.scoring_engine_enabled": True,
             "processor.motion_global_static_reject_enabled": True,
         }

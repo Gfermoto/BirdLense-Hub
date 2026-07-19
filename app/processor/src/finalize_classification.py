@@ -14,8 +14,10 @@ from processor_config_defaults import (
 
 logger = logging.getLogger(__name__)
 
-# Wall-clock cap for deferred classify at finalize (multiple hires crops + ONNX).
-DEFAULT_CLASSIFIER_FINALIZE_MAX_RUNTIME_MS = 2500.0
+# Defaults aligned with default_config.yaml (lores+hires budget on Orin).
+DEFAULT_CLASSIFIER_FINALIZE_MAX_RUNTIME_MS = 8000.0
+DEFAULT_CLASSIFIER_FINALIZE_MAX_TRACKS = 6
+DEFAULT_CLASSIFIER_FINALIZE_MAX_KEY_FRAMES = 3
 
 _UNKNOWN_SPECIES = frozenset({"", "bird", "unknown", "unknown bird"})
 
@@ -44,20 +46,20 @@ def _finalize_max_tracks(app_config) -> int:
     try:
         raw = app_config.get("processor.classifier_finalize_max_tracks")
         if raw is None:
-            return 2
+            return DEFAULT_CLASSIFIER_FINALIZE_MAX_TRACKS
         return max(0, min(32, int(raw)))
     except (TypeError, ValueError):
-        return 2
+        return DEFAULT_CLASSIFIER_FINALIZE_MAX_TRACKS
 
 
 def _finalize_max_key_frames(app_config) -> int:
     try:
         raw = app_config.get("processor.classifier_finalize_max_key_frames")
         if raw is None:
-            return 1
+            return DEFAULT_CLASSIFIER_FINALIZE_MAX_KEY_FRAMES
         return max(1, min(8, int(raw)))
     except (TypeError, ValueError):
-        return 1
+        return DEFAULT_CLASSIFIER_FINALIZE_MAX_KEY_FRAMES
 
 
 def _track_has_bird_detector(track: dict[str, Any]) -> bool:
@@ -189,6 +191,8 @@ def enrich_tracks_classifier_at_finalize(
     skipped_budget = 0
     if max_tracks > 0:
         skipped_budget = max(0, len(eligible) - max_tracks)
+        for _tid, skipped_track in eligible[max_tracks:]:
+            skipped_track["classify_skip_reason"] = "budget"
         eligible = eligible[:max_tracks]
         if skipped_budget:
             logger.info(
@@ -209,6 +213,14 @@ def enrich_tracks_classifier_at_finalize(
     for track_id, track in eligible:
         if time.perf_counter() >= deadline_mono:
             timed_out = True
+            track["classify_skip_reason"] = track.get("classify_skip_reason") or "timeout"
+            # Mark remaining not-yet-processed tracks as timeout.
+            rest = False
+            for rest_id, rest_track in eligible:
+                if rest_id == track_id:
+                    rest = True
+                if rest:
+                    rest_track["classify_skip_reason"] = rest_track.get("classify_skip_reason") or "timeout"
             break
 
         crops: list[tuple[Any, float, str]] = []
@@ -250,6 +262,7 @@ def enrich_tracks_classifier_at_finalize(
 
         if not crops:
             no_crop_tracks += 1
+            track["classify_skip_reason"] = "no_crop"
             continue
 
         # Lores first by source, then by score within each group.

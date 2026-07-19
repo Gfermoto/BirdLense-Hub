@@ -141,7 +141,9 @@ def enrichment_crop_require_best_keyframe(runtime_cfg: Mapping[str, Any] | None)
         if isinstance(raw, str):
             return raw.strip().lower() in {"1", "true", "yes", "on"}
         return bool(raw)
-    return str(runtime_cfg.get("processor.pipeline_mode") or "").strip().lower() == "linear"
+    mode = str(runtime_cfg.get("processor.pipeline_mode") or "").strip().lower()
+    # legacy is forced to linear (#621); dual remains non-linear test harness.
+    return mode in {"linear", "legacy", "simple", ""}
 
 
 def pick_bbox_and_timestamp(

@@ -220,3 +220,52 @@ def hub_taxonomy_wins(rows: list[Mapping[str, Any]] | None) -> int:
         if from_persist_row(row).hub_taxonomy_win:
             n += 1
     return n
+
+
+def stamp_recognition_outcome(
+    row: dict[str, Any],
+    *,
+    birder_unknown_label: str | None = None,
+) -> dict[str, Any]:
+    """Attach RecognitionOutcome fields onto a persist/decision row (in-place)."""
+    out = from_persist_row(row, birder_unknown_label=birder_unknown_label)
+    row["recognition_kind"] = out.kind.value
+    row["hub_taxonomy_win"] = bool(out.hub_taxonomy_win)
+    row["recognition_authority"] = out.authority
+    if out.skip_reason and not row.get("classify_skip_reason"):
+        row["classify_skip_reason"] = out.skip_reason
+    return row
+
+
+def summarize_recognition_outcomes(
+    rows: list[Mapping[str, Any]] | None,
+    *,
+    birder_unknown_label: str | None = None,
+) -> dict[str, Any]:
+    """Session-level taxonomy/presence breakdown for observability (RC9 thin)."""
+    counts = {
+        OutcomeKind.PRESENCE.value: 0,
+        OutcomeKind.REVIEW.value: 0,
+        OutcomeKind.NAMED_ACCEPT.value: 0,
+        OutcomeKind.NAMED_REJECT.value: 0,
+    }
+    wins = 0
+    for row in rows or []:
+        if not isinstance(row, Mapping):
+            continue
+        out = from_persist_row(row, birder_unknown_label=birder_unknown_label)
+        counts[out.kind.value] = counts.get(out.kind.value, 0) + 1
+        if out.hub_taxonomy_win:
+            wins += 1
+    return {
+        "by_kind": counts,
+        "hub_taxonomy_wins": wins,
+        "taxonomy": {
+            "hub_wins": wins,
+            "named_accept": counts[OutcomeKind.NAMED_ACCEPT.value],
+            "review": counts[OutcomeKind.REVIEW.value],
+        },
+        "presence": {
+            "rows": counts[OutcomeKind.PRESENCE.value],
+        },
+    }

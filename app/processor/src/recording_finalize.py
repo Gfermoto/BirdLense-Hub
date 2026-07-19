@@ -1051,17 +1051,41 @@ def finalize_motion_recording(
         )
         session_summary["latency_budget_breaches"] = latency_breaches
         try:
+            from recognition_outcome import (
+                stamp_recognition_outcome,
+                summarize_recognition_outcomes,
+            )
             from visit_contract import compute_visit_quality
 
+            birder_unknown = str(
+                app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"
+            )
+            for _row in video_detections or []:
+                if isinstance(_row, dict):
+                    stamp_recognition_outcome(_row, birder_unknown_label=birder_unknown)
             session_summary["visit_quality"] = compute_visit_quality(
                 persisted_rows=video_detections,
                 mqtt_events=mqtt_events,
-                birder_unknown_label=str(
-                    app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"
-                ),
+                birder_unknown_label=birder_unknown,
             )
+            session_summary["recognition_outcomes"] = summarize_recognition_outcomes(
+                video_detections,
+                birder_unknown_label=birder_unknown,
+            )
+            vq = session_summary.get("visit_quality") or {}
+            session_summary["taxonomy"] = {
+                "hub_wins": int(vq.get("hub_taxonomy_wins") or 0),
+                "named_share_hub": vq.get("named_share_hub"),
+                "auto_accept_rows": int(vq.get("auto_accept_rows") or 0),
+                "review_only_rows": int(vq.get("review_only_rows") or 0),
+            }
+            session_summary["presence"] = {
+                "rows": int(vq.get("presence_rows") or 0),
+                "db_persist_success": bool(video_id is not None),
+                "persisted_rows": int(vq.get("persisted_rows") or 0),
+            }
         except Exception:
-            logging.debug("visit_quality build failed", exc_info=True)
+            logging.debug("visit_quality / recognition_outcomes build failed", exc_info=True)
         try:
             from trigger_graph import build_session_trigger_graph
 

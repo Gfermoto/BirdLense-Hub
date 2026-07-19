@@ -26,10 +26,11 @@ def test_resolve_enrichment_crop_source_defaults_auto():
 
 def test_enrichment_crop_require_keyframe_default_linear():
     assert enrichment_crop_require_best_keyframe({"processor.pipeline_mode": "linear"}) is True
-    assert enrichment_crop_require_best_keyframe({"processor.pipeline_mode": "legacy"}) is False
+    assert enrichment_crop_require_best_keyframe({"processor.pipeline_mode": "legacy"}) is True
+    assert enrichment_crop_require_best_keyframe({"processor.pipeline_mode": "dual"}) is False
     assert (
         enrichment_crop_require_best_keyframe(
-            {"processor.pipeline_mode": "legacy", "processor.enrichment_crop_require_keyframe": True}
+            {"processor.pipeline_mode": "dual", "processor.enrichment_crop_require_keyframe": True}
         )
         is True
     )

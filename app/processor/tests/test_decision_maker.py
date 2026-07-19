@@ -184,8 +184,8 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['species_name'], 'Eurasian Jay')
         self.assertEqual(results[0]['decision_reason'], 'accepted_binary_track_classifier_uncertain')
-        self.assertEqual(results[0]['decision_kind'], 'accepted_species')
-        self.assertTrue(results[0].get('visit_eligible', False))
+        self.assertEqual(results[0]['decision_kind'], 'review_only_uncertain_species')
+        self.assertFalse(results[0].get('visit_eligible', True))
         self.assertTrue(results[0].get('classifier_needs_review', False))
 
     @patch("app_config.app_config.app_config")
@@ -213,7 +213,7 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['species_name'], 'Bird')
         self.assertEqual(results[0]['decision_reason'], 'accepted_binary_track_classifier_deferred')
         self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
-        self.assertTrue(results[0].get('visit_eligible', False))
+        self.assertFalse(results[0].get('visit_eligible', True))
 
     def test_weak_detector_conf_accepted_with_detect_stream_defaults(self):
         """OV detect ~7 FPS: conf ~0.11 must not require generic_bird_min_detector_conf=0.42."""
@@ -512,7 +512,7 @@ class TestDecisionMaker(unittest.TestCase):
         }
         decisions = dm.get_decisions(tracks)
         self.assertTrue(decisions[0]['accepted'])
-        self.assertTrue(decisions[0]['visit_eligible'])
+        self.assertFalse(decisions[0]['visit_eligible'])
         self.assertEqual(decisions[0]['decision_kind'], 'review_only_generic')
         self.assertEqual(decisions[0]['outcome_bucket'], 'review_only')
 
@@ -639,7 +639,8 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(d["species_name"], "Great Tit")
         self.assertEqual(d["decision_reason"], "accepted_classifier_best_guess")
         self.assertTrue(d["classifier_needs_review"])
-        self.assertTrue(d["visit_eligible"])
+        self.assertEqual(d["decision_kind"], "review_only_uncertain_species")
+        self.assertFalse(d["visit_eligible"])
         self.assertFalse(d["notification_eligible"])
 
     @patch("app_config.app_config.app_config")

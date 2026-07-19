@@ -65,7 +65,9 @@ class TestLinearPipeline(unittest.TestCase):
     def test_is_linear_default_when_unset(self):
         self.assertTrue(is_linear_pipeline(_Cfg({})))
         self.assertTrue(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "linear"})))
-        self.assertFalse(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "legacy"})))
+        # legacy is forced to linear (#621); dual remains test-only non-linear.
+        self.assertTrue(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "legacy"})))
+        self.assertFalse(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "dual"})))
 
     def test_weak_bird_with_bbox_persists(self):
         cfg = _Cfg(
@@ -88,7 +90,7 @@ class TestLinearPipeline(unittest.TestCase):
         self.assertEqual(ev["decision_kind"], "review_only_generic")
         self.assertEqual(ev["out_species"], "Bird")
         self.assertEqual(ev["evidence_state"], "detector_only")
-        self.assertTrue(ev["visit_eligible"])
+        self.assertFalse(ev["visit_eligible"])
         self.assertFalse(ev["notification_eligible"])
 
     def test_static_frozen_track_deferred_under_binary_track_first(self):
@@ -270,14 +272,16 @@ class TestLinearPipeline(unittest.TestCase):
     def test_linear_skip_legacy_fusion_safeguards_only_in_linear(self):
         linear = _Cfg({"processor.pipeline_mode": "linear"})
         legacy = _Cfg({"processor.pipeline_mode": "legacy"})
+        dual = _Cfg({"processor.pipeline_mode": "dual"})
         self.assertTrue(linear_skip_legacy_fusion_safeguards(linear))
-        self.assertFalse(linear_skip_legacy_fusion_safeguards(legacy))
+        self.assertTrue(linear_skip_legacy_fusion_safeguards(legacy))  # forced linear
+        self.assertFalse(linear_skip_legacy_fusion_safeguards(dual))
 
     def test_linear_skips_salvage_persist_bypass(self):
         linear = _Cfg({"processor.pipeline_mode": "linear"})
-        legacy = _Cfg({"processor.pipeline_mode": "legacy"})
+        dual = _Cfg({"processor.pipeline_mode": "dual"})
         self.assertTrue(linear_skip_legacy_fusion_safeguards(linear))
-        self.assertFalse(linear_skip_legacy_fusion_safeguards(legacy))
+        self.assertFalse(linear_skip_legacy_fusion_safeguards(dual))
 
     def test_linear_skips_frigate_salvage_by_default(self):
         cfg = _Cfg(

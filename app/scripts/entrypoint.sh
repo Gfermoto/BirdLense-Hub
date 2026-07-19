@@ -128,7 +128,8 @@ until curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; do
   sleep 1
 done
 if ! curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; then
-  echo "WARNING: API health check failed after 400s (continuing anyway)"
+  echo "ERROR: API health check failed after 400s — refusing to start processor"
+  exit 1
 fi
 
 # =============================================================================

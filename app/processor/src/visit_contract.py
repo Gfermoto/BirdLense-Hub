@@ -1,6 +1,7 @@
-"""Visit quality contract — named auto-accept vs review-only generic.
+"""Visit quality contract — Hub taxonomy wins vs presence/review.
 
-Product win is a named species (or Frigate-promoted name), not persist of placeholder Bird.
+SOTA go numerator is ``named_share_hub`` / ``hub_taxonomy_wins`` from
+``RecognitionOutcome.hub_taxonomy_win`` (not any named label).
 ``db_persist_success`` alone is not a quality signal.
 """
 
@@ -149,10 +150,14 @@ def compute_visit_quality(
 ) -> dict[str, Any]:
     """Session-level product SLOs.
 
-    ``named_share`` = all persisted named (incl. Frigate-assisted).
-    ``named_share_hub`` = Hub YOLO+classifier only (SOTA go metric).
+    ``named_share`` = all persisted named labels (incl. review-only / Frigate).
+    ``named_share_hub`` / ``hub_named_rows`` = Hub taxonomy wins only
+    (``RecognitionOutcome.hub_taxonomy_win`` — never review-only uncertain).
+    ``auto_accept_rows`` = ``OutcomeKind.NAMED_ACCEPT`` only.
     ``frigate_agreement`` = informative when Frigate is present; not a go gate.
     """
+    from recognition_outcome import OutcomeKind, from_persist_row
+
     rows = [r for r in (persisted_rows or []) if isinstance(r, Mapping)]
     total = len(rows)
     named = 0
@@ -161,6 +166,7 @@ def compute_visit_quality(
     auto_accept = 0
     review_only = 0
     frigate_promoted = 0
+    presence_rows = 0
     for row in rows:
         sp = _species_of(row)
         frigate_row = is_frigate_sourced_row(row)
@@ -168,14 +174,15 @@ def compute_visit_quality(
             hub_rows += 1
         if is_named_product_species(sp, birder_unknown_label=birder_unknown_label):
             named += 1
-            if not frigate_row:
-                hub_named += 1
-        kind = str(row.get("decision_kind") or "").strip().lower()
-        bucket = str(row.get("outcome_bucket") or "").strip().lower()
-        if bucket == "auto_accept" or kind == "accepted_species":
+        outcome = from_persist_row(row, birder_unknown_label=birder_unknown_label)
+        if outcome.hub_taxonomy_win:
+            hub_named += 1
+        if outcome.kind == OutcomeKind.NAMED_ACCEPT:
             auto_accept += 1
-        if bucket == "review_only" or kind.startswith("review_only"):
+        if outcome.kind == OutcomeKind.REVIEW:
             review_only += 1
+        if outcome.kind == OutcomeKind.PRESENCE:
+            presence_rows += 1
         if frigate_row:
             frigate_promoted += 1
 
@@ -196,9 +203,11 @@ def compute_visit_quality(
         "named_share": (round(named / total, 4) if total else None),
         "hub_persisted_rows": hub_rows,
         "hub_named_rows": hub_named,
+        "hub_taxonomy_wins": hub_named,
         "named_share_hub": (round(hub_named / hub_rows, 4) if hub_rows else None),
         "auto_accept_rows": auto_accept,
         "review_only_rows": review_only,
+        "presence_rows": presence_rows,
         "frigate_promoted_rows": frigate_promoted,
         "frigate_named_in_window": len(frigate_named),
         "frigate_agreement": agreement,
@@ -224,9 +233,9 @@ def role_detection_flag(
     short = global_key.split(".", 1)[-1]
     preset: dict[str, Any] = {}
     try:
-        from linear_pipeline import _role_preset
+        from camera_tuning_roles import role_preset
 
-        preset = _role_preset(app_config, camera_id)
+        preset = role_preset(app_config, camera_id)
     except ImportError:
         preset = {}
     if not opt_in:

@@ -1053,13 +1053,13 @@ else
       --out-md "docs/reports/deploy_contract/deploy_contract_latest.md") || \
     echo "  WARN: deploy contract refresh failed (non-fatal on orin)"
 fi
-# 3.1 Post-deploy detector config smoke (warn-only; see docs/contributor/hub-detector-runbook.md).
+# 3.1 Post-deploy detector config smoke (warn-only; see docs/user/runbooks.md).
 if [[ -f "${REPO_ROOT}/scripts/verify-prod-detector-smoke.sh" ]]; then
   echo "  - Detector config smoke (warn-only):"
   if ! (cd "${REPO_ROOT}" && chmod +x ./scripts/verify-prod-detector-smoke.sh && \
         ./scripts/verify-prod-detector-smoke.sh --no-yolo-smoke); then
     echo "  WARN: verify-prod-detector-smoke failed — check merged config (native_lores, Bird override, subtype=0)."
-    echo "  Подсказка: make verify-prod-detector-smoke; docs/contributor/hub-detector-runbook.md"
+    echo "  Подсказка: make verify-prod-detector-smoke; docs/user/runbooks.md"
   fi
 fi
 echo ""

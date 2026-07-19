@@ -593,19 +593,19 @@ class DecisionMaker:
         named = is_named_product_species(species, birder_unknown_label=birder_unknown)
         if not named and decision_reason != "accepted_classifier_best_guess":
             decision_reason = "accepted_binary_track_classifier_deferred"
+        # Uncertain named is review-only — never silent accepted_species / visit win.
+        if named:
+            decision_kind = "review_only_uncertain_species"
+        else:
+            decision_kind = "review_only_generic"
         return {
             "accepted": True,
-            "visit_eligible": visit_eligible_for_named_species(
-                species_name=species,
-                visit_eligible=True,
-                birder_unknown_label=birder_unknown,
-            ),
+            "visit_eligible": False,
             "notification_eligible": False,
             "out_species": species,
             "out_conf": max(combined, float(detector_conf)),
             "decision_reason": decision_reason,
-            # Visit contract: generic Bird track is review_only, not accepted_species.
-            "decision_kind": "accepted_species" if named else "review_only_generic",
+            "decision_kind": decision_kind,
             "evidence_state": "weak_classifier" if named else "detector_only",
             "classifier_needs_review": True,
         }
@@ -661,16 +661,13 @@ class DecisionMaker:
             combined = float(classifier_candidate.get("combined_confidence") or 0.0)
         return {
             "accepted": True,
-            "visit_eligible": visit_eligible_for_named_species(
-                species_name=species,
-                visit_eligible=True,
-                birder_unknown_label=str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"),
-            ),
+            # Best-guess is weak classifier evidence — review queue, not SpeciesVisit win.
+            "visit_eligible": False,
             "notification_eligible": False,
             "out_species": species,
             "out_conf": max(combined, avg_conf, float(detector_conf)),
             "decision_reason": "accepted_classifier_best_guess",
-            "decision_kind": "accepted_species",
+            "decision_kind": "review_only_uncertain_species",
             "evidence_state": "weak_classifier",
             "classifier_needs_review": True,
         }
@@ -693,9 +690,18 @@ class DecisionMaker:
     def get_decisions(self, tracks):
         from app_config.app_config import app_config
         from linear_pipeline import build_linear_decisions, is_linear_pipeline
+        from pipeline_mode_utils import pipeline_mode
 
-        if is_linear_pipeline(app_config):
+        # Production SoT is linear. ``legacy`` is forced to linear (#621).
+        # ``dual`` remains a test harness for the legacy cascade body below.
+        if is_linear_pipeline(app_config) or pipeline_mode(app_config) != "dual":
             return build_linear_decisions(self, tracks, app_config)
+
+        return self._get_decisions_legacy(tracks)
+
+    def _get_decisions_legacy(self, tracks):
+        """Legacy cascade — test-only via pipeline_mode=dual. Do not use in prod."""
+        from app_config.app_config import app_config
 
         decisions = []
         store_floor = float(self.min_confidence_to_store)

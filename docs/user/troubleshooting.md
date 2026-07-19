@@ -32,7 +32,7 @@ Notification tuning: [CONFIGURATION](./configuration.md) → Notifications.
 
 ## Single-container startup (entrypoint): if stuck {#single-container-startup-stuck}
 
-The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s) → optional MCP → **processor** loop (`processor/src/main.py`). See [ARCHITECTURE](../contributor/architecture.md#runtime-processes-ports-and-health-signals) and [RUNTIME_COUPLING](../archive/internal/docs-legacy/RUNTIME_COUPLING.md).
+The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s; fail-closed) → optional MCP → **processor** loop (`processor/src/main.py`). See [runbooks.md](./runbooks.md) and [AGENTS.md](../../AGENTS.md).
 
 | Symptom | Where to look |
 | -------- | ---------------- |

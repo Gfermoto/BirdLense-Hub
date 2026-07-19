@@ -382,6 +382,16 @@ class VisitProcessor:
         for det in deduped_detections:
             visit_eligible = bool(det.get("visit_eligible", True))
             species_label = str(det.get("species_name") or det.get("species") or "").strip()
+            decision_kind = str(det.get("decision_kind") or "").strip().lower()
+            recognition_kind = str(det.get("recognition_kind") or "").strip().lower()
+            outcome_bucket = str(det.get("outcome_bucket") or "").strip().lower()
+            # Presence / review contracts never create SpeciesVisit product rows.
+            if (
+                decision_kind.startswith("review_only")
+                or recognition_kind in {"review", "presence"}
+                or outcome_bucket == "review_only"
+            ):
+                visit_eligible = False
             if visit_eligible and species_label.strip().lower() in {"unknown"}:
                 visit_eligible = False
                 if not det.get("review_reason"):

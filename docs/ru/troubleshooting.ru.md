@@ -30,7 +30,7 @@ docker exec birdlense nvidia-smi
 
 ## Старт одного контейнера (entrypoint): куда смотреть, если «зависло» {#single-container-startup-stuck}
 
-Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [ARCHITECTURE.ru.md](./architecture.ru.md#runtime-processes-ports-and-health-signals) и [RUNTIME_COUPLING.ru.md](../archive/internal/docs-legacy/RUNTIME_COUPLING.ru.md).
+Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с; fail-closed) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [runbooks.ru.md](./runbooks.ru.md) и [AGENTS.md](../../AGENTS.md).
 
 | Симптом | Куда смотреть |
 | --------- | ---------------- |
