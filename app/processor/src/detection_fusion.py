@@ -766,13 +766,9 @@ def build_fused_video_detections(
             extra = prepare_track_results_for_fusion(synthetic, app_config)
             if not prepared:
                 prepared = extra
-            elif standalone_no_species and not has_accepted_species:
-                # Rescue mode: YOLO produced only weak/review rows, keep Frigate standalone
-                # as primary clip-level evidence so fallback cannot be silently suppressed.
-                prepared = extra
             else:
-                # Keep YOLO evidence and add Frigate synthetic candidates; downstream
-                # arbitration/conflict rules decide final winner.
+                # Never wipe YOLO prepared rows — append Frigate synthetic and let
+                # merge/arbitration decide. (Previously standalone_no_species replaced YOLO.)
                 prepared.extend(extra)
             logger.info(
                 "Fusion: Frigate standalone — %s synthetic row(s); "

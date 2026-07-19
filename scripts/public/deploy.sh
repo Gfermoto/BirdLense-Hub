@@ -678,22 +678,9 @@ if [[ ! "${BIRDLENSE_SKIP_DOMAIN_CLOSURE_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
-# 0. Остановка контейнера birdlense + удаление старого образа (Redis birdlense-redis не трогаем)
-echo "0. Остановка birdlense и удаление старых образов app-birdlense..."
-ssh ${SSH_OPTS} "${HOST}" "set -e; \
-  cd '${REMOTE_DIR}/app' 2>/dev/null || cd '${REMOTE_DIR}'; \
-  if [ -f docker-compose.yml ]; then \
-    docker compose stop birdlense 2>/dev/null || true; \
-    docker compose rm -f birdlense 2>/dev/null || true; \
-  fi; \
-  docker stop birdlense 2>/dev/null || true; \
-  docker rm birdlense 2>/dev/null || true; \
-  old_images=\$(docker images -q 'app-birdlense' 2>/dev/null || true); \
-  if [ -n \"\${old_images}\" ]; then \
-    echo \"  docker rmi app-birdlense: \${old_images}\"; \
-    docker rmi -f \${old_images} || true; \
-  fi; \
-  docker image prune -f --filter 'dangling=true' 2>/dev/null || true"
+# 0. Keep running birdlense until step 2 (build/start). Early stop left the stack
+# down when UI/rsync/ONNX failed mid-deploy.
+echo "0. Pre-deploy: leave birdlense running until build/start (step 2)..."
 
 # 0.5. Убедиться, что rsync есть на сервере (для надёжной синхронизации)
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
@@ -819,11 +806,24 @@ if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
 fi
 
 # 1.5 Секреты в app/.env
-# PROCESSOR_SECRET — всегда задаём (генерируем при отсутствии)
+# Never invent PROCESSOR_SECRET that overwrites a live server secret (403 processor).
 if [ -z "${PROCESSOR_SECRET:-}" ]; then
-  PROCESSOR_SECRET=$(openssl rand -hex 16)
-  echo "1.5 PROCESSOR_SECRET сгенерирован. Добавьте в deploy.local.sh: export PROCESSOR_SECRET='${PROCESSOR_SECRET}'"
+  if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+    remote_has=$(ssh ${SSH_OPTS} "${HOST}" "grep -qE '^PROCESSOR_SECRET=.+' '${REMOTE_DIR}/app/.env' 2>/dev/null && echo yes || echo no" || echo no)
+    if [[ "${remote_has}" == "yes" ]]; then
+      echo "1.5 PROCESSOR_SECRET unset locally — keeping existing server value (no overwrite)"
+      SKIP_PROCESSOR_SECRET_MERGE=1
+    else
+      echo "Ошибка: PROCESSOR_SECRET не задан локально и отсутствует на сервере." >&2
+      echo "  Добавьте в deploy.local.sh: export PROCESSOR_SECRET='...'" >&2
+      exit 1
+    fi
+  else
+    PROCESSOR_SECRET=$(openssl rand -hex 16)
+    echo "1.5 PROCESSOR_SECRET сгенерирован (localhost). Добавьте в deploy.local.sh."
+  fi
 fi
+SKIP_PROCESSOR_SECRET_MERGE="${SKIP_PROCESSOR_SECRET_MERGE:-0}"
 if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ] || [ -n "${BIRDLENSE_STRICT_API_AUTH:-}" ] || [ -n "${BIRDLENSE_UI_API_KEY:-}" ] || [ -n "${BIRDLENSE_PLATFORM:-}" ]; then
   echo "1.5 Запись секретов в app/.env на сервере (точечная подмена ключей; остальные строки .env сохраняются)..."
   # shellcheck disable=SC2090
@@ -831,7 +831,8 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SE
     env \
     "REMOTE_DIR=${REMOTE_DIR}" \
     "MCP_TOKEN=${MCP_TOKEN:-}" \
-    "PROCESSOR_SECRET=${PROCESSOR_SECRET}" \
+    "PROCESSOR_SECRET=${PROCESSOR_SECRET:-}" \
+    "SKIP_PROCESSOR_SECRET_MERGE=${SKIP_PROCESSOR_SECRET_MERGE:-0}" \
     "FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}" \
     "BIRDLENSE_ENV=${BIRDLENSE_ENV:-}" \
     "BIRDLENSE_STRICT_API_AUTH=${BIRDLENSE_STRICT_API_AUTH:-}" \
@@ -861,11 +862,13 @@ _merge_env_kv BIRDLENSE_ENV "${BIRDLENSE_ENV:-}"
 _merge_env_kv BIRDLENSE_STRICT_API_AUTH "${BIRDLENSE_STRICT_API_AUTH:-}"
 _merge_env_kv BIRDLENSE_UI_API_KEY "${BIRDLENSE_UI_API_KEY:-}"
 _merge_env_kv BIRDLENSE_PLATFORM "${BIRDLENSE_PLATFORM:-}"
-if [ -f "$F" ]; then
-  grep -v -E '^PROCESSOR_SECRET=' "$F" >"${F}.new" || true
-  mv "${F}.new" "$F"
+if [ "${SKIP_PROCESSOR_SECRET_MERGE:-0}" != "1" ] && [ -n "${PROCESSOR_SECRET:-}" ]; then
+  if [ -f "$F" ]; then
+    grep -v -E '^PROCESSOR_SECRET=' "$F" >"${F}.new" || true
+    mv "${F}.new" "$F"
+  fi
+  printf 'PROCESSOR_SECRET=%s\n' "${PROCESSOR_SECRET}" >>"$F"
 fi
-printf 'PROCESSOR_SECRET=%s\n' "${PROCESSOR_SECRET}" >>"$F"
 ENDSSH_MERGE_ENV
 fi
 

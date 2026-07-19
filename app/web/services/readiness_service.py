@@ -50,6 +50,13 @@ def _strict_auth_gate_status(prod: bool) -> str:
     return "error" if prod else "warn"
 
 
+def _monitor_only_gate_status(prod: bool) -> str:
+    """BIRDLENSE_SECURITY_MONITOR_ONLY must not be left on in production."""
+    if not _env_flag_enabled(os.environ.get("BIRDLENSE_SECURITY_MONITOR_ONLY")):
+        return "ok"
+    return "error" if prod else "warn"
+
+
 def build_security_gates_payload() -> dict[str, object]:
     """Aligns with scripts/verify-prod-env.sh (strict auth + secrets); UI checklist."""
     prod = _is_production_env()
@@ -63,6 +70,10 @@ def build_security_gates_payload() -> dict[str, object]:
         {
             "id": "processor_secret",
             "status": _secret_gate_status(os.environ.get("PROCESSOR_SECRET"), min_len=32, prod=prod),
+        },
+        {
+            "id": "security_monitor_only",
+            "status": _monitor_only_gate_status(prod),
         },
     ]
     return {"runtime": runtime, "items": items}
@@ -337,6 +348,18 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
     if str(checks["yolo_detector"].get("status") or "") in ("error", "degraded"):
         ready = False
 
+    security_gates = build_security_gates_payload()
+    # Production must not run with monitor-only CSRF/strict auth (silent allow).
+    if _is_production_env():
+        for item in security_gates.get("items") or []:
+            if (
+                isinstance(item, dict)
+                and item.get("id") == "security_monitor_only"
+                and item.get("status") == "error"
+            ):
+                ready = False
+                break
+
     payload = {
         "status": "ok" if ready else "degraded",
         "ready": ready,
@@ -347,6 +370,6 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         "checks": checks,
         "components": components_payload,
         "pipeline_funnel": funnel,
-        "security_gates": build_security_gates_payload(),
+        "security_gates": security_gates,
     }
     return payload, (200 if ready else 503)

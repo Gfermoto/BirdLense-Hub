@@ -20,6 +20,14 @@ GATE_PATTERNS = (
     "app/processor/src/decision_maker.py",
     "app/processor/src/detection_quality.py",
     "app/processor/src/detection_fusion.py",
+    "app/processor/src/linear_pipeline.py",
+    "app/processor/src/species_normalizer.py",
+    "app/processor/src/visit_contract.py",
+    "app/processor/src/recognition_outcome.py",
+    "app/processor/src/scoring_engine.py",
+    "app/processor/src/recording_finalize.py",
+    "app/processor/src/recording_finalize_parts/**",
+    "app/processor/src/classifier_hints/**",
     "app/app_config/default_config.yaml",
     "app/app_config/user_config*.yaml",
 )
@@ -94,7 +102,11 @@ def build_report(
         "gate_required": bool(not skipped),
         "gate_trigger_files": sorted(trigger_files),
         "runs": runs,
-        "ok": bool(skipped or all(bool(item.get("ok")) for item in runs)),
+        # required && empty runs (forgot --enforce) must not report ok
+        "ok": bool(
+            skipped
+            or (bool(runs) and all(bool(item.get("ok")) for item in runs))
+        ),
     }
 
 

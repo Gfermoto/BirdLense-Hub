@@ -116,9 +116,15 @@ def from_persist_row(
             hub_taxonomy_win=False,
         )
 
-    if kind_raw in {"accepted_generic", "accepted_binary"} or (
-        "fallback" in reason and kind_raw != "accepted_species"
-    ):
+    _FALLBACK_PRESENCE_REASONS = frozenset(
+        {
+            "fallback_bird",
+            "fallback_rodent",
+            "fallback_squirrel",
+            "fallback_detector_generic",
+        }
+    )
+    if kind_raw in {"accepted_generic", "accepted_binary"} or reason in _FALLBACK_PRESENCE_REASONS:
         return RecognitionOutcome(
             kind=OutcomeKind.PRESENCE,
             species_name=None,
@@ -130,8 +136,24 @@ def from_persist_row(
             hub_taxonomy_win=False,
         )
 
+    # Uncertain / needs_review named must never be a hub taxonomy win.
+    needs_review = bool(row.get("classifier_needs_review"))
+    if needs_review and named and kind_raw in {"accepted_species", ""} and not (
+        kind_raw.startswith("review_only") or bucket == "review_only"
+    ):
+        return RecognitionOutcome(
+            kind=OutcomeKind.REVIEW,
+            species_name=species,
+            presence_label=None,
+            authority=authority,
+            skip_reason=skip_reason or "classifier_needs_review",
+            decision_kind=kind_raw or None,
+            decision_reason=reason or None,
+            hub_taxonomy_win=False,
+        )
+
     if kind_raw == "accepted_species" or bucket == "auto_accept":
-        if named and not frigate:
+        if named and not frigate and not needs_review:
             return RecognitionOutcome(
                 kind=OutcomeKind.NAMED_ACCEPT,
                 species_name=species,
@@ -141,6 +163,17 @@ def from_persist_row(
                 decision_kind=kind_raw or None,
                 decision_reason=reason or None,
                 hub_taxonomy_win=True,
+            )
+        if named and not frigate and needs_review:
+            return RecognitionOutcome(
+                kind=OutcomeKind.REVIEW,
+                species_name=species,
+                presence_label=None,
+                authority=authority,
+                skip_reason=skip_reason or "classifier_needs_review",
+                decision_kind=kind_raw or None,
+                decision_reason=reason or None,
+                hub_taxonomy_win=False,
             )
         if named and frigate:
             # Frigate may be a named label, but never a Hub taxonomy go-metric win.

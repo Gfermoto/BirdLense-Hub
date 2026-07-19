@@ -122,7 +122,7 @@ def _build_frigate_trigger_review_salvage_row(
 ) -> dict[str, Any]:
     from detection_fusion import _species_mapping
     from species_normalizer import normalize
-    from visit_contract import apply_frigate_named_accept, frigate_species_authority, is_named_product_species
+    from visit_contract import frigate_species_authority, is_named_product_species
 
     species_mapping = _species_mapping(app_config)
     raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
@@ -135,9 +135,9 @@ def _build_frigate_trigger_review_salvage_row(
         conf = 0.0
     if conf <= 0.0:
         try:
-            conf = float(app_config.get("detection.frigate_standalone_missing_score_fallback") or 0.68)
+            conf = float(app_config.get("detection.frigate_standalone_missing_score_fallback") or 0.72)
         except (TypeError, ValueError):
-            conf = 0.68
+            conf = 0.72
     birder_unknown = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird")
     named = is_named_product_species(species, birder_unknown_label=birder_unknown)
     row = {
@@ -159,11 +159,17 @@ def _build_frigate_trigger_review_salvage_row(
         "source": "video",
         "frigate_trigger_salvage": True,
     }
-    # Named Frigate sub_label under species authority → product accept, not review_only.
+    # Salvage is evidence/review only. Never promote to named_accept here — even when
+    # frigate_species_authority is on (authority applies via fusion/hints with Hub track).
     if named and frigate_species_authority(app_config, camera_id=camera_id):
-        apply_frigate_named_accept(row, species=species, confidence=conf)
-        row["frigate_trigger_salvage"] = True
-        row["decision_reason"] = "frigate_trigger_named_accept"
+        row["frigate_prior_label"] = species
+        row["frigate_species_authority_eligible"] = True
+        # Keep invent-conf out of notify: salvage stays review_only.
+        row["decision_reason"] = "review_only_frigate_trigger_salvage"
+        row["decision_kind"] = "review_only_generic"
+        row["outcome_bucket"] = "review_only"
+        row["visit_eligible"] = False
+        row["notification_eligible"] = False
     bbox = ev.get("frigate_bbox_norm")
     if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
         try:

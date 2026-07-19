@@ -116,6 +116,21 @@
       }
     },
     {
+      "id": "uncertain_named_not_hub_win",
+      "row": {
+        "species_name": "Eurasian Jay",
+        "decision_kind": "review_only_uncertain_species",
+        "decision_reason": "accepted_binary_track_classifier_uncertain",
+        "classifier_needs_review": true,
+        "detection_provider": "yolo",
+        "outcome_bucket": "review_only"
+      },
+      "expect": {
+        "kind": "review",
+        "hub_taxonomy_win": false
+      }
+    },
+    {
       "id": "salvage_flag_does_not_kill_hub_win",
       "row": {
         "species_name": "Parus major",

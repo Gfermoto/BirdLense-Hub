@@ -86,6 +86,8 @@ done
 if [[ "${REQUIRE_NO_SKIPPED_CRITICAL_ML_CHECKS}" == "1" ]]; then
   skipped_checks=()
   [[ "${SKIP_YOLO_GOLDEN}" == "1" ]] && skipped_checks+=("SKIP_YOLO_GOLDEN")
+  [[ "${SKIP_SPECIES_GOLDEN:-0}" == "1" ]] && skipped_checks+=("SKIP_SPECIES_GOLDEN")
+  [[ "${SKIP_DETECTOR_GOLDEN:-0}" == "1" ]] && skipped_checks+=("SKIP_DETECTOR_GOLDEN")
   [[ "${SKIP_BBOX_PARITY}" == "1" ]] && skipped_checks+=("SKIP_BBOX_PARITY")
   [[ "${SKIP_SOTA_BENCHMARK}" == "1" ]] && skipped_checks+=("SKIP_SOTA_BENCHMARK")
   [[ "${SOTA_BENCHMARK_SKIP_IF_MISSING}" == "1" ]] && skipped_checks+=("SOTA_BENCHMARK_SKIP_IF_MISSING")

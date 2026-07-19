@@ -84,6 +84,20 @@ class TestRecognitionOutcome(unittest.TestCase):
         self.assertFalse(out.hub_taxonomy_win)
         self.assertEqual(out.skip_reason, "named_without_accept_contract")
 
+    def test_uncertain_accepted_species_legacy_row_not_hub_win(self):
+        out = from_persist_row(
+            {
+                "species_name": "Eurasian Jay",
+                "decision_kind": "accepted_species",
+                "decision_reason": "accepted_binary_track_classifier_uncertain",
+                "classifier_needs_review": True,
+                "detection_provider": "yolo",
+                "outcome_bucket": "auto_accept",
+            }
+        )
+        self.assertEqual(out.kind, OutcomeKind.REVIEW)
+        self.assertFalse(out.hub_taxonomy_win)
+
     def test_salvage_flag_keeps_hub_classifier_win(self):
         out = from_persist_row(
             {

@@ -30,14 +30,14 @@ def _bbox_frames(n=3):
     ]
 
 
-def _track(*, conf=0.25, species=None, frames=None):
+def _track(*, conf=0.25, species=None, frames=None, species_conf=0.55):
     clf = []
     if species:
         clf = [
             {
                 "species_name": species,
-                "confidence": 0.55,
-                "combined_confidence": 0.55,
+                "confidence": species_conf,
+                "combined_confidence": species_conf,
                 "detector_confidence": conf,
             }
         ]
@@ -174,6 +174,49 @@ class TestLinearPipeline(unittest.TestCase):
         self.assertEqual(ev["out_species"], "Eurasian Jay")
         self.assertEqual(ev["decision_reason"], "accepted_species")
         self.assertEqual(ev["decision_kind"], "accepted_species")
+
+    def test_uncertain_named_is_review_only_not_hub_accept(self):
+        """best-guess band: named label must not be auto_accept / taxonomy win."""
+        cfg = _Cfg(
+            {
+                "processor.classifier_best_guess_min_confidence": 0.10,
+                "processor.birder_eu_min_confidence": 0.15,
+                "processor.linear_static_pinned_reject_enabled": False,
+            }
+        )
+        ev = evaluate_track_linear(
+            app_config=cfg,
+            track=_track(conf=0.4, species="Eurasian Jay", species_conf=0.12),
+            min_track_duration=0.0,
+            min_confidence_to_process=0.12,
+        )
+        self.assertTrue(ev["accepted"])
+        self.assertEqual(ev["out_species"], "Eurasian Jay")
+        self.assertEqual(ev["decision_reason"], "accepted_binary_track_classifier_uncertain")
+        self.assertEqual(ev["decision_kind"], "review_only_uncertain_species")
+        self.assertFalse(ev["visit_eligible"])
+        self.assertFalse(ev["notification_eligible"])
+        self.assertTrue(ev["classifier_needs_review"])
+        from decision_outcome import compute_outcome_bucket
+        from recognition_outcome import from_persist_row
+
+        bucket = compute_outcome_bucket(
+            accepted=True,
+            visit_eligible=ev["visit_eligible"],
+            decision_kind=ev["decision_kind"],
+        )
+        self.assertEqual(bucket, "review_only")
+        outcome = from_persist_row(
+            {
+                "species_name": ev["out_species"],
+                "decision_kind": ev["decision_kind"],
+                "decision_reason": ev["decision_reason"],
+                "classifier_needs_review": True,
+                "outcome_bucket": bucket,
+                "detection_provider": "yolo",
+            }
+        )
+        self.assertFalse(outcome.hub_taxonomy_win)
 
     def test_build_linear_decisions_via_decision_maker(self):
         dm = DecisionMaker(min_track_duration=0.5, min_confidence_to_process=0.12)

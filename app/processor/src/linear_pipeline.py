@@ -325,6 +325,7 @@ def evaluate_track_linear(
         decision_reason = "accepted_species"
 
     # Visit contract: placeholder Bird/Unknown is review_only, not accepted_species win.
+    # Uncertain named (best-guess band) is also review_only — never hub taxonomy win.
     named = is_named_product_species(species, birder_unknown_label=birder_unknown)
     visit_ok = visit_eligible_for_named_species(
         species_name=species,
@@ -335,9 +336,13 @@ def evaluate_track_linear(
         decision_kind = "review_only_generic"
         # Persist for UI/review; product SLO uses outcome_bucket=review_only.
         notification_eligible = False
+    elif needs_review:
+        decision_kind = "review_only_uncertain_species"
+        visit_ok = False
+        notification_eligible = False
     else:
         decision_kind = "accepted_species"
-        notification_eligible = (not needs_review) and visit_ok
+        notification_eligible = bool(visit_ok)
 
     out_conf = max(float(detector_conf), float(sp_conf))
     return {
