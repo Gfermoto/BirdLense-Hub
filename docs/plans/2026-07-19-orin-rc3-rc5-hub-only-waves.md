@@ -56,8 +56,9 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
     `resolve_trigger_from_motion`
 21. **Async canary plan** — `docs/plans/2026-07-19-async-classify-canary.md`
     (flag stays off until operator enables)
+22. **recording_context.trigger_poll** — session stores TriggerSource poll event
 
 ## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
 - Operator canary enable async patch on Orin (see canary plan; not auto)
-- Optional: attach TriggerSource to session for diagnostics UI
+- Diagnostics UI for recognition_stack / trigger_poll (optional)
