@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs verify docs ci-local preflight-deploy validate-pipeline-golden validate-detector-golden validate-species-golden validate-species-live-hub-only hub-only-baseline
+.PHONY: deploy build start stop logs verify docs ci-local preflight-deploy validate-pipeline-golden validate-detector-golden validate-species-golden validate-species-live-hub-only hub-only-baseline seed-site-adapter-priors-dry
 
 deploy:
 	@./scripts/deploy.sh
@@ -52,6 +52,15 @@ validate-species-live-hub-only:
 # Hub-only named_share from Orin session summaries / DB (Frigate rows excluded).
 hub-only-baseline:
 	@python3 scripts/hub_only_baseline.py
+
+# RC5 dry-run: print site_adapter priors (never writes unless you add --apply manually).
+# Override DB/DATA: make seed-site-adapter-priors-dry SEED_DB=... SEED_DATA=...
+seed-site-adapter-priors-dry:
+	@python3 scripts/seed_site_adapter_priors.py \
+		--db "$${SEED_DB:-app/data/db/birdlense.db}" \
+		--data-dir "$${SEED_DATA:-app/data}" \
+		--from-video-species \
+		--include-species 'Fieldfare,Eurasian Collared-Dove,House Sparrow'
 
 docs:
 	@mkdocs build

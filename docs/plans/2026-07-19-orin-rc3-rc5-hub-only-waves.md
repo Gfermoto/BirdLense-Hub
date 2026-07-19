@@ -67,6 +67,7 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
 25. **feedback-loop recognition_runtime** — last session recognition_stack/taxonomy
 26. **seed_site_adapter_priors.py** — relabel + optional video_species priors
 27. **ml-runtime status** — async_classify flags + site_adapter prior count
+28. **Site-adapter canary plan** — `docs/plans/2026-07-19-site-adapter-canary.md` + `make seed-site-adapter-priors-dry`
 
 ## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
