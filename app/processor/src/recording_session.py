@@ -492,10 +492,19 @@ class MotionRecordingSession:
             )
         )
         frigate_trigger_event = None
-        trigger_by = (
-            str(forced_trigger_source or "").strip().lower()
-            or str(getattr(self.motion_detector, "get_triggered_by", lambda: None)() or "").strip().lower()
-        )
+        trigger_poll_ev = None
+        if forced_trigger_source:
+            trigger_by = str(forced_trigger_source or "").strip().lower()
+        else:
+            try:
+                from recognition_adapters import resolve_trigger_from_motion
+
+                trigger_by, trigger_poll_ev = resolve_trigger_from_motion(self.motion_detector)
+            except Exception:
+                trigger_by = str(
+                    getattr(self.motion_detector, "get_triggered_by", lambda: None)() or ""
+                ).strip().lower()
+                trigger_poll_ev = None
         if trigger_by == "frigate":
             _last_frigate = getattr(self.motion_detector, "get_last_frigate_event", None)
             if callable(_last_frigate):
@@ -988,7 +997,11 @@ class MotionRecordingSession:
                     "camera_slot": _camera_slot_for_id(camera_id),
                     "frigate_trigger_event": frigate_trigger_event,
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
-                    "triggered_by": getattr(self.motion_detector, "get_triggered_by", lambda: None)(),
+                    "triggered_by": (
+                        str(forced_trigger_source or trigger_by or "").strip().lower()
+                        or getattr(self.motion_detector, "get_triggered_by", lambda: None)()
+                    ),
+                    "trigger_poll": dict(trigger_poll_ev) if isinstance(trigger_poll_ev, dict) else None,
                     "trigger_display": format_trigger_display_line(_active_names),
                     "pipeline_policy": dict(getattr(self.frame_processor, "pipeline_policy", {}) or {}),
                     "runtime_signals": {
