@@ -116,7 +116,7 @@ def main() -> int:
     ap.add_argument("--delta", type=float, default=0.04)
     ap.add_argument("--max-species", type=int, default=12)
     ap.add_argument("--from-video-species", action="store_true")
-    ap.add_argument("--video-conf-min", type=float, default=0.55)
+    ap.add_argument("--video-conf-min", type=float, default=0.50)
     ap.add_argument("--status", default="canary", choices=("inactive", "canary", "active"))
     ap.add_argument("--canary-share", type=float, default=0.25)
     ap.add_argument("--apply", action="store_true")
