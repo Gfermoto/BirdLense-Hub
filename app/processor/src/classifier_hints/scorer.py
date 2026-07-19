@@ -155,14 +155,19 @@ def apply_hints_to_rows(
             and species in _GENERIC_SPECIES
             and float(best_frigate.score) >= promote_min
         ):
+            from visit_contract import apply_frigate_named_accept
+
             promoted = str(best_frigate.species).strip()
-            new_row["species_name"] = promoted
-            new_row["species"] = promoted
-            new_row["frigate_species_promoted"] = True
-            new_row["classifier_confidence"] = max(classifier_conf, float(best_frigate.score))
+            apply_frigate_named_accept(
+                new_row,
+                species=promoted,
+                confidence=float(best_frigate.score),
+            )
+            # Preserve weighted blend floor when hints already raised confidence.
             new_row["confidence"] = max(
-                float(new_row["confidence"]),
+                float(new_row.get("confidence") or 0.0),
                 float(best_frigate.score),
+                round((0.7 * base_conf) + (0.3 * weighted), 6),
             )
             trace.append(
                 HintTraceEntry(

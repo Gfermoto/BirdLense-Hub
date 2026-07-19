@@ -515,11 +515,15 @@ processor:
       scoring_static_phantom_reject_enabled: false
       scoring_moving_roi_min_motion_score: 0.22
       scene_adaptive_conf_enabled: false
-    # Frigate-heavy sites: opt-in salvage/standalone helpers (linear exception).
-    # Global detection.frigate_standalone_* still required for fusion standalone.
+    # Frigate-heavy sites: species authority + salvage/standalone (linear exception).
+    # Role flags merge into fusion via visit_contract.role_detection_flag.
     frigate_site:
       frigate_trigger_review_salvage_enabled: true
       frigate_trigger_review_salvage_allow_without_yolo_tracks: true
+      frigate_species_authority: true
+      frigate_standalone_when_no_yolo: true
+      frigate_standalone_when_no_accepted_species: true
+      frigate_standalone_require_blind_yolo: false
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на detect substream слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.03
@@ -905,7 +909,10 @@ detection:
   hypothesis_arbitration_enabled: false
   # deprecated: Frigate as persist source — hints/prior only (standalone-first); keep false
   # Explicit true in user_config is honored even in linear pipeline (YOLO-blind sites).
+  # Global default off; frigate_site role opts in via camera_tuning_by_role.
   frigate_standalone_when_no_yolo: false
+  # When true (or frigate_site role), named Frigate sub_label is accept authority.
+  frigate_species_authority: false
   # When YOLO/Birder leave generic Bird/Unknown, rename row from Frigate sub_label (hints path).
   frigate_promote_generic_enabled: true
   frigate_promote_generic_min_score: 0.55

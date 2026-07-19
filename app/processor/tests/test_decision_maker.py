@@ -211,8 +211,8 @@ class TestDecisionMaker(unittest.TestCase):
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['species_name'], 'Bird')
-        self.assertEqual(results[0]['decision_reason'], 'accepted_binary_track_classifier_uncertain')
-        self.assertEqual(results[0]['decision_kind'], 'accepted_species')
+        self.assertEqual(results[0]['decision_reason'], 'accepted_binary_track_classifier_deferred')
+        self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
         self.assertTrue(results[0].get('visit_eligible', False))
 
     def test_weak_detector_conf_accepted_with_detect_stream_defaults(self):
@@ -513,8 +513,8 @@ class TestDecisionMaker(unittest.TestCase):
         decisions = dm.get_decisions(tracks)
         self.assertTrue(decisions[0]['accepted'])
         self.assertTrue(decisions[0]['visit_eligible'])
-        self.assertEqual(decisions[0]['decision_kind'], 'accepted_species')
-        self.assertEqual(decisions[0]['outcome_bucket'], 'auto_accept')
+        self.assertEqual(decisions[0]['decision_kind'], 'review_only_generic')
+        self.assertEqual(decisions[0]['outcome_bucket'], 'review_only')
 
     @patch("app_config.app_config.app_config")
     def test_classifier_entropy_margin_and_needs_review(self, mock_cfg):
@@ -595,7 +595,8 @@ class TestDecisionMaker(unittest.TestCase):
         }
         d = dm.get_decisions(tracks)[0]
         self.assertTrue(d["accepted"])
-        self.assertEqual(d["decision_reason"], "accepted_binary_track_classifier_uncertain")
+        self.assertEqual(d["decision_reason"], "accepted_binary_track_classifier_deferred")
+        self.assertEqual(d["decision_kind"], "review_only_generic")
         self.assertFalse(d["visit_eligible"])
         self.assertTrue(d["classifier_needs_review"])
 

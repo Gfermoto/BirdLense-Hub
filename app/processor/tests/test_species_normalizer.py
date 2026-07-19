@@ -149,6 +149,34 @@ class TestMergeDetections(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Great Tit')
         self.assertEqual(result[0]['decision_reason'], 'promoted_by_frigate')
+        self.assertEqual(result[0]['decision_kind'], 'accepted_species')
+
+    def test_frigate_promotes_linear_deferred_bird_track(self):
+        """binary_track_first deferred Bird must be promoteable (was the structural hole)."""
+        yolo = [{
+            'species_name': 'Bird',
+            'confidence': 0.4,
+            'start_time': 0,
+            'end_time': 6,
+            'detection_provider': 'yolo',
+            'decision_reason': 'accepted_binary_track_classifier_deferred',
+            'decision_kind': 'review_only_generic',
+            'detector_label': 'Bird',
+            'track_id': 3,
+        }]
+        mqtt = [{
+            'species': 'Hooded Crow',
+            'label': 'bird',
+            'sub_label': 'Hooded Crow',
+            'source': 'frigate',
+            'confidence': 0.91,
+            'timestamp': self.video_start.isoformat(),
+        }]
+        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Hooded Crow')
+        self.assertEqual(result[0]['decision_kind'], 'accepted_species')
+        self.assertEqual(result[0]['outcome_bucket'], 'auto_accept')
 
     def test_conflict_prefers_specific_species_over_generic_bird(self):
         yolo = [{

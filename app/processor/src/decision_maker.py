@@ -587,19 +587,26 @@ class DecisionMaker:
                     species = str(named["species_name"])
                     combined = max(combined, float(named.get("combined_confidence") or 0.0))
                     decision_reason = "accepted_classifier_best_guess"
+        birder_unknown = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird")
+        from visit_contract import is_named_product_species
+
+        named = is_named_product_species(species, birder_unknown_label=birder_unknown)
+        if not named and decision_reason != "accepted_classifier_best_guess":
+            decision_reason = "accepted_binary_track_classifier_deferred"
         return {
             "accepted": True,
             "visit_eligible": visit_eligible_for_named_species(
                 species_name=species,
                 visit_eligible=True,
-                birder_unknown_label=str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"),
+                birder_unknown_label=birder_unknown,
             ),
             "notification_eligible": False,
             "out_species": species,
             "out_conf": max(combined, float(detector_conf)),
             "decision_reason": decision_reason,
-            "decision_kind": "accepted_species",
-            "evidence_state": "weak_classifier",
+            # Visit contract: generic Bird track is review_only, not accepted_species.
+            "decision_kind": "accepted_species" if named else "review_only_generic",
+            "evidence_state": "weak_classifier" if named else "detector_only",
             "classifier_needs_review": True,
         }
 

@@ -128,6 +128,8 @@ class TestApplyHints(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["species_name"], "Lesser Goldfinch")
         self.assertTrue(out[0].get("frigate_species_promoted"))
+        self.assertEqual(out[0].get("decision_kind"), "accepted_species")
+        self.assertEqual(out[0].get("decision_reason"), "promoted_by_frigate")
         self.assertGreaterEqual(out[0]["confidence"], 0.84)
 
 

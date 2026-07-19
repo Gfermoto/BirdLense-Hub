@@ -523,15 +523,17 @@ def finalize_motion_recording(
                 evidence,
                 duration_s=duration_s,
                 app_config=app_config,
+                camera_id=session_camera_id,
             )
             video_detections = [salvage_row]
             inc_counter("recording_frigate_trigger_salvage_total")
             logging.warning(
-                "Finalize safeguard: recovered Frigate trigger evidence as review-only "
-                "(species=%s, conf=%.3f, camera=%s).",
+                "Finalize safeguard: recovered Frigate trigger evidence "
+                "(species=%s, conf=%.3f, camera=%s, kind=%s).",
                 salvage_row.get("species_name"),
                 float(salvage_row.get("confidence") or 0.0),
                 session_camera_id,
+                salvage_row.get("decision_kind"),
             )
     track_first_enabled = bool(app_config.get("detection.track_first_gate_enabled", True))
     video_detections, track_first_rejected = apply_track_first_persist_gate(
@@ -1048,6 +1050,18 @@ def finalize_motion_recording(
             persist_duration_ms=(None if persist_duration_ms is None else float(persist_duration_ms)),
         )
         session_summary["latency_budget_breaches"] = latency_breaches
+        try:
+            from visit_contract import compute_visit_quality
+
+            session_summary["visit_quality"] = compute_visit_quality(
+                persisted_rows=video_detections,
+                mqtt_events=mqtt_events,
+                birder_unknown_label=str(
+                    app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"
+                ),
+            )
+        except Exception:
+            logging.debug("visit_quality build failed", exc_info=True)
         try:
             from trigger_graph import build_session_trigger_graph
 

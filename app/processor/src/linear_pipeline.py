@@ -308,6 +308,9 @@ def evaluate_track_linear(
     detector_conf = max(float(detector_conf), float(confirm_score))
 
     species, sp_conf, needs_review, clf_meta = _species_from_classifier(app_config, track)
+    from visit_contract import is_named_product_species
+
+    birder_unknown = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird")
     if species is None:
         species = GENERIC_BIRD_SPECIES
         sp_conf = 0.0
@@ -320,12 +323,27 @@ def evaluate_track_linear(
     else:
         evidence_state = "species_supported"
         decision_reason = "accepted_species"
+
+    # Visit contract: placeholder Bird/Unknown is review_only, not accepted_species win.
+    named = is_named_product_species(species, birder_unknown_label=birder_unknown)
+    visit_ok = visit_eligible_for_named_species(
+        species_name=species,
+        visit_eligible=True,
+        birder_unknown_label=birder_unknown,
+    )
+    if not named:
+        decision_kind = "review_only_generic"
+        # Persist for UI/review; product SLO uses outcome_bucket=review_only.
+        notification_eligible = False
+    else:
+        decision_kind = "accepted_species"
+        notification_eligible = (not needs_review) and visit_ok
+
     out_conf = max(float(detector_conf), float(sp_conf))
-    visit_ok = visit_eligible_for_named_species(species_name=species, visit_eligible=True)
     return {
         "accepted": True,
         "decision_reason": decision_reason,
-        "decision_kind": "accepted_species",
+        "decision_kind": decision_kind,
         "reject_reason_code": None,
         "detector_label": detector_label,
         "detector_conf": detector_conf,
@@ -333,9 +351,9 @@ def evaluate_track_linear(
         "out_species": species,
         "out_conf": out_conf,
         "visit_eligible": visit_ok,
-        "notification_eligible": not needs_review and visit_ok and species != GENERIC_BIRD_SPECIES,
+        "notification_eligible": notification_eligible,
         "evidence_state": evidence_state,
-        "classifier_needs_review": needs_review,
+        "classifier_needs_review": needs_review or (not named),
         "classifier_candidate": clf_meta,
     }
 

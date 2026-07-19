@@ -85,9 +85,11 @@ class TestLinearPipeline(unittest.TestCase):
         )
         self.assertTrue(ev["accepted"])
         self.assertEqual(ev["decision_reason"], "accepted_binary_track_classifier_deferred")
+        self.assertEqual(ev["decision_kind"], "review_only_generic")
         self.assertEqual(ev["out_species"], "Bird")
         self.assertEqual(ev["evidence_state"], "detector_only")
         self.assertTrue(ev["visit_eligible"])
+        self.assertFalse(ev["notification_eligible"])
 
     def test_static_frozen_track_deferred_under_binary_track_first(self):
         frozen = [{"t": float(i), "bbox": [0.40, 0.30, 0.48, 0.38]} for i in range(12)]
@@ -171,6 +173,7 @@ class TestLinearPipeline(unittest.TestCase):
         self.assertTrue(ev["accepted"])
         self.assertEqual(ev["out_species"], "Eurasian Jay")
         self.assertEqual(ev["decision_reason"], "accepted_species")
+        self.assertEqual(ev["decision_kind"], "accepted_species")
 
     def test_build_linear_decisions_via_decision_maker(self):
         dm = DecisionMaker(min_track_duration=0.5, min_confidence_to_process=0.12)

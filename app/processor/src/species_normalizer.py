@@ -396,13 +396,17 @@ def merge_detections(
         return any(token in key for token in ("squirrel", "chipmunk", "rodent", "sciurus", "грызун"))
 
     def _can_frigate_promote(det: dict, ev: dict) -> bool:
+        from visit_contract import is_frigate_promoteable_reason, is_named_product_species
+
         reason = str(det.get("decision_reason") or "").strip().lower()
-        # Weak classifier → review_only_generic_bird: still promote from Frigate sub_label.
-        if reason not in {
-            "fallback_bird",
-            "fallback_rodent",
-            "fallback_squirrel",
-            "review_only_generic_bird",
+        kind = str(det.get("decision_kind") or "").strip().lower()
+        # Do not overwrite a confident named classifier result.
+        if is_named_product_species(str(det.get("species_name") or det.get("species") or "")):
+            return False
+        # Linear deferred Bird + legacy fallback/review_only: promote from Frigate sub_label.
+        if not is_frigate_promoteable_reason(reason) and kind not in {
+            "review_only_generic",
+            "accepted_generic",
         }:
             return False
         detector_label = str(det.get("detector_label") or det.get("species_name") or "").strip()
@@ -579,10 +583,13 @@ def merge_detections(
                     best_overlap = overlap
                     generic_candidate = det
             if generic_candidate is not None:
-                generic_candidate["species_name"] = species
-                generic_candidate["species"] = species
-                generic_candidate["decision_reason"] = "promoted_by_frigate"
-                generic_candidate["frigate_promoted_label"] = species
+                from visit_contract import apply_frigate_named_accept
+
+                apply_frigate_named_accept(
+                    generic_candidate,
+                    species=species,
+                    confidence=conf,
+                )
                 _append_unique_str_list(generic_candidate, "source_aliases", ev_aliases)
                 _append_unique_str_list(
                     generic_candidate,

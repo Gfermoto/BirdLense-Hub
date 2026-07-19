@@ -700,12 +700,29 @@ def build_fused_video_detections(
         triggered_camera=triggered_camera,
     )
     frigate_events_for_merge = [ev for ev in frigate_events if not ev.get("_frigate_merge_suppressed")]
-    # Safe-by-default: Frigate stays fallback-only unless explicitly enabled in config.
-    # Linear default stays off via default_config; honor explicit user_config opt-in
-    # (YOLO-blind Frigate sites). Pre-#621 dual mode behaves the same.
-    standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))
-    standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", False))
-    require_blind = bool(app_config.get("detection.frigate_standalone_require_blind_yolo", False))
+    # Safe-by-default: Frigate stays fallback-only unless explicitly enabled in config
+    # or camera_tuning_by_role.frigate_site (species authority / standalone).
+    from visit_contract import role_detection_flag
+
+    standalone_on = role_detection_flag(
+        app_config,
+        "frigate_standalone_when_no_yolo",
+        camera_id=triggered_camera,
+        default=False,
+    )
+    standalone_no_species = role_detection_flag(
+        app_config,
+        "frigate_standalone_when_no_accepted_species",
+        camera_id=triggered_camera,
+        default=False,
+    )
+    require_blind = role_detection_flag(
+        app_config,
+        "frigate_standalone_require_blind_yolo",
+        camera_id=triggered_camera,
+        default=bool(app_config.get("detection.frigate_standalone_require_blind_yolo", False)),
+        opt_in=False,
+    )
     blind_score_threshold = float(app_config.get("detection.frigate_standalone_blind_score_threshold", 0.7) or 0.7)
     force_after_no_yolo_s = float(
         app_config.get("detection.frigate_standalone_force_after_no_yolo_seconds", 12.0) or 12.0
