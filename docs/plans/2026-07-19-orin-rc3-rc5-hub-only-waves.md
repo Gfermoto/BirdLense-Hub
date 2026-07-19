@@ -44,7 +44,12 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
     (`track_ids` / runtime overrides in `enrich_tracks_classifier_at_finalize`);
     fills `patch_species_name` → enrich PATCH. Flag still default off.
 
+## Done (loop 6b — adapters)
+18. **RC4 adapters** — `recognition_adapters.py` (OpenCV trigger, Hub YOLO boxes,
+    Frigate hint, Hub authority)
+
 ## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
 - Enable async patch on Orin canary + measure GPU contention
+- Wire adapters into bootstrap / session_summary
 - Full PresenceRecorder/SpeciesRecognizer service classes (beyond facades)
