@@ -845,6 +845,19 @@ def finalize_motion_recording(
                     decision_trace["video_id"] = int(video_id)
                 except (TypeError, ValueError):
                     decision_trace["video_id"] = video_id
+            # RC2: opt-in async classify leftovers → patch visit (scaffold).
+            try:
+                from async_classify_patch import enqueue_async_classify_patch
+
+                enqueue_async_classify_patch(
+                    app_config=app_config,
+                    video_id=video_id,
+                    camera_id=session_camera_id,
+                    video_path=video_path_for_api,
+                    decisions=video_detections,
+                )
+            except Exception:
+                logging.debug("async_classify_patch enqueue skipped", exc_info=True)
         dataset_crops_started_ts = time.perf_counter()
         maybe_save_dataset_crops(
             app_config,

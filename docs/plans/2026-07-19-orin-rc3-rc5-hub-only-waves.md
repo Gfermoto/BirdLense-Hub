@@ -28,6 +28,12 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
 11. **RC8** — `profiles/feeder_install.example.yaml`; feeder roles marked install-physics in defaults
 12. **RC6 curate** — `scripts/curate_species_live_pack.py` (offline named_accept keep)
 
-## Remaining
-- Broader multi-species pack (run curate on Orin)
-- Full PresenceRecorder/SpeciesRecognizer service split (async classify)
+## Done (loop 4 — finish pass)
+13. **RC2 scaffold** — `async_classify_patch.py` + `processor.async_classify_patch_enabled` (default off); enqueue after persist
+14. **RC4 protocols** — `recognition_protocols.py` (`TriggerSource` / `BoxProvider` / `SpeciesHint` / `SpeciesAuthority`)
+15. **RC6 harvest** — wider candidate pool for curate (`limit*20`, conf≥0.45)
+
+## Remaining (dig / ops)
+- Broader multi-species pack on Orin (re-curate after deploy; clips gitignored)
+- Real async classify enrich PATCH (create_video track map + processor patch API)
+- Full PresenceRecorder/SpeciesRecognizer service classes (beyond facades)

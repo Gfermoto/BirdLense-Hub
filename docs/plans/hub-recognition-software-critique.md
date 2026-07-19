@@ -52,7 +52,8 @@ classify + patch visit allowed).
 **Progress (2026-07-19):** defaults aligned (8s/6 tracks/3 kf);
 `classify_skip_reason` stamped on budget/timeout/no_crop/deferred/unknown_abstain
 and copied into decision rows; `pipeline_stage=classify_enrich` when classifier
-touched. Async patch-visit still open.
+touched. Async patch-visit **scaffold** (`async_classify_patch.py`, flag off);
+real enrich PATCH still dig.
 
 ### RC3 — High: dual decision engines + post-hoc salvage
 
@@ -84,7 +85,8 @@ never enters Hub go-metrics.
 
 **Progress (2026-07-19):** `tuning_role: hub_only` + profile; bootstrap skips
 Frigate MQTT aggregator when trigger+scales off; `detect_first_frigate_assist`
-off in hub_only profile. Protocol interfaces (TriggerSource/BoxProvider) still open.
+off in hub_only profile. Protocol stubs in `recognition_protocols.py`;
+concrete TriggerSource/BoxProvider adapters still dig.
 
 ### RC5 — High: no closed learning loop in product
 

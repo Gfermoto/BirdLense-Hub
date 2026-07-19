@@ -120,11 +120,12 @@ def main() -> int:
       AND lower(s.name) NOT IN ('bird','unknown','unknown bird','птица')
       AND lower(coalesce(vs.detection_provider,'')) LIKE '%yolo%'
       AND coalesce(vs.classifier_needs_review, 0) = 0
-      AND vs.confidence >= 0.5
+      AND vs.confidence >= 0.45
     ORDER BY vs.confidence DESC, vs.id DESC
     LIMIT ?
     """
-    rows = list(con.execute(q, (max(1, args.limit) * 8,)))
+    # Pull a wide candidate pool so curate can find ≥N offline named_accept species.
+    rows = list(con.execute(q, (max(1, args.limit) * 20,)))
     clips_out: list[dict] = []
     seen_species: set[str] = set()
     clips_dir = PACK / "clips"
