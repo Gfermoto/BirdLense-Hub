@@ -11,8 +11,13 @@
 Harvest 4×5s clips (pigeon/fieldfare/great tit/sparrow).  
 `SPECIES_LIVE_DOCKER=birdlense --run-clips` → **FAIL**: tracks/persist ok, `named_species=[]` (only Bird). Confirms RC6: live DB labels ≠ offline Hub classify.
 
-## Next loop
-- Curate clips / classify-first regen so named_accept can pass
-- SiteAdapter weights file load into Birder (beyond priors)
-- Delete dual test harness / rewrite legacy tests to linear
-- Protocol unload of Frigate modules
+## Done (loop 2)
+5. **RC3 delete** — `decision_maker_legacy.py` removed; dual→linear coerce; tests rewritten
+6. **RC4 unload** — bootstrap skips Frigate MQTT when trigger+scales off; hub_only profile + assist off
+7. **RC5 weights** — `resolve_site_adapter_weights_path` → Birder ONNX when active
+8. **RC6 classify-first regen** — `track_regenerator` calls `enrich_tracks_classifier_at_finalize`
+9. **RC9** — `session_summary.reliability.*` namespace
+
+## Next (if still open after Orin live re-run)
+- Curate pack until `named_accept` green on Orin
+- PresenceRecorder vs SpeciesRecognizer split (radical)

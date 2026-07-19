@@ -690,15 +690,9 @@ class DecisionMaker:
     def get_decisions(self, tracks):
         from app_config.app_config import app_config
         from linear_pipeline import build_linear_decisions
-        from pipeline_mode_utils import is_linear_pipeline, pipeline_mode
 
-        # Production SoT: linear. Legacy cascade is quarantined in
-        # decision_maker_legacy.py and reachable only via pipeline_mode=dual (tests).
-        if is_linear_pipeline(app_config) or pipeline_mode(app_config) != "dual":
-            return build_linear_decisions(self, tracks, app_config)
-        from decision_maker_legacy import get_decisions_legacy
-
-        return get_decisions_legacy(self, tracks)
+        # Single SoT: linear only (RC3). dual/legacy harness removed.
+        return build_linear_decisions(self, tracks, app_config)
 
     def get_results(self, tracks):
         return [item for item in self.get_decisions(tracks) if item.get("accepted", False)]

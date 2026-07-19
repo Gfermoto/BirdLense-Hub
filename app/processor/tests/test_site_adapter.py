@@ -16,6 +16,7 @@ from site_adapter import (  # noqa: E402
     adjust_confidence_with_site_adapter,
     apply_site_adapter_canary,
     load_site_adapter,
+    resolve_site_adapter_weights_path,
     site_adapter_status,
     write_site_adapter_manifest,
 )
@@ -90,6 +91,36 @@ class TestSiteAdapter(unittest.TestCase):
                 species_priors={"dunnock": 0.1},
             )
             self.assertFalse(apply_site_adapter_canary(data_dir=tmp, track_id=1))
+
+    def test_resolve_weights_active(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wdir = os.path.join(tmp, "site_adapter")
+            os.makedirs(wdir, exist_ok=True)
+            wpath = os.path.join(wdir, "adapter.onnx")
+            with open(wpath, "wb") as fh:
+                fh.write(b"fake")
+            write_site_adapter_manifest(
+                tmp,
+                version="w1",
+                source="unit_test",
+                status=STATUS_ACTIVE,
+                canary_share=1.0,
+                weights_file="adapter.onnx",
+            )
+            resolved = resolve_site_adapter_weights_path(tmp)
+            self.assertIsNotNone(resolved)
+            assert resolved is not None
+            self.assertTrue(resolved.is_file())
+            # Partial canary must not swap process-global ONNX.
+            write_site_adapter_manifest(
+                tmp,
+                version="w2",
+                source="unit_test",
+                status=STATUS_CANARY,
+                canary_share=0.2,
+                weights_file="adapter.onnx",
+            )
+            self.assertIsNone(resolve_site_adapter_weights_path(tmp))
 
 
 if __name__ == "__main__":

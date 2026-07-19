@@ -121,8 +121,20 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
     frigate_camera_filter, frigate_label_filter, frigate_label_exclude = frigate_filters_for_cameras(
         media_setup.cameras
     )
-    use_frigate_from_aggregator = bool(mqtt_broker)
-    if mqtt_broker:
+    # RC4 hub_only unload: skip Frigate MQTT session when trigger+scales unused.
+    frigate_trigger_on = True
+    try:
+        from app_config.trigger_config import get_effective_trigger_config
+
+        _trig = get_effective_trigger_config(app_config, mqtt_broker=mqtt_broker)
+        frigate_trigger_on = bool((_trig.get("frigate") or {}).get("enabled"))
+    except Exception:
+        frigate_trigger_on = True
+    need_mqtt_session = bool(mqtt_broker) and (
+        frigate_trigger_on or bool(scales_topic_arg)
+    )
+    use_frigate_from_aggregator = bool(need_mqtt_session and frigate_trigger_on)
+    if need_mqtt_session:
         mqtt_aggregator, scale_weight_motion_pending, frigate_detector = start_mqtt_aggregator_session(
             args,
             mqtt_broker=mqtt_broker,
@@ -133,6 +145,12 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
             scales_unit_arg=scales_unit_arg,
             data_dir=_data_dir,
         )
+    elif mqtt_broker and not frigate_trigger_on:
+        logging.getLogger(__name__).info(
+            "hub_only unload: MQTT broker set but Frigate trigger off and no scales — "
+            "skipping Frigate aggregator session",
+        )
+        mqtt_broker = None
 
     motion_detector = build_processor_motion_detector(
         args,

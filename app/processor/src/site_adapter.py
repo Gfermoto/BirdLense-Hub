@@ -136,6 +136,24 @@ def weights_present(data_dir: str | Path, manifest: SiteAdapterManifest | None =
     return (adapter_dir(data_dir) / m.weights_file).is_file()
 
 
+def resolve_site_adapter_weights_path(data_dir: str | Path) -> Path | None:
+    """ONNX (or other) weights path when adapter is canary/active and file exists.
+
+    Process-global: Birder loads once; use STATUS_ACTIVE (or canary_share>=1)
+    for full rollout. Per-track canary still applies to species_priors only.
+    """
+    manifest = load_site_adapter(data_dir)
+    if manifest is None or manifest.status not in {STATUS_CANARY, STATUS_ACTIVE}:
+        return None
+    if manifest.status == STATUS_CANARY and float(manifest.canary_share) < 1.0:
+        # Partial canary does not swap process-global ONNX (unsafe mid-flight).
+        return None
+    if not manifest.weights_file:
+        return None
+    path = adapter_dir(data_dir) / manifest.weights_file
+    return path if path.is_file() else None
+
+
 def _runtime_apply_mode(manifest: SiteAdapterManifest | None, data_dir: str | Path) -> str:
     if manifest is None:
         return "noop_until_adapter_weights"

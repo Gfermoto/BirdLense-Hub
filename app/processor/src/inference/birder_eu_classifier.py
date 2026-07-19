@@ -119,6 +119,18 @@ class BirderEuClassifier:
     def _resolve_onnx_path(self) -> Path:
         from inference.classifier_model_layout import resolve_birder_onnx_path
 
+        # RC5 / Bet A: site-adapter ONNX overrides stock weights when active.
+        try:
+            from processor_support import get_data_dir
+            from site_adapter import resolve_site_adapter_weights_path
+
+            alt = resolve_site_adapter_weights_path(get_data_dir())
+            if alt is not None and alt.is_file():
+                _log.info("BirderEuClassifier: using site_adapter weights %s", alt)
+                return alt
+        except Exception:
+            _log.debug("site_adapter weights resolve skipped", exc_info=True)
+
         onnx = resolve_birder_onnx_path(self.weights_dir, self.variant)
         if onnx.is_file():
             return onnx

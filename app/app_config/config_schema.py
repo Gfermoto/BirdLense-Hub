@@ -71,8 +71,7 @@ class SpeciesConfig(_SectionBase):
 
 
 class ProcessorConfig(_SectionBase):
-    # Production: linear only. ``legacy`` is coerced to linear at runtime (#621).
-    # ``dual`` is a test harness for the quarantined DecisionMaker cascade.
+    # Production: linear only. ``legacy`` / ``dual`` coerced to linear at runtime (RC3).
     pipeline_mode: Literal["linear", "legacy", "dual"] | str | None = None
     single_rtsp_read: bool | None = None
     detection_strategy: Literal["two_stage"] | str | None = None

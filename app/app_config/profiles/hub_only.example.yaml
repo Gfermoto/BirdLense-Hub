@@ -17,7 +17,9 @@ detection:
   frigate_trigger_review_salvage_enabled: false
 
 processor:
+  detect_first_frigate_assist_enabled: false
   # Assign cameras: video.cameras[].tuning_role: hub_only
+  # Feeder/Frigate role names stay in install examples only (RC8).
   camera_tuning_by_role:
     hub_only:
       frigate_trigger_review_salvage_enabled: false

@@ -43,7 +43,8 @@ class TestDetectionQualityLinearScoring(unittest.TestCase):
         self.assertTrue(dqc.scoring_engine_enabled)
         self.assertFalse(dqc.motion_global_static_reject)
 
-    def test_dual_pipeline_keeps_legacy_quality_gates(self):
+    def test_dual_pipeline_coerced_to_linear_quality_gates(self):
+        # RC3: dual is forced linear — legacy quality gates stay disabled.
         cfg = {
             "processor.pipeline_mode": "dual",
             "processor.scoring_engine_enabled": True,
@@ -51,7 +52,7 @@ class TestDetectionQualityLinearScoring(unittest.TestCase):
         }
         dqc = DetectionQualityConfig.from_runtime_cfg(cfg)
         self.assertTrue(dqc.scoring_engine_enabled)
-        self.assertTrue(dqc.motion_global_static_reject)
+        self.assertFalse(dqc.motion_global_static_reject)
 
 
 if __name__ == "__main__":

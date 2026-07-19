@@ -17,18 +17,16 @@ def pipeline_mode(app_config: Any) -> str:
 
 def is_linear_pipeline(app_config: Any) -> bool:
     mode = pipeline_mode(app_config)
-    if mode == "legacy":
+    if mode in {"legacy", "dual"}:
         global _legacy_mode_warned
         if not _legacy_mode_warned:
             _log.warning(
-                "processor.pipeline_mode=legacy is unsupported (#621); forcing linear",
+                "processor.pipeline_mode=%s is unsupported (RC3); forcing linear",
+                mode,
             )
             _legacy_mode_warned = True
-        # Force linear — legacy cascade is test-only (pipeline_mode=dual).
         return True
-    if mode == "dual":
-        return False
-    return mode in {"linear", "simple"}
+    return mode in {"linear", "simple", ""}
 
 
 def linear_disable_legacy_quality_gates(app_config: Any) -> bool:

@@ -66,9 +66,8 @@ anchor restore in `recording_finalize.py`.
 **Remediation:** one decision function. Salvage emits presence evidence only,
 never silent species accept.
 
-**Progress (2026-07-19):** salvage review-only; `legacy` forced to linear;
-legacy cascade quarantined behind test-only `pipeline_mode=dual`. Full delete
-of dual body still open.
+**Progress (2026-07-19):** salvage review-only; `legacy`/`dual` forced to linear;
+`decision_maker_legacy.py` deleted; DecisionMaker tests are linear-SoT only.
 
 ### RC4 — High: Frigate/MQTT entangled in core
 
@@ -83,9 +82,9 @@ Evidence: `default_config.yaml` triggers; `detection_fusion.py`;
 `SpeciesAuthority`. Hub-only profile unloads Frigate modules. Named Frigate
 never enters Hub go-metrics.
 
-**Progress (2026-07-19):** `tuning_role: hub_only` +
-`app_config/profiles/hub_only.example.yaml` (Frigate trigger/salvage/authority
-off). Full module unload / protocol interfaces still open.
+**Progress (2026-07-19):** `tuning_role: hub_only` + profile; bootstrap skips
+Frigate MQTT aggregator when trigger+scales off; `detect_first_frigate_assist`
+off in hub_only profile. Protocol interfaces (TriggerSource/BoxProvider) still open.
 
 ### RC5 — High: no closed learning loop in product
 
@@ -98,9 +97,9 @@ Evidence: `feedback_loop_service.py`; Birder weights load-once
 **Remediation:** versioned `SiteAdapter` + canary; until then, review-queue KPIs
 are product metrics, not ML-ops side tools.
 
-**Progress (2026-07-19):** `site_adapter.py` manifest + canary;
-species_priors adjust classifier conf in linear path; KPI
-`runtime_apply=species_priors|weights_file_*`. LoRA/ONNX weight load still open.
+**Progress (2026-07-19):** species_priors + canary; Birder loads
+`site_adapter` ONNX when status=active (or canary_share=1). Fine-tune/LoRA
+training loop still open.
 
 ### RC6 — High: CI golden validates tracks, not species
 
@@ -118,7 +117,8 @@ renamed as detector gate only.
 scaffold: `benchmarks/species_live_hub_only/` +
 `make validate-species-live-hub-only` (empty pack skips; `--require-clips` /
 `--run-clips` / `SPECIES_LIVE_DOCKER`). Harvest script + Orin baseline: tracks
-ok, named=0 offline — taxonomy gap now measurable.
+ok, named=0 offline — taxonomy gap measurable. Regen now runs finalize
+classifier enrich (classify-first parity with live).
 
 ### RC7 — Medium: weak open-set / Unknown handling
 
@@ -155,8 +155,7 @@ Evidence: `recording_finalize.py` session summary; `runtime_contract.py`.
 **Remediation:** namespaces `reliability.*` / `presence.*` / `taxonomy.*`.
 
 **Progress (2026-07-19):** session summary `taxonomy` / `presence` /
-`recognition_outcomes`; `primary_signal=species_classifier_review` for uncertain
-named. Full `reliability.*` metric rename still open.
+`recognition_outcomes` / `reliability.*`; top-level keys kept for backcompat.
 
 ## Why agents keep “tuning the site”
 

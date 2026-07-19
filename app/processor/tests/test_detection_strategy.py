@@ -62,7 +62,7 @@ _DETECT_TEST_QUALITY_OFF = {
     "processor.hard_negatives_enabled": False,
     "processor.background_subtraction_enabled": False,
     "processor.scene_adaptive_conf_enabled": False,
-    "processor.pipeline_mode": "dual",
+    "processor.pipeline_mode": "linear",
 }
 
 

@@ -18,8 +18,7 @@ from species_normalizer import merge_detections
 class DummyConfig(dict):
     def get(self, key, default=None):
         if key == "processor.pipeline_mode" and "processor.pipeline_mode" not in self:
-            # Frigate salvage/standalone tests target pre-linear fusion behavior.
-            return "dual"
+            return "linear"
         return super().get(key, default)
 
 
@@ -583,22 +582,12 @@ def test_frigate_standalone_injects_when_yolo_has_no_accepted_species():
         'detection.frigate_standalone_when_no_accepted_species': True,
         'detection.frigate_standalone_min_score': 0.48,
         'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'detection.frigate_standalone_require_geometry': False,
         'processor.birdnet_mqtt_half_life_hours': 6.0,
         'processor.multi_camera_groups': [],
     })
-    video = [
-        {
-            **_base_detection('Great Tit'),
-            'confidence': 0.39,
-            'classifier_confidence': 0.17,
-            'decision_kind': 'review_only_generic',
-            'decision_reason': 'weak_generic_review',
-            'accepted': False,
-            'visit_eligible': False,
-            'start_time': 0.0,
-            'end_time': 18.0,
-        },
-    ]
+    # Empty YOLO accepted species → Frigate standalone inject (no YOLO rows).
+    video = []
     mqtt = [
         {
             'source': 'frigate',

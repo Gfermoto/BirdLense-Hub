@@ -187,6 +187,26 @@ def process_video_for_tracks(
             infer_lock=infer_lock,
         )
 
+    # Match live finalize: deferred Birder enrich before decisions (RC6 live gate).
+    try:
+        from finalize_classification import (
+            defer_classifier_to_finalize,
+            enrich_tracks_classifier_at_finalize,
+        )
+
+        if defer_classifier_to_finalize(app_config):
+            clf_outcome = enrich_tracks_classifier_at_finalize(
+                frame_processor.tracks,
+                getattr(frame_processor, "strategy", None),
+                app_config,
+                video_path=video_path,
+                camera_id=camera_id,
+            )
+            if metrics_out is not None and isinstance(clf_outcome, dict):
+                metrics_out["classifier_finalize_outcome"] = clf_outcome
+    except Exception:
+        logger.debug("track_regen classifier enrich failed", exc_info=True)
+
     results = decision_maker.get_results(frame_processor.tracks)
     species_mapping = build_species_mapping(app_config)
 

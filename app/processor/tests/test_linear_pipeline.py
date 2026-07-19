@@ -65,9 +65,9 @@ class TestLinearPipeline(unittest.TestCase):
     def test_is_linear_default_when_unset(self):
         self.assertTrue(is_linear_pipeline(_Cfg({})))
         self.assertTrue(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "linear"})))
-        # legacy is forced to linear (#621); dual remains test-only non-linear.
+        # legacy/dual forced to linear (RC3).
         self.assertTrue(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "legacy"})))
-        self.assertFalse(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "dual"})))
+        self.assertTrue(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "dual"})))
 
     def test_weak_bird_with_bbox_persists(self):
         cfg = _Cfg(
@@ -332,13 +332,13 @@ class TestLinearPipeline(unittest.TestCase):
         dual = _Cfg({"processor.pipeline_mode": "dual"})
         self.assertTrue(linear_skip_legacy_fusion_safeguards(linear))
         self.assertTrue(linear_skip_legacy_fusion_safeguards(legacy))  # forced linear
-        self.assertFalse(linear_skip_legacy_fusion_safeguards(dual))
+        self.assertTrue(linear_skip_legacy_fusion_safeguards(dual))  # RC3: dual→linear
 
     def test_linear_skips_salvage_persist_bypass(self):
         linear = _Cfg({"processor.pipeline_mode": "linear"})
         dual = _Cfg({"processor.pipeline_mode": "dual"})
         self.assertTrue(linear_skip_legacy_fusion_safeguards(linear))
-        self.assertFalse(linear_skip_legacy_fusion_safeguards(dual))
+        self.assertTrue(linear_skip_legacy_fusion_safeguards(dual))
 
     def test_linear_skips_frigate_salvage_by_default(self):
         cfg = _Cfg(

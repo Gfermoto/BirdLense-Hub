@@ -1084,6 +1084,16 @@ def finalize_motion_recording(
                 "db_persist_success": bool(video_id is not None),
                 "persisted_rows": int(vq.get("persisted_rows") or 0),
             }
+            # RC9: reliability namespace (persist/latency) — distinct from taxonomy/presence.
+            session_summary["reliability"] = {
+                "db_persist_success": bool(video_id is not None),
+                "video_file_ok": bool(video_file_ok),
+                "finalize_duration_ms": finalize_duration_ms,
+                "yolo_blind_score": round(float(blind_score), 4),
+                "yolo_blind_confirmed": bool(yolo_blind_confirmed),
+                "latency_budget_breaches": list(latency_breaches or []),
+                "post_fusion_persisted": 1 if video_id is not None else 0,
+            }
         except Exception:
             logging.debug("visit_quality / recognition_outcomes build failed", exc_info=True)
         try:
