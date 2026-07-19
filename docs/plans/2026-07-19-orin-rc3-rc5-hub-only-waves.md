@@ -63,7 +63,11 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
     `last_recognition_hint_count` / `last_hub_is_species_authority`
 24. **pack harvest attempts** — `--per-species-attempts` (Orin still 2 KEEP)
 
+## Done (continuous dig — no 20m waits)
+25. **feedback-loop recognition_runtime** — last session recognition_stack/taxonomy
+26. **seed_site_adapter_priors.py** — relabel → canary species_priors (dry-run default)
+
 ## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
-- Operator canary enable async patch on Orin (see canary plan; not auto)
+- Operator canary enable async patch / site_adapter priors (not auto)
 - Diagnostics UI for recognition_stack / trigger_poll (optional)

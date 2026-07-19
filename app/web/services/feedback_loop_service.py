@@ -13,7 +13,7 @@ from typing import Any
 
 from sqlalchemy import func
 
-from models import ActiveLearningCase, DetectionFeedbackEvent
+from models import ActiveLearningCase, ActivityLog, DetectionFeedbackEvent
 
 
 logger = logging.getLogger(__name__)
@@ -122,6 +122,8 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
             )
             export_status = {"status": "invalid_json", "path": str(status_path)}
 
+    recognition_runtime = _latest_recognition_runtime(session)
+
     site_adapter: dict[str, Any] = {
         "present": False,
         "status": "inactive",
@@ -174,7 +176,58 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
         },
         "latest_export": export_status,
         "site_adapter": site_adapter,
+        "recognition_runtime": recognition_runtime,
     }
+
+
+def _latest_recognition_runtime(session) -> dict[str, Any]:
+    """Last recording_session_summary recognition_stack / taxonomy / trigger_poll."""
+    out: dict[str, Any] = {
+        "schema": "recognition_runtime@v1",
+        "present": False,
+    }
+    try:
+        row = (
+            session.query(ActivityLog)
+            .filter(ActivityLog.type == "recording_session_summary")
+            .order_by(ActivityLog.id.desc())
+            .first()
+        )
+    except Exception:
+        return out
+    if row is None:
+        return out
+    try:
+        payload = json.loads(row.data or "{}")
+    except Exception:
+        return out
+    if not isinstance(payload, dict):
+        return out
+    stack = payload.get("recognition_stack") if isinstance(payload.get("recognition_stack"), dict) else {}
+    taxonomy = payload.get("taxonomy") if isinstance(payload.get("taxonomy"), dict) else {}
+    presence = payload.get("presence") if isinstance(payload.get("presence"), dict) else {}
+    trigger_poll = None
+    # trigger_poll lives on recording_context in finalize; may also be top-level later
+    if isinstance(payload.get("trigger_poll"), dict):
+        trigger_poll = payload.get("trigger_poll")
+    out.update(
+        {
+            "present": True,
+            "session_at": row.created_at.isoformat() if getattr(row, "created_at", None) else None,
+            "trigger_source": payload.get("trigger_source"),
+            "recognition_stack": stack or None,
+            "taxonomy": {
+                "hub_wins": taxonomy.get("hub_wins"),
+                "named_share_hub": taxonomy.get("named_share_hub"),
+            }
+            if taxonomy
+            else None,
+            "presence_rows": presence.get("rows"),
+            "trigger_poll": trigger_poll,
+            "hub_is_species_authority": (stack or {}).get("hub_is_species_authority"),
+        }
+    )
+    return out
 
 
 def _safe_label(name: str | None) -> str:

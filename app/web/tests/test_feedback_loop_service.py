@@ -115,6 +115,8 @@ def test_feedback_loop_status_endpoint(client, app):
     assert "actions" in body
     assert "queue" in body
     assert body["latest_export"]["status"] == "ok"
+    assert "recognition_runtime" in body
+    assert body["recognition_runtime"]["schema"] == "recognition_runtime@v1"
 
 
 def test_export_feedback_learning_dataset_contract(tmp_path: Path):
