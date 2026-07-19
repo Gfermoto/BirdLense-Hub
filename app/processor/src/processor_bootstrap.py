@@ -354,9 +354,21 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
             mqtt_aggregator=getattr(ctx.session, "mqtt_aggregator", None),
             default_camera_id=getattr(ctx.session, "default_camera_id", None),
         )
-        trigger_source = (
-            str(getattr(ctx.session.motion_detector, "get_triggered_by", lambda: "")() or "").strip().lower()
-        )
+        try:
+            from recognition_adapters import resolve_trigger_from_motion
+
+            trigger_source, _trigger_ev = resolve_trigger_from_motion(ctx.session.motion_detector)
+            if (
+                isinstance(_trigger_ev, dict)
+                and _trigger_ev.get("camera_id")
+                and not str(camera_id or "").strip()
+            ):
+                camera_id = _trigger_ev.get("camera_id")
+        except Exception:
+            trigger_source = str(
+                getattr(ctx.session.motion_detector, "get_triggered_by", lambda: "")() or ""
+            ).strip().lower()
+
         detect_first_anchor = None
         session_args = getattr(ctx.session, "args", None)
         registry = getattr(ctx, "recording_concurrency", None)

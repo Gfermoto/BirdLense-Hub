@@ -51,7 +51,13 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
 ## Done (loop tick 1)
 19. **session_summary.recognition_stack** + PresenceRecorder/SpeciesRecognizer classes
 
+## Done (loop tick 2)
+20. **TriggerSource live wire** — `MotionDetectorTriggerSource` + bootstrap
+    `resolve_trigger_from_motion`
+21. **Async canary plan** — `docs/plans/2026-07-19-async-classify-canary.md`
+    (flag stays off until operator enables)
+
 ## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
-- Enable async patch on Orin canary + measure GPU contention
-- Wire TriggerSource.poll into live motion path (beyond summary blob)
+- Operator canary enable async patch on Orin (see canary plan; not auto)
+- Optional: attach TriggerSource to session for diagnostics UI

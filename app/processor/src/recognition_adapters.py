@@ -20,6 +20,47 @@ class OpenCvTriggerSource:
         return None
 
 
+class MotionDetectorTriggerSource:
+    """Live TriggerSource adapter over motion_detector (OpenCV / Or / multi-cam)."""
+
+    def __init__(self, motion_detector: Any):
+        self._md = motion_detector
+
+    @property
+    def name(self) -> str:
+        by = str(getattr(self._md, "get_triggered_by", lambda: "")() or "").strip().lower()
+        return by or "unknown"
+
+    def poll(self) -> Mapping[str, Any] | None:
+        by = str(getattr(self._md, "get_triggered_by", lambda: "")() or "").strip().lower()
+        if not by:
+            return None
+        camera_id = None
+        get_cam = getattr(self._md, "get_triggered_camera", None)
+        if callable(get_cam):
+            try:
+                camera_id = get_cam()
+            except Exception:
+                camera_id = None
+        return {
+            "trigger_source": by,
+            "camera_id": camera_id,
+            "provider": by,
+        }
+
+
+def resolve_trigger_from_motion(motion_detector: Any) -> tuple[str, Mapping[str, Any] | None]:
+    """Return (trigger_source, poll_event) via TriggerSource protocol."""
+    src = MotionDetectorTriggerSource(motion_detector)
+    ev = src.poll()
+    if isinstance(ev, Mapping) and ev.get("trigger_source"):
+        return str(ev["trigger_source"]).strip().lower(), ev
+    name = str(src.name or "").strip().lower()
+    if name and name != "unknown":
+        return name, {"trigger_source": name, "camera_id": None, "provider": name}
+    return "", None
+
+
 class HubYoloBoxProvider:
     """Expose in-memory finalize tracks as BoxProvider evidence."""
 

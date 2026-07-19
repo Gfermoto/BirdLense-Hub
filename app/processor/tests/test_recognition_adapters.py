@@ -13,8 +13,10 @@ from recognition_adapters import (  # noqa: E402
     FrigateSpeciesHint,
     HubSpeciesAuthority,
     HubYoloBoxProvider,
+    MotionDetectorTriggerSource,
     OpenCvTriggerSource,
     default_hub_stack,
+    resolve_trigger_from_motion,
     summarize_recognition_stack,
 )
 from recognition_protocols import (  # noqa: E402
@@ -71,6 +73,23 @@ class TestRecognitionAdapters(unittest.TestCase):
         self.assertEqual(blob["trigger"], "opencv")
         self.assertGreaterEqual(blob["box_count"], 1)
         self.assertTrue(blob["hub_is_species_authority"])
+
+    def test_motion_detector_trigger_source(self):
+        class _Md:
+            def get_triggered_by(self):
+                return "frigate"
+
+            def get_triggered_camera(self):
+                return "Forest"
+
+        src = MotionDetectorTriggerSource(_Md())
+        self.assertIsInstance(src, TriggerSource)
+        ev = src.poll()
+        self.assertEqual(ev["trigger_source"], "frigate")
+        self.assertEqual(ev["camera_id"], "Forest")
+        name, ev2 = resolve_trigger_from_motion(_Md())
+        self.assertEqual(name, "frigate")
+        self.assertEqual(ev2["camera_id"], "Forest")
 
 
 if __name__ == "__main__":
