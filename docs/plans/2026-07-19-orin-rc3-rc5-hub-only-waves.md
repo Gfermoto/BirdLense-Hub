@@ -65,9 +65,10 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
 
 ## Done (continuous dig — no 20m waits)
 25. **feedback-loop recognition_runtime** — last session recognition_stack/taxonomy
-26. **seed_site_adapter_priors.py** — relabel → canary species_priors (dry-run default)
+26. **seed_site_adapter_priors.py** — relabel + optional video_species priors
+27. **ml-runtime status** — async_classify flags + site_adapter prior count
 
 ## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
-- Operator canary enable async patch / site_adapter priors (not auto)
+- Operator: `--apply` site_adapter canary / async patch (explicit OK only)
 - Diagnostics UI for recognition_stack / trigger_poll (optional)
