@@ -25,7 +25,8 @@ GATE_PATTERNS = (
 )
 
 GATE_COMMANDS = (
-    "make validate-pipeline-golden",
+    "make validate-detector-golden",
+    "make validate-species-golden",
     "python3 scripts/stress_test_offline.py --no-yolo",
 )
 

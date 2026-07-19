@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "description": "Camera-agnostic site-domain crop manifest for Hub-first finetune / eval (no Frigate required).",
+  "fields": {
+    "crop_id": "string — stable id",
+    "species_name": "string — catalog name or Bird/Unknown for review",
+    "label_source": "enum: classifier | human_review | best_guess | unknown",
+    "needs_review": "bool",
+    "camera_id": "string | null — opaque site camera id, not role-specific",
+    "video_id": "int | null",
+    "track_id": "string | int | null",
+    "frame_t": "float | null — seconds in recording",
+    "bbox_norm": "array[4] | null — [x1,y1,x2,y2] normalized 0..1",
+    "crop_path": "string — relative path under data/dataset or export root",
+    "confidence": "float | null",
+    "split": "enum: train | val | test | review",
+    "site_id": "string | null — optional multi-site tag"
+  },
+  "example_row": {
+    "crop_id": "vid42_t3_f1.2",
+    "species_name": "Great Tit",
+    "label_source": "human_review",
+    "needs_review": false,
+    "camera_id": "cam_a",
+    "video_id": 42,
+    "track_id": 3,
+    "frame_t": 1.2,
+    "bbox_norm": [0.2, 0.3, 0.45, 0.55],
+    "crop_path": "export/site_domain/train/Great Tit/vid42_t3_f1.2.jpg",
+    "confidence": 0.91,
+    "split": "train",
+    "site_id": null
+  }
+}

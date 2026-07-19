@@ -313,6 +313,7 @@ def merge_detections(
     absorb_generic_bird_overlap_min_sec=0.1,
     absorb_generic_bird_min_classifier_confidence=0.22,
     preserve_equal_rank_conflicts_for_arbitration=False,
+    frigate_species_authority=False,
 ):
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
@@ -322,6 +323,8 @@ def merge_detections(
     source_priority: при конфликте (разные виды в одном окне) — первый в списке выше приоритет.
     cross_source_confidence_bonus: при первом слиянии MQTT (Frigate/BirdNET) в существующую
         видео-детекцию — разово прибавить к confidence (до 1.0), без дообучения моделей.
+    frigate_species_authority: when False (Hub-first default), Frigate may boost confidence /
+        contribute providers but must not rewrite species via apply_frigate_named_accept.
     """
 
     source_priority = source_priority or ["yolo", "frigate", "birdnet"]
@@ -583,13 +586,33 @@ def merge_detections(
                     best_overlap = overlap
                     generic_candidate = det
             if generic_candidate is not None:
-                from visit_contract import apply_frigate_named_accept
+                if frigate_species_authority:
+                    from visit_contract import apply_frigate_named_accept
 
-                apply_frigate_named_accept(
-                    generic_candidate,
-                    species=species,
-                    confidence=conf,
-                )
+                    apply_frigate_named_accept(
+                        generic_candidate,
+                        species=species,
+                        confidence=conf,
+                    )
+                    logger.debug(
+                        "merge: Frigate promoted %s for detector fallback %s",
+                        species,
+                        generic_candidate.get("track_id"),
+                    )
+                else:
+                    # Prior only: keep YOLO/generic label, attach Frigate as contributing evidence.
+                    generic_candidate["frigate_prior_label"] = species
+                    if cross_source_confidence_bonus and cross_source_confidence_bonus > 0:
+                        generic_candidate["confidence"] = min(
+                            1.0,
+                            float(generic_candidate.get("confidence") or 0)
+                            + float(cross_source_confidence_bonus),
+                        )
+                    logger.debug(
+                        "merge: Frigate prior %s on generic track %s (no authority rewrite)",
+                        species,
+                        generic_candidate.get("track_id"),
+                    )
                 _append_unique_str_list(generic_candidate, "source_aliases", ev_aliases)
                 _append_unique_str_list(
                     generic_candidate,
@@ -606,16 +629,11 @@ def merge_detections(
                     new_aliases=ev_aliases,
                     new_scientific_names=ev_scientific,
                 )
-                if cross_source_confidence_bonus and cross_source_confidence_bonus > 0:
+                if frigate_species_authority and cross_source_confidence_bonus and cross_source_confidence_bonus > 0:
                     generic_candidate["confidence"] = min(
                         1.0,
                         float(generic_candidate.get("confidence") or 0) + float(cross_source_confidence_bonus),
                     )
-                logger.debug(
-                    "merge: Frigate promoted %s for detector fallback %s",
-                    species,
-                    generic_candidate.get("track_id"),
-                )
 
     result_list = list(by_key.values())
 

@@ -1,4 +1,4 @@
-"""Golden clip quality gates for YOLO tracks (SOTA-05): video 1819 must have tracks."""
+"""Detector golden: YOLO tracks only (SOTA-05 / RC6). Not a species taxonomy gate."""
 
 from __future__ import annotations
 

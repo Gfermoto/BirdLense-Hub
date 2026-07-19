@@ -123,7 +123,11 @@ class TestApplyHints(unittest.TestCase):
         out = apply_classifier_hints(
             rows,
             mqtt_events=events,
-            app_config={"detection.classifier_hints_enabled": True},
+            app_config={
+                "detection.classifier_hints_enabled": True,
+                "detection.frigate_promote_generic_enabled": True,
+                "detection.frigate_species_authority": True,
+            },
         )
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["species_name"], "Lesser Goldfinch")
@@ -131,6 +135,24 @@ class TestApplyHints(unittest.TestCase):
         self.assertEqual(out[0].get("decision_kind"), "accepted_species")
         self.assertEqual(out[0].get("decision_reason"), "promoted_by_frigate")
         self.assertGreaterEqual(out[0]["confidence"], 0.84)
+
+    def test_frigate_prior_without_authority_does_not_rename(self):
+        rows = [{"species_name": "Bird", "confidence": 0.2, "detector_confidence": 0.3}]
+        events = [
+            {
+                "source": "frigate",
+                "label": "bird",
+                "sub_label": "Lesser Goldfinch",
+                "confidence": 0.84,
+            }
+        ]
+        out = apply_classifier_hints(
+            rows,
+            mqtt_events=events,
+            app_config={"detection.classifier_hints_enabled": True},
+        )
+        self.assertEqual(out[0]["species_name"], "Bird")
+        self.assertFalse(out[0].get("frigate_species_promoted"))
 
 
 if __name__ == "__main__":

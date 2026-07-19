@@ -26,11 +26,15 @@ class TestPipelineGoldenGateScript(unittest.TestCase):
             text=True,
         )
         self.assertEqual(proc.returncode, 0, proc.stderr or proc.stdout)
+        self.assertIn("detector-golden", proc.stdout)
         report = REPO / "docs/reports/pipeline_golden/pipeline_golden_latest.json"
         self.assertTrue(report.is_file())
         data = json.loads(report.read_text(encoding="utf-8"))
         self.assertTrue(data.get("ok"))
         self.assertEqual(data.get("mode"), "unit_fallback")
+        self.assertEqual(data.get("product"), "detector")
+        self.assertFalse(data.get("taxonomy_evaluated"))
+        self.assertIn("validate-species-golden", str(data.get("taxonomy_note") or ""))
 
 
 if __name__ == "__main__":

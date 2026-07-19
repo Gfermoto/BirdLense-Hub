@@ -119,7 +119,9 @@ class TestMergeDetections(unittest.TestCase):
             'confidence': 0.95,
             'timestamp': self.video_start.isoformat(),
         }]
-        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        result = merge_detections(
+            yolo, mqtt, self.video_start, self.video_end, frigate_species_authority=True
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Northern Cardinal')
         self.assertEqual(result[0]['decision_reason'], 'promoted_by_frigate')
@@ -127,7 +129,7 @@ class TestMergeDetections(unittest.TestCase):
         self.assertEqual(len(result[0]['frames']), 1)
 
     def test_frigate_promotes_review_only_generic_bird_track(self):
-        """Слабый классификатор → review_only_generic_bird; Frigate sub_label должен подменять Bird."""
+        """Authority on: Frigate sub_label may rewrite generic Bird."""
         yolo = [{
             'species_name': 'Bird',
             'confidence': 0.55,
@@ -145,14 +147,16 @@ class TestMergeDetections(unittest.TestCase):
             'confidence': 0.88,
             'timestamp': self.video_start.isoformat(),
         }]
-        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        result = merge_detections(
+            yolo, mqtt, self.video_start, self.video_end, frigate_species_authority=True
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Great Tit')
         self.assertEqual(result[0]['decision_reason'], 'promoted_by_frigate')
         self.assertEqual(result[0]['decision_kind'], 'accepted_species')
 
     def test_frigate_promotes_linear_deferred_bird_track(self):
-        """binary_track_first deferred Bird must be promoteable (was the structural hole)."""
+        """Authority on: deferred Bird is promoteable."""
         yolo = [{
             'species_name': 'Bird',
             'confidence': 0.4,
@@ -172,11 +176,37 @@ class TestMergeDetections(unittest.TestCase):
             'confidence': 0.91,
             'timestamp': self.video_start.isoformat(),
         }]
-        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        result = merge_detections(
+            yolo, mqtt, self.video_start, self.video_end, frigate_species_authority=True
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Hooded Crow')
         self.assertEqual(result[0]['decision_kind'], 'accepted_species')
         self.assertEqual(result[0]['outcome_bucket'], 'auto_accept')
+
+    def test_frigate_without_authority_keeps_generic_bird(self):
+        """Hub-first default: Frigate is prior only, no species rewrite."""
+        yolo = [{
+            'species_name': 'Bird',
+            'confidence': 0.55,
+            'start_time': 0,
+            'end_time': 8,
+            'detection_provider': 'yolo',
+            'decision_reason': 'review_only_generic_bird',
+            'detector_label': 'Bird',
+            'track_id': 2,
+        }]
+        mqtt = [{
+            'species': 'Great Tit',
+            'label': 'bird',
+            'source': 'frigate',
+            'confidence': 0.88,
+            'timestamp': self.video_start.isoformat(),
+        }]
+        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        self.assertEqual(result[0]['species_name'], 'Bird')
+        self.assertEqual(result[0].get('frigate_prior_label'), 'Great Tit')
+        self.assertNotEqual(result[0].get('decision_reason'), 'promoted_by_frigate')
 
     def test_conflict_prefers_specific_species_over_generic_bird(self):
         yolo = [{
@@ -195,7 +225,9 @@ class TestMergeDetections(unittest.TestCase):
             'confidence': 0.9,
             'timestamp': (self.video_start + timedelta(seconds=2)).isoformat(),
         }]
-        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        result = merge_detections(
+            yolo, mqtt, self.video_start, self.video_end, frigate_species_authority=True
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Great Tit')
         self.assertEqual(result[0]['decision_reason'], 'promoted_by_frigate')
@@ -277,6 +309,7 @@ class TestMergeDetections(unittest.TestCase):
             self.video_start,
             self.video_end,
             species_mapping={'Parus major (Great Tit)': 'Great Tit'},
+            frigate_species_authority=True,
         )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Great Tit')

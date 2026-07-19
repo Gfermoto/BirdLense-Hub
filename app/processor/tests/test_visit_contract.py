@@ -63,6 +63,13 @@ class TestVisitContract(unittest.TestCase):
                     "decision_kind": "accepted_species",
                     "outcome_bucket": "auto_accept",
                     "decision_reason": "promoted_by_frigate",
+                    "frigate_species_promoted": True,
+                },
+                {
+                    "species_name": "Eurasian Jay",
+                    "decision_kind": "accepted_species",
+                    "outcome_bucket": "auto_accept",
+                    "detection_provider": "yolo",
                 },
             ],
             mqtt_events=[
@@ -70,11 +77,14 @@ class TestVisitContract(unittest.TestCase):
                 {"source": "frigate", "label": "bird", "sub_label": "Eurasian Jay", "confidence": 0.8},
             ],
         )
-        self.assertEqual(q["persisted_rows"], 2)
-        self.assertEqual(q["named_rows"], 1)
-        self.assertEqual(q["named_share"], 0.5)
+        self.assertEqual(q["persisted_rows"], 3)
+        self.assertEqual(q["named_rows"], 2)
+        self.assertEqual(q["named_share"], round(2 / 3, 4))
+        self.assertEqual(q["hub_named_rows"], 1)
+        self.assertEqual(q["hub_persisted_rows"], 2)
+        self.assertEqual(q["named_share_hub"], 0.5)
         self.assertEqual(q["frigate_named_in_window"], 2)
-        self.assertEqual(q["frigate_agreement"], 0.5)
+        self.assertEqual(q["frigate_agreement"], 1.0)
 
     def test_frigate_site_role_authority_and_standalone(self):
         cfg = _Cfg(

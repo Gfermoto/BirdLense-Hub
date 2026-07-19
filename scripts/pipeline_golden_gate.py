@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Live pipeline golden gate (#611): bird clip must yield tracks + persist rows.
+"""Detector / track golden gate (#611, RC6): bird clip must yield tracks + persist rows.
+
+Product scope: **detector** (presence / tracks). Taxonomy / named species is
+``scripts/species_golden_gate.py`` — unit fallback here must never imply species PASS.
 
 Without mp4 fixtures, falls back to unit tests (test_yolo_golden_clips_gate.py).
 With ``SOTA_GOLDEN_CLIP_1819`` or ``benchmarks/fixtures/clip_1819.mp4``: runs track regen.
@@ -99,10 +102,13 @@ def _write_report(payload: dict) -> None:
         encoding="utf-8",
     )
     lines = [
-        "# Pipeline golden gate",
+        "# Detector golden gate",
         "",
         f"- ok: `{payload.get('ok')}`",
+        f"- product: `{payload.get('product')}`",
         f"- mode: `{payload.get('mode')}`",
+        f"- taxonomy_evaluated: `{payload.get('taxonomy_evaluated')}`",
+        f"- taxonomy_note: `{payload.get('taxonomy_note')}`",
         f"- checked_at: `{payload.get('checked_at')}`",
     ]
     for clip in payload.get("clips") or []:
@@ -155,27 +161,50 @@ def main() -> int:
             elif int(row.get("detection_count") or 0) <= 0:
                 ok = False
                 row["fail"] = "birds clip: detection_count=0"
+            # Optional taxonomy assert only when labels exist (live species pack).
+            expected = meta.get("expected_species") or []
+            if expected:
+                got = {str(s).strip().lower() for s in (row.get("named_species") or []) if s}
+                want = {str(s).strip().lower() for s in expected if s}
+                if not (got & want):
+                    ok = False
+                    row["fail"] = f"birds clip: expected_species {sorted(want)} not in {sorted(got)}"
         results.append(row)
 
     mode = "live" if ran_live else "unit_fallback"
+    taxonomy_evaluated = False
     if not ran_live:
         rc = _unit_fallback()
         ok = rc == 0 and ok
         mode = "unit_fallback"
+    else:
+        taxonomy_evaluated = any(
+            (c.get("role") == "birds_recall" and (clips_meta.get(c["id"]) or {}).get("expected_species"))
+            for c in results
+            if c.get("id")
+        )
 
     payload = {
-        "schema": "pipeline_golden_gate@v1",
+        "schema": "pipeline_golden_gate@v2",
+        "product": "detector",
         "ok": ok,
         "mode": mode,
+        "taxonomy_evaluated": taxonomy_evaluated,
+        "taxonomy_note": (
+            "evaluated via expected_species on live clips"
+            if taxonomy_evaluated
+            else "not_evaluated — use make validate-species-golden"
+        ),
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "clips": results,
     }
     _write_report(payload)
 
     if ok:
-        print(f"PASS pipeline-golden ({mode})")
+        tax = "taxonomy=evaluated" if taxonomy_evaluated else "taxonomy=not_evaluated"
+        print(f"PASS detector-golden ({mode}, product=detector, {tax})")
         return 0
-    print(f"FAIL pipeline-golden ({mode})", file=sys.stderr)
+    print(f"FAIL detector-golden ({mode})", file=sys.stderr)
     for clip in results:
         if clip.get("fail") or clip.get("error"):
             print(f"  {clip.get('id')}: {clip.get('fail') or clip.get('error')}", file=sys.stderr)

@@ -781,6 +781,8 @@ def build_fused_video_detections(
                 prepared_before,
                 len(frigate_events_for_merge),
             )
+    from visit_contract import frigate_species_authority as _frigate_species_authority
+
     fused = merge_detections(
         prepared,
         frigate_events_for_merge,
@@ -803,6 +805,9 @@ def build_fused_video_detections(
             ABSORB_GENERIC_BIRD_MIN_CLASSIFIER_CONFIDENCE,
         ),
         preserve_equal_rank_conflicts_for_arbitration=True,
+        frigate_species_authority=_frigate_species_authority(
+            app_config, camera_id=triggered_camera
+        ),
     )
     fused = apply_multi_camera_confidence_boost(
         fused,

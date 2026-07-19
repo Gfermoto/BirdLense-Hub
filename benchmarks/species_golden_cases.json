@@ -1,0 +1,108 @@
+{
+  "schema": "species_golden_cases@v1",
+  "description": "Hub-only taxonomy contract cases (RC6). No Frigate as go-metric win. No mp4/GPU required.",
+  "cases": [
+    {
+      "id": "hub_named_accept",
+      "row": {
+        "species_name": "Parus major",
+        "decision_kind": "accepted_species",
+        "decision_reason": "accepted_classifier",
+        "classifier_species_name": "Parus major",
+        "detection_provider": "yolo",
+        "outcome_bucket": "auto_accept"
+      },
+      "expect": {
+        "kind": "named_accept",
+        "hub_taxonomy_win": true,
+        "authority": "hub_classifier"
+      }
+    },
+    {
+      "id": "bird_presence_not_named",
+      "row": {
+        "species_name": "Bird",
+        "decision_kind": "accepted_generic",
+        "decision_reason": "fallback_bird",
+        "detection_provider": "yolo",
+        "outcome_bucket": "auto_accept"
+      },
+      "expect": {
+        "kind": "presence",
+        "hub_taxonomy_win": false
+      }
+    },
+    {
+      "id": "accepted_species_generic_is_presence",
+      "row": {
+        "species_name": "Bird",
+        "decision_kind": "accepted_species",
+        "decision_reason": "accepted_binary_track_classifier_deferred",
+        "detection_provider": "yolo",
+        "classify_skip_reason": "deferred_budget"
+      },
+      "expect": {
+        "kind": "presence",
+        "hub_taxonomy_win": false
+      }
+    },
+    {
+      "id": "unknown_review_not_named",
+      "row": {
+        "species_name": "Unknown",
+        "decision_kind": "review_only_generic",
+        "decision_reason": "review_only_generic_bird",
+        "detection_provider": "yolo",
+        "outcome_bucket": "review_only"
+      },
+      "expect": {
+        "kind": "review",
+        "hub_taxonomy_win": false
+      }
+    },
+    {
+      "id": "frigate_named_not_hub_win",
+      "row": {
+        "species_name": "Parus major",
+        "decision_kind": "accepted_species",
+        "decision_reason": "promoted_by_frigate",
+        "frigate_species_promoted": true,
+        "detection_provider": "frigate",
+        "outcome_bucket": "auto_accept"
+      },
+      "expect": {
+        "kind": "named_accept",
+        "hub_taxonomy_win": false,
+        "authority": "frigate"
+      }
+    },
+    {
+      "id": "classifier_reject",
+      "row": {
+        "species_name": "",
+        "decision_kind": "rejected",
+        "decision_reason": "rejected_classifier_fallback_disabled",
+        "detection_provider": "yolo"
+      },
+      "expect": {
+        "kind": "named_reject",
+        "hub_taxonomy_win": false
+      }
+    },
+    {
+      "id": "deferred_binary_presence",
+      "row": {
+        "species_name": "Bird",
+        "decision_kind": "accepted_binary",
+        "decision_reason": "accepted_binary_track_classifier_deferred",
+        "detection_provider": "yolo",
+        "classify_skip_reason": "max_tracks"
+      },
+      "expect": {
+        "kind": "presence",
+        "hub_taxonomy_win": false,
+        "skip_reason": "max_tracks"
+      }
+    }
+  ]
+}

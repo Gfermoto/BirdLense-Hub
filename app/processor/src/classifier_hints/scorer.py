@@ -73,7 +73,12 @@ def apply_hints_to_rows(
     weights = load_hint_weights(app_config)
     hint_idx = _hint_index(hints)
     regional_keys = {_norm(h.species) for h in hints if h.source == HintSource.EBIRD_REGIONAL}
-    promote_enabled = bool(app_config.get("detection.frigate_promote_generic_enabled", True))
+    # Hub-first: rename-to-species only with explicit species authority.
+    # Score boost from Frigate labels still applies as a prior when hints enabled.
+    from visit_contract import frigate_species_authority
+
+    promote_flag = bool(app_config.get("detection.frigate_promote_generic_enabled", False))
+    promote_enabled = promote_flag and frigate_species_authority(app_config)
     try:
         promote_min = float(app_config.get("detection.frigate_promote_generic_min_score") or 0.55)
     except (TypeError, ValueError):

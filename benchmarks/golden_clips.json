@@ -1,6 +1,6 @@
 {
   "schema": "sota_golden_clips@v2",
-  "description": "Golden regression set for Orin SOTA (#666). Roles: noise_fp (zero detections), birds_recall (must track).",
+  "description": "Detector golden set (#666 / RC6). Roles: noise_fp (zero detections), birds_recall (must track). Taxonomy: optional expected_species on a clip; otherwise use benchmarks/species_golden_cases.json.",
   "clips": {
     "1816": {
       "role": "noise_fp",

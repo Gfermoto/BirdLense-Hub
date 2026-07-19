@@ -45,8 +45,37 @@ def is_frigate_promoteable_reason(decision_reason: str | None) -> bool:
     return str(decision_reason or "").strip().lower() in _PROMOTEABLE_DECISION_REASONS
 
 
+_FRIGATE_SOURCED_REASONS = frozenset(
+    {
+        "promoted_by_frigate",
+        "frigate_standalone",
+        "frigate_standalone_excluded",
+        "frigate_trigger_named_accept",
+        "review_only_frigate_trigger_salvage",
+    }
+)
+
+
+def is_frigate_sourced_row(row: Mapping[str, Any] | None) -> bool:
+    """True when species/accept came from Frigate path (not Hub YOLO+classifier)."""
+    if not isinstance(row, Mapping):
+        return False
+    if bool(row.get("frigate_species_promoted")) or bool(row.get("frigate_standalone")):
+        return True
+    if bool(row.get("frigate_trigger_salvage")):
+        return True
+    reason = str(row.get("decision_reason") or "").strip().lower()
+    if reason in _FRIGATE_SOURCED_REASONS:
+        return True
+    provider = str(row.get("detection_provider") or "").strip().lower()
+    return provider == "frigate"
+
+
 def apply_frigate_named_accept(row: dict[str, Any], *, species: str, confidence: float | None = None) -> dict[str, Any]:
-    """Upgrade a review/generic row to Frigate-authoritative named accept (in-place + return)."""
+    """Upgrade a review/generic row to Frigate-authoritative named accept (in-place + return).
+
+    Hub-first: call only when ``frigate_species_authority`` is explicitly enabled.
+    """
     promoted = str(species or "").strip()
     if not promoted:
         return row
@@ -109,27 +138,36 @@ def compute_visit_quality(
     mqtt_events: Iterable[Mapping[str, Any]] | None = None,
     birder_unknown_label: str | None = None,
 ) -> dict[str, Any]:
-    """Session-level product SLOs: named_share + frigate_agreement."""
+    """Session-level product SLOs.
+
+    ``named_share`` = all persisted named (incl. Frigate-assisted).
+    ``named_share_hub`` = Hub YOLO+classifier only (SOTA go metric).
+    ``frigate_agreement`` = informative when Frigate is present; not a go gate.
+    """
     rows = [r for r in (persisted_rows or []) if isinstance(r, Mapping)]
     total = len(rows)
     named = 0
+    hub_rows = 0
+    hub_named = 0
     auto_accept = 0
     review_only = 0
     frigate_promoted = 0
     for row in rows:
         sp = _species_of(row)
+        frigate_row = is_frigate_sourced_row(row)
+        if not frigate_row:
+            hub_rows += 1
         if is_named_product_species(sp, birder_unknown_label=birder_unknown_label):
             named += 1
+            if not frigate_row:
+                hub_named += 1
         kind = str(row.get("decision_kind") or "").strip().lower()
         bucket = str(row.get("outcome_bucket") or "").strip().lower()
         if bucket == "auto_accept" or kind == "accepted_species":
             auto_accept += 1
         if bucket == "review_only" or kind.startswith("review_only"):
             review_only += 1
-        if bool(row.get("frigate_species_promoted")) or str(row.get("decision_reason") or "").strip().lower() in {
-            "promoted_by_frigate",
-            "frigate_standalone",
-        }:
+        if frigate_row:
             frigate_promoted += 1
 
     frigate_named = _frigate_named_labels(mqtt_events, birder_unknown_label=birder_unknown_label)
@@ -147,6 +185,9 @@ def compute_visit_quality(
         "persisted_rows": total,
         "named_rows": named,
         "named_share": (round(named / total, 4) if total else None),
+        "hub_persisted_rows": hub_rows,
+        "hub_named_rows": hub_named,
+        "named_share_hub": (round(hub_named / hub_rows, 4) if hub_rows else None),
         "auto_accept_rows": auto_accept,
         "review_only_rows": review_only,
         "frigate_promoted_rows": frigate_promoted,

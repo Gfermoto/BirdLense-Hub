@@ -122,16 +122,23 @@ Use this ritual until acceptance epic [#666](https://github.com/Gfermoto/BirdLen
    - `docs/reports/quality_outcome/quality_outcome_metrics_latest.json`
    - `docs/reports/sota_reality/sota_reality_check_latest.md`
    - `docs/reports/sota_reality/sota_consilium_baseline_*.json` (Orin funnel + named_share)
-2. Validate acceptance SLO on Orin (24h window):
+2. Validate acceptance SLO (24h window) — **Hub-first**:
    - `yolo_blind_confirmed` ≤ 0.15 per camera
    - `db_persist_success` ≥ 0.90 among sessions with tracks
-   - named species share ≥ 0.40 among persisted rows
+   - **`visit_quality.named_share_hub` ≥ 0.40** among Hub (non-Frigate) persisted rows
+   - mixed `named_share` / `frigate_agreement` are **informative only** (Frigate may be absent)
    - `classifier_finalize_outcome` present in session summaries
+    - detector golden must pass **without MQTT/Frigate** (`make validate-detector-golden`; alias `validate-pipeline-golden`)
+    - taxonomy / species golden must pass Hub-only cases (`make validate-species-golden`) — track stubs alone are not a species pass
 3. Confirm no skipped critical ML gates (unless explicit override ticket is attached).
 4. Attach one weekly comment to [#666](https://github.com/Gfermoto/BirdLense-Hub/issues/666) with:
-   - outcome metrics trend (blind_rate, tracks_coverage, named_share, empty_bbox_rate),
+   - outcome metrics trend (blind_rate, tracks_coverage, **named_share_hub**, empty_bbox_rate),
+   - Hub-only vs Frigate-assisted split,
    - backend+ui parity verification notes,
    - decision (`hold` / `go` / `rollback`) and linked issues.
+
+Hard rule: do **not** enable `detection.frigate_species_authority` to pass SOTA go.
+Frigate is an optional prior; Hub must meet SLOs with YOLO+classifier alone.
 
 Hard rule: `warning` error budget state does not pass release check without override reason containing issue token (`#<id>`).
 

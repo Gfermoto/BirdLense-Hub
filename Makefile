@@ -1,4 +1,4 @@
-.PHONY: deploy build start stop logs verify docs ci-local preflight-deploy
+.PHONY: deploy build start stop logs verify docs ci-local preflight-deploy validate-pipeline-golden validate-detector-golden validate-species-golden hub-only-baseline
 
 deploy:
 	@./scripts/deploy.sh
@@ -29,6 +29,21 @@ ci-local:
 # Deploy preflight: secrets + MCP token + strict auth + config drift for Orin prod path.
 preflight-deploy:
 	@./scripts/preflight-deploy.sh
+
+# Detector/track golden (RC6). Unit fallback is NOT a taxonomy pass.
+validate-detector-golden:
+	@python3 scripts/pipeline_golden_gate.py --skip-heavy --enforce
+
+# Alias kept for older runbooks / enforce scripts.
+validate-pipeline-golden: validate-detector-golden
+
+# Taxonomy / named Hub-only cases (RC6). Required for species product CI.
+validate-species-golden:
+	@python3 scripts/species_golden_gate.py --enforce
+
+# Hub-only named_share from Orin session summaries / DB (Frigate rows excluded).
+hub-only-baseline:
+	@python3 scripts/hub_only_baseline.py
 
 docs:
 	@mkdocs build

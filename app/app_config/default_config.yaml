@@ -515,15 +515,16 @@ processor:
       scoring_static_phantom_reject_enabled: false
       scoring_moving_roi_min_motion_score: 0.22
       scene_adaptive_conf_enabled: false
-    # Frigate-heavy sites: species authority + salvage/standalone (linear exception).
-    # Role flags merge into fusion via visit_contract.role_detection_flag.
+    # Frigate-optional sites: salvage for review evidence only (Hub-first).
+    # Species rewrite / standalone accept require explicit global
+    # detection.frigate_species_authority — not enabled by this role alone.
     frigate_site:
       frigate_trigger_review_salvage_enabled: true
       frigate_trigger_review_salvage_allow_without_yolo_tracks: true
-      frigate_species_authority: true
-      frigate_standalone_when_no_yolo: true
-      frigate_standalone_when_no_accepted_species: true
-      frigate_standalone_require_blind_yolo: false
+      frigate_species_authority: false
+      frigate_standalone_when_no_yolo: false
+      frigate_standalone_when_no_accepted_species: false
+      frigate_standalone_require_blind_yolo: true
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на detect substream слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.03
@@ -911,10 +912,10 @@ detection:
   # Explicit true in user_config is honored even in linear pipeline (YOLO-blind sites).
   # Global default off; frigate_site role opts in via camera_tuning_by_role.
   frigate_standalone_when_no_yolo: false
-  # When true (or frigate_site role), named Frigate sub_label is accept authority.
+  # Hub-first: species rewrite via Frigate is opt-in only (never required for SOTA go).
   frigate_species_authority: false
-  # When YOLO/Birder leave generic Bird/Unknown, rename row from Frigate sub_label (hints path).
-  frigate_promote_generic_enabled: true
+  # Rename generic→Frigate sub_label only when authority is also true (scorer gate).
+  frigate_promote_generic_enabled: false
   frigate_promote_generic_min_score: 0.55
   # Off by default: one MQTT bbox frame can look like a stuck overlay across the whole clip.
   frigate_standalone_preserve_bbox_frames: false
