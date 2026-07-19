@@ -109,3 +109,51 @@ def default_hub_stack(
         "hints": hints,
         "authority": auth,
     }
+
+
+def summarize_recognition_stack(
+    *,
+    tracks: Mapping[Any, Mapping[str, Any]] | None = None,
+    mqtt_events: list[Mapping[str, Any]] | None = None,
+    trigger_source: str | None = None,
+    app_config: Any = None,
+) -> dict[str, Any]:
+    """Compact RC4 stack blob for ``session_summary.recognition_stack``."""
+    frigate_hints: list[Mapping[str, Any]] = []
+    for ev in mqtt_events or []:
+        if not isinstance(ev, Mapping):
+            continue
+        src = str(ev.get("source") or ev.get("detection_provider") or "").strip().lower()
+        if "frigate" not in src and src != "mqtt":
+            # Keep Frigate-labelled events; skip pure YOLO rows.
+            label = str(ev.get("label") or ev.get("species_name") or "").strip()
+            if not label or src in {"yolo", "opencv", "hub"}:
+                continue
+        frigate_hints.append(
+            {
+                "species_name": ev.get("species_name") or ev.get("label"),
+                "camera_id": ev.get("camera_id") or ev.get("camera"),
+                "confidence": ev.get("confidence") or ev.get("score"),
+            }
+        )
+    stack = default_hub_stack(tracks=tracks, frigate_hints=frigate_hints)
+    boxes = stack["boxes"].boxes_for_window(start_time=None, end_time=None)
+    hints = stack["hints"].hints_for_window(start_time=None, end_time=None)
+    hub_auth = True
+    try:
+        from recognition_protocols import hub_is_species_authority
+
+        hub_auth = hub_is_species_authority(app_config) if app_config is not None else True
+    except Exception:
+        hub_auth = True
+    trig = str(trigger_source or stack["trigger"].name or "").strip().lower() or stack["trigger"].name
+    return {
+        "schema": "recognition_stack@v1",
+        "trigger": trig,
+        "box_provider": stack["boxes"].name,
+        "box_count": len(boxes),
+        "hint_provider": stack["hints"].name,
+        "hint_count": len(hints),
+        "species_authority": stack["authority"].name if hub_auth else "frigate_opt_in",
+        "hub_is_species_authority": bool(hub_auth),
+    }

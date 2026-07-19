@@ -1,4 +1,4 @@
-"""SpeciesRecognizer product facade (RC1 radical split).
+"""SpeciesRecognizer product surface (RC1 radical split).
 
 Owns Hub taxonomy: named_accept, hub_taxonomy_wins, classifier skip reasons.
 Does **not** own YOLO presence persist — see ``presence_recorder``.
@@ -31,3 +31,26 @@ def is_hub_taxonomy_win(row: Mapping[str, Any] | None) -> bool:
     from recognition_outcome import from_persist_row
 
     return bool(from_persist_row(row).hub_taxonomy_win)
+
+
+class SpeciesRecognizer:
+    """Thin service wrapper — Hub taxonomy SLOs + SpeciesAuthority."""
+
+    name = "hub"
+
+    def summarize(
+        self,
+        *,
+        visit_quality: Mapping[str, Any] | None = None,
+        recognition_outcomes: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return summarize_taxonomy(
+            visit_quality=visit_quality,
+            recognition_outcomes=recognition_outcomes,
+        )
+
+    def may_accept_named(self, row: Mapping[str, Any]) -> bool:
+        return is_hub_taxonomy_win(row)
+
+    def is_hub_win(self, row: Mapping[str, Any] | None) -> bool:
+        return is_hub_taxonomy_win(row)

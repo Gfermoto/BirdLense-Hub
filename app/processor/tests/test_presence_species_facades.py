@@ -9,8 +9,16 @@ import unittest
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(current_dir, "../src"))
 
-from presence_recorder import summarize_presence, summarize_reliability  # noqa: E402
-from species_recognizer import is_hub_taxonomy_win, summarize_taxonomy  # noqa: E402
+from presence_recorder import (  # noqa: E402
+    PresenceRecorder,
+    summarize_presence,
+    summarize_reliability,
+)
+from species_recognizer import (  # noqa: E402
+    SpeciesRecognizer,
+    is_hub_taxonomy_win,
+    summarize_taxonomy,
+)
 
 
 class TestProductFacades(unittest.TestCase):
@@ -60,6 +68,27 @@ class TestProductFacades(unittest.TestCase):
             "notification_eligible": True,
         }
         self.assertTrue(is_hub_taxonomy_win(row))
+
+
+    def test_presence_recorder_service(self):
+        svc = PresenceRecorder()
+        st = svc.summarize(
+            visit_quality={"presence_rows": 2, "persisted_rows": 2},
+            video_id=1,
+            video_file_ok=True,
+        )
+        self.assertEqual(st["schema"], "presence_recorder@v1")
+        rel = svc.reliability(video_id=1, video_file_ok=True, finalize_duration_ms=1.0)
+        self.assertEqual(rel["schema"], "reliability@v1")
+
+    def test_species_recognizer_service(self):
+        svc = SpeciesRecognizer()
+        st = svc.summarize(
+            visit_quality={"hub_taxonomy_wins": 1, "auto_accept_rows": 1, "review_only_rows": 0},
+            recognition_outcomes={"by_kind": {"named_accept": 1}},
+        )
+        self.assertEqual(st["schema"], "species_recognizer@v1")
+        self.assertEqual(st["hub_wins"], 1)
 
 
 if __name__ == "__main__":

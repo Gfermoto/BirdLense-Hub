@@ -15,6 +15,7 @@ from recognition_adapters import (  # noqa: E402
     HubYoloBoxProvider,
     OpenCvTriggerSource,
     default_hub_stack,
+    summarize_recognition_stack,
 )
 from recognition_protocols import (  # noqa: E402
     BoxProvider,
@@ -57,6 +58,19 @@ class TestRecognitionAdapters(unittest.TestCase):
     def test_hub_authority_rejects_generic(self):
         auth = HubSpeciesAuthority()
         self.assertFalse(auth.may_accept_named({"species_name": "Bird", "detection_provider": "yolo"}))
+
+
+    def test_summarize_recognition_stack(self):
+        blob = summarize_recognition_stack(
+            tracks={1: {"bbox": [0, 0, 1, 1]}},
+            mqtt_events=[],
+            trigger_source="opencv",
+            app_config=None,
+        )
+        self.assertEqual(blob["schema"], "recognition_stack@v1")
+        self.assertEqual(blob["trigger"], "opencv")
+        self.assertGreaterEqual(blob["box_count"], 1)
+        self.assertTrue(blob["hub_is_species_authority"])
 
 
 if __name__ == "__main__":

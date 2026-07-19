@@ -1096,20 +1096,22 @@ def finalize_motion_recording(
                 birder_unknown_label=birder_unknown,
             )
             vq = session_summary.get("visit_quality") or {}
-            # RC1 facades: SpeciesRecognizer vs PresenceRecorder (separate product SLOs).
-            from presence_recorder import summarize_presence, summarize_reliability
-            from species_recognizer import summarize_taxonomy
+            # RC1: SpeciesRecognizer vs PresenceRecorder (separate product SLOs).
+            from presence_recorder import PresenceRecorder
+            from species_recognizer import SpeciesRecognizer
 
-            session_summary["taxonomy"] = summarize_taxonomy(
+            presence_svc = PresenceRecorder()
+            species_svc = SpeciesRecognizer()
+            session_summary["taxonomy"] = species_svc.summarize(
                 visit_quality=vq,
                 recognition_outcomes=session_summary.get("recognition_outcomes"),
             )
-            session_summary["presence"] = summarize_presence(
+            session_summary["presence"] = presence_svc.summarize(
                 visit_quality=vq,
                 video_id=video_id,
                 video_file_ok=bool(video_file_ok),
             )
-            session_summary["reliability"] = summarize_reliability(
+            session_summary["reliability"] = presence_svc.reliability(
                 video_id=video_id,
                 video_file_ok=bool(video_file_ok),
                 finalize_duration_ms=finalize_duration_ms,
@@ -1117,6 +1119,17 @@ def finalize_motion_recording(
                 yolo_blind_confirmed=bool(yolo_blind_confirmed),
                 latency_budget_breaches=list(latency_breaches or []),
             )
+            try:
+                from recognition_adapters import summarize_recognition_stack
+
+                session_summary["recognition_stack"] = summarize_recognition_stack(
+                    tracks=session_tracks,
+                    mqtt_events=mqtt_events,
+                    trigger_source=trigger_source,
+                    app_config=app_config,
+                )
+            except Exception:
+                logging.debug("recognition_stack build failed", exc_info=True)
         except Exception:
             logging.debug("visit_quality / recognition_outcomes build failed", exc_info=True)
         try:
