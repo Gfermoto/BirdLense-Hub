@@ -63,6 +63,41 @@ class TestAsyncClassifyPatch(unittest.TestCase):
         time.sleep(0.05)
         reset_async_classify_patch_for_tests()
 
+    def test_enrich_named_leftover_via_api(self):
+        class _Api:
+            def __init__(self):
+                self.calls = []
+
+            def enrich_video_detection(self, video_id, detection_id, **kwargs):
+                self.calls.append((video_id, detection_id, kwargs))
+                return {"ok": True}
+
+        cfg = _Cfg({"processor.async_classify_patch_enabled": True})
+        api = _Api()
+        n = enqueue_async_classify_patch(
+            app_config=cfg,
+            video_id=3,
+            camera_id="Forest",
+            video_path="data/y.mp4",
+            decisions=[
+                {
+                    "track_id": 11,
+                    "classify_skip_reason": "budget",
+                    "patch_species_name": "Great Tit",
+                    "confidence": 0.88,
+                }
+            ],
+            track_map=[{"id": 55, "track_id": 11, "species_id": 1}],
+            api=api,
+        )
+        self.assertEqual(n, 1)
+        time.sleep(0.08)
+        self.assertEqual(len(api.calls), 1)
+        self.assertEqual(api.calls[0][0], 3)
+        self.assertEqual(api.calls[0][1], 55)
+        self.assertEqual(api.calls[0][2]["species_name"], "Great Tit")
+        reset_async_classify_patch_for_tests()
+
 
 if __name__ == "__main__":
     unittest.main()

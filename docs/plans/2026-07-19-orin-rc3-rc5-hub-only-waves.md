@@ -33,7 +33,13 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
 14. **RC4 protocols** — `recognition_protocols.py` (`TriggerSource` / `BoxProvider` / `SpeciesHint` / `SpeciesAuthority`)
 15. **RC6 harvest** — wider candidate pool for curate (`limit*20`, conf≥0.45)
 
-## Remaining (dig / ops)
+## Done (loop 5 — dig)
+16. **RC2 enrich** — create_video returns `detections[{id,track_id,species_id}]`;
+    `PATCH /api/processor/videos/<id>/detections/<det>`;
+    `apply_processor_species_enrich` (no `manually_corrected`);
+    async worker patches named leftovers via track map
+
+## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (re-curate after deploy; clips gitignored)
-- Real async classify enrich PATCH (create_video track map + processor patch API)
+- Async **reclassify** fill of leftover `patch_species_name` (budget second pass)
 - Full PresenceRecorder/SpeciesRecognizer service classes (beyond facades)

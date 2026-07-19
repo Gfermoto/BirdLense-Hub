@@ -135,6 +135,32 @@ class API:
         )
         return response.json()
 
+    def enrich_video_detection(
+        self,
+        video_id,
+        detection_id,
+        *,
+        species_id=None,
+        species_name=None,
+        confidence=None,
+    ):
+        """RC2 async classify: PATCH species without manually_corrected."""
+        payload = {}
+        if species_id is not None:
+            payload["species_id"] = int(species_id)
+        if species_name is not None and str(species_name).strip():
+            payload["species_name"] = str(species_name).strip()
+        if confidence is not None:
+            payload["confidence"] = float(confidence)
+        response = self._send_request(
+            "PATCH",
+            f"videos/{int(video_id)}/detections/{int(detection_id)}",
+            payload,
+            timeout=30,
+            max_retries=1,
+        )
+        return response.json()
+
     def set_active_species(self, active_names):
         response = self._send_request("PUT", "species/active", active_names)
         response_data = response.json()

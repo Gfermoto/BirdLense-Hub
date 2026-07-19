@@ -198,6 +198,117 @@ def _run_dataset_crop_followup(jobs, *, app_obj):
                 )
 
 
+def apply_processor_species_enrich(
+    session,
+    app_logger,
+    *,
+    video_id: int,
+    detection_id: int,
+    species_id: int | None = None,
+    species_name: str | None = None,
+    confidence: float | None = None,
+) -> tuple[dict | None, dict | None]:
+    """Async classify patch: update species without marking manually_corrected.
+
+    Skips rows already corrected by a human. Returns (error_dict, success_dict).
+    """
+    vs = session.get(VideoSpecies, detection_id)
+    if not vs or int(vs.video_id) != int(video_id):
+        return {"error": "Detection not found for video"}, None
+    if str(getattr(vs, "source", "") or "") != "video":
+        return {"error": "Only video detections can be enriched"}, None
+    if bool(getattr(vs, "manually_corrected", False)):
+        return None, {
+            "message": "Skipped: manually_corrected",
+            "detection_id": detection_id,
+            "video_id": video_id,
+            "skipped": True,
+        }
+
+    species = None
+    if species_id is not None:
+        try:
+            species_id = int(species_id)
+        except (TypeError, ValueError):
+            return {"error": "species_id must be an integer"}, None
+        species = session.get(Species, species_id)
+        if not species:
+            return {"error": "Species not found"}, None
+    else:
+        name = (species_name or "").strip()
+        if not name:
+            return {"error": "species_id or species_name is required"}, None
+        visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
+        vp = VisitProcessor(db, app_logger, visit_timeout=visit_timeout)
+        species = vp.get_or_create_species(name)
+        if not species:
+            return {"error": "Unable to resolve species_name"}, None
+        species_id = int(species.id)
+
+    old_visit = vs.species_visit
+    old_species_id = vs.species_id
+    old_species_name = vs.species.name if vs.species else None
+    if vs.species_id == species_id:
+        return None, {
+            "message": "Species unchanged",
+            "detection_id": detection_id,
+            "video_id": video_id,
+            "species_id": species_id,
+        }
+
+    visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
+    vp = VisitProcessor(db, app_logger, visit_timeout=visit_timeout)
+    video_start = ensure_utc(vs.video.start_time)
+    detection_time = video_start + timedelta(seconds=vs.start_time)
+    new_visit, _ = vp.get_or_create_visit(species, detection_time)
+
+    vs.species_id = species_id
+    vs.species_visit_id = new_visit.id
+    vs.species_visit = new_visit
+    # Keep manually_corrected=False — this is processor enrich, not UI correction.
+    if confidence is not None:
+        try:
+            vs.confidence = float(confidence)
+        except (TypeError, ValueError):
+            pass
+    v_start = ensure_utc(vs.video.start_time) + timedelta(seconds=vs.start_time)
+    v_end = ensure_utc(vs.video.start_time) + timedelta(seconds=vs.end_time)
+    new_visit.end_time = max(new_visit.end_time, v_end)
+    new_visit.start_time = min(new_visit.start_time, v_start)
+
+    session.flush()
+    _sync_reid_embeddings_species(session, [vs], species)
+
+    if old_visit and old_visit.id != new_visit.id:
+        remaining = [x for x in old_visit.video_species if x.id != vs.id]
+        if not remaining:
+            session.delete(old_visit)
+
+    new_video_detections = [v for v in new_visit.video_species if v.source == "video"]
+    if new_video_detections:
+        vp.update_simultaneous_count(new_visit, new_video_detections)
+
+    session.commit()
+    bust_response_caches()
+    app_logger.info(
+        "processor_species_enrich: video_id=%s detection_id=%s %s -> %s",
+        video_id,
+        detection_id,
+        old_species_name,
+        species.name,
+    )
+    return None, {
+        "message": "Species enriched",
+        "detection_id": detection_id,
+        "video_id": video_id,
+        "track_id": vs.track_id,
+        "from_species_id": old_species_id,
+        "to_species_id": species_id,
+        "to_species_name": species.name,
+        "manually_corrected": False,
+    }
+
+
 def apply_detection_species_patch(
     session,
     app_logger,

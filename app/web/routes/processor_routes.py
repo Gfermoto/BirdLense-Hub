@@ -46,6 +46,30 @@ from timeline_payloads import _infer_trigger_source_from_detections
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
 
 
+def _detection_track_map(video: Video) -> list[dict]:
+    """Map create_video rows → {id, track_id, species_id} for async classify patch."""
+    out: list[dict] = []
+    for vs in list(getattr(video, "video_species", None) or []):
+        if str(getattr(vs, "source", "") or "") != "video":
+            continue
+        try:
+            det_id = int(vs.id)
+        except (TypeError, ValueError):
+            continue
+        tid = getattr(vs, "track_id", None)
+        try:
+            tid_out = int(tid) if tid is not None else None
+        except (TypeError, ValueError):
+            tid_out = None
+        sid = getattr(vs, "species_id", None)
+        try:
+            sid_out = int(sid) if sid is not None else None
+        except (TypeError, ValueError):
+            sid_out = None
+        out.append({"id": det_id, "track_id": tid_out, "species_id": sid_out})
+    return out
+
+
 def _as_utc_naive(dt):
     if dt is None:
         return None
@@ -340,6 +364,7 @@ def register_routes(app):
                     "message": "Video already ingested.",
                     "video_id": existing_video.id,
                     "duplicate": True,
+                    "detections": _detection_track_map(existing_video),
                 },
                 timing.finish(),
             ), 200
@@ -441,6 +466,7 @@ def register_routes(app):
                 {
                     "message": "Video and associated data inserted successfully.",
                     "video_id": video.id,
+                    "detections": _detection_track_map(video),
                 },
                 timing.finish(),
             ), 201
@@ -468,6 +494,7 @@ def register_routes(app):
                         "message": "Video already ingested.",
                         "video_id": raced_video.id,
                         "duplicate": True,
+                        "detections": _detection_track_map(raced_video),
                     },
                     timing.finish(),
                 ), 200
@@ -476,6 +503,34 @@ def register_routes(app):
             db.session.rollback()
             app.logger.error(f"Error processing video: {str(e)}")
             return {"error": "Failed to process video"}, 500
+
+    @app.route(
+        "/api/processor/videos/<int:video_id>/detections/<int:detection_id>",
+        methods=["PATCH"],
+    )
+    def enrich_processor_detection(video_id: int, detection_id: int):
+        """RC2: async classify patch — update species without manually_corrected."""
+        if not _check_processor_secret():
+            return {"error": "Forbidden"}, 403
+        data, perr = parse_request_json_dict(request)
+        if perr is not None:
+            return perr, 400
+        if not data:
+            return {"error": "JSON body required"}, 400
+        from services.detection_species_correction_service import apply_processor_species_enrich
+
+        err, ok = apply_processor_species_enrich(
+            db.session,
+            app.logger,
+            video_id=video_id,
+            detection_id=detection_id,
+            species_id=data.get("species_id"),
+            species_name=data.get("species_name"),
+            confidence=data.get("confidence"),
+        )
+        if err is not None:
+            return err, 400
+        return ok or {}, 200
 
     @app.route("/api/processor/species/active", methods=["PUT"])
     def set_active_species():

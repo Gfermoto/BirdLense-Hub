@@ -849,12 +849,19 @@ def finalize_motion_recording(
             try:
                 from async_classify_patch import enqueue_async_classify_patch
 
+                track_map = None
+                if isinstance(resp, dict):
+                    raw_map = resp.get("detections")
+                    if isinstance(raw_map, list):
+                        track_map = raw_map
                 enqueue_async_classify_patch(
                     app_config=app_config,
                     video_id=video_id,
                     camera_id=session_camera_id,
                     video_path=video_path_for_api,
                     decisions=video_detections,
+                    track_map=track_map,
+                    api=api,
                 )
             except Exception:
                 logging.debug("async_classify_patch enqueue skipped", exc_info=True)

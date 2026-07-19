@@ -52,8 +52,8 @@ classify + patch visit allowed).
 **Progress (2026-07-19):** defaults aligned (8s/6 tracks/3 kf);
 `classify_skip_reason` stamped on budget/timeout/no_crop/deferred/unknown_abstain
 and copied into decision rows; `pipeline_stage=classify_enrich` when classifier
-touched. Async patch-visit **scaffold** (`async_classify_patch.py`, flag off);
-real enrich PATCH still dig.
+touched. Async patch-visit: scaffold + enrich PATCH + create_video track map
+(flag off). Remaining dig: leftover reclassify fill before patch.
 
 ### RC3 — High: dual decision engines + post-hoc salvage
 
