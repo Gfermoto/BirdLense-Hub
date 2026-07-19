@@ -48,8 +48,10 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
 18. **RC4 adapters** — `recognition_adapters.py` (OpenCV trigger, Hub YOLO boxes,
     Frigate hint, Hub authority)
 
+## Done (loop tick 1)
+19. **session_summary.recognition_stack** + PresenceRecorder/SpeciesRecognizer classes
+
 ## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
 - Enable async patch on Orin canary + measure GPU contention
-- Wire adapters into bootstrap / session_summary
-- Full PresenceRecorder/SpeciesRecognizer service classes (beyond facades)
+- Wire TriggerSource.poll into live motion path (beyond summary blob)
