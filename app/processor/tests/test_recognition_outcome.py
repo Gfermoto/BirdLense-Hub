@@ -68,8 +68,36 @@ class TestRecognitionOutcome(unittest.TestCase):
                 "decision_kind": "accepted_generic",
                 "decision_reason": "fallback_bird",
             },
+            {
+                # Stub named label without accept contract must not count.
+                "species_name": "Parus major",
+                "detection_provider": "yolo",
+            },
         ]
         self.assertEqual(hub_taxonomy_wins(rows), 1)
+
+    def test_stub_named_is_not_taxonomy_win(self):
+        out = from_persist_row(
+            {"species_name": "Parus major", "detection_provider": "yolo"}
+        )
+        self.assertEqual(out.kind, OutcomeKind.PRESENCE)
+        self.assertFalse(out.hub_taxonomy_win)
+        self.assertEqual(out.skip_reason, "named_without_accept_contract")
+
+    def test_salvage_flag_keeps_hub_classifier_win(self):
+        out = from_persist_row(
+            {
+                "species_name": "Parus major",
+                "decision_kind": "accepted_species",
+                "decision_reason": "accepted_classifier",
+                "classifier_species_name": "Parus major",
+                "detection_provider": "yolo",
+                "frigate_trigger_salvage": True,
+            }
+        )
+        self.assertEqual(out.kind, OutcomeKind.NAMED_ACCEPT)
+        self.assertTrue(out.hub_taxonomy_win)
+        self.assertEqual(out.authority, "hub_classifier")
 
 
 if __name__ == "__main__":

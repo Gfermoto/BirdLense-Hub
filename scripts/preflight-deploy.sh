@@ -67,6 +67,16 @@ if [[ -f scripts/verify_processor_config_drift.py ]]; then
   fi
 fi
 
+# Hub-first: Frigate named rewrite is opt-in; warn when site still looks Frigate-coupled.
+_ucfg="app/app_config/user_config.yaml"
+if [[ -f "$_ucfg" ]]; then
+  if grep -qiE 'frigate|mqtt' "$_ucfg" 2>/dev/null; then
+    if ! grep -qE 'frigate_species_authority:[[:space:]]*true' "$_ucfg" 2>/dev/null; then
+      note "WARN: user_config mentions Frigate/MQTT but frigate_species_authority is not true — Frigate will not rewrite Hub species (opt-in both authority + promote)"
+    fi
+  fi
+fi
+
 if [[ "$fail" -ne 0 ]]; then
   note "FAILED"
   exit 1

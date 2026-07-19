@@ -92,8 +92,19 @@ def _write_report(payload: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--enforce", action="store_true", help="Exit 1 on failure")
+    parser.add_argument(
+        "--enforce",
+        action="store_true",
+        default=True,
+        help="Exit 1 on failure (default: on)",
+    )
+    parser.add_argument(
+        "--no-enforce",
+        action="store_true",
+        help="Report-only: exit 0 even when cases fail",
+    )
     args = parser.parse_args()
+    enforce = not bool(args.no_enforce)
 
     _ensure_import_path()
     payload_in = _load_cases()
@@ -118,7 +129,7 @@ def main() -> int:
     for row in results:
         if not row.get("ok"):
             print(f"  {row.get('id')}: {'; '.join(row.get('fail') or [])}", file=sys.stderr)
-    return 1 if args.enforce else 0
+    return 1 if enforce else 0
 
 
 if __name__ == "__main__":

@@ -103,6 +103,34 @@
         "hub_taxonomy_win": false,
         "skip_reason": "max_tracks"
       }
+    },
+    {
+      "id": "stub_named_no_decision_kind",
+      "row": {
+        "species_name": "Parus major",
+        "detection_provider": "yolo"
+      },
+      "expect": {
+        "kind": "presence",
+        "hub_taxonomy_win": false
+      }
+    },
+    {
+      "id": "salvage_flag_does_not_kill_hub_win",
+      "row": {
+        "species_name": "Parus major",
+        "decision_kind": "accepted_species",
+        "decision_reason": "accepted_classifier",
+        "classifier_species_name": "Parus major",
+        "detection_provider": "yolo",
+        "frigate_trigger_salvage": true,
+        "outcome_bucket": "auto_accept"
+      },
+      "expect": {
+        "kind": "named_accept",
+        "hub_taxonomy_win": true,
+        "authority": "hub_classifier"
+      }
     }
   ]
 }

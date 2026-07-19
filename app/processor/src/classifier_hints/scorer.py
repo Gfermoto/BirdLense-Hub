@@ -59,6 +59,7 @@ def apply_hints_to_rows(
     hints: list[HintPayload],
     *,
     app_config: Mapping,
+    camera_id: str | None = None,
 ) -> list[dict]:
     """Adjust row confidence from weighted hints. Never creates rows.
 
@@ -75,10 +76,13 @@ def apply_hints_to_rows(
     regional_keys = {_norm(h.species) for h in hints if h.source == HintSource.EBIRD_REGIONAL}
     # Hub-first: rename-to-species only with explicit species authority.
     # Score boost from Frigate labels still applies as a prior when hints enabled.
+    # camera_id must match fusion merge path (role presets).
     from visit_contract import frigate_species_authority
 
     promote_flag = bool(app_config.get("detection.frigate_promote_generic_enabled", False))
-    promote_enabled = promote_flag and frigate_species_authority(app_config)
+    promote_enabled = promote_flag and frigate_species_authority(
+        app_config, camera_id=camera_id
+    )
     try:
         promote_min = float(app_config.get("detection.frigate_promote_generic_min_score") or 0.55)
     except (TypeError, ValueError):
@@ -204,4 +208,6 @@ def apply_classifier_hints(
         mqtt_events=mqtt_events,
         app_config=app_config,
     )
-    return apply_hints_to_rows(rows, hints, app_config=app_config)
+    return apply_hints_to_rows(
+        rows, hints, app_config=app_config, camera_id=camera_id
+    )

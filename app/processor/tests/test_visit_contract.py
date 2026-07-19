@@ -14,6 +14,7 @@ from visit_contract import (
     compute_visit_quality,
     frigate_species_authority,
     is_frigate_promoteable_reason,
+    is_frigate_sourced_row,
     is_named_product_species,
     role_detection_flag,
 )
@@ -119,6 +120,51 @@ class TestVisitContract(unittest.TestCase):
                 opt_in=False,
             )
         )
+
+    def test_default_frigate_site_preset_authority_off(self):
+        """Hub-first defaults: frigate_site role alone must not enable authority."""
+        cfg = _Cfg(
+            {
+                "video": {
+                    "cameras": [
+                        {
+                            "id": "Forest",
+                            "tuning_role": "frigate_site",
+                            "stream_name": "main",
+                            "detect_stream_name": "det",
+                        }
+                    ]
+                },
+                "processor.camera_tuning_by_role.frigate_site": {
+                    "frigate_species_authority": False,
+                    "frigate_standalone_when_no_yolo": False,
+                },
+            }
+        )
+        self.assertFalse(frigate_species_authority(cfg, camera_id="Forest"))
+
+    def test_salvage_flag_not_frigate_sourced_for_hub_row(self):
+        hub = {
+            "species_name": "Great Tit",
+            "decision_kind": "accepted_species",
+            "decision_reason": "accepted_classifier",
+            "classifier_species_name": "Great Tit",
+            "detection_provider": "yolo",
+            "frigate_trigger_salvage": True,
+        }
+        self.assertFalse(is_frigate_sourced_row(hub))
+        q = compute_visit_quality(persisted_rows=[hub])
+        self.assertEqual(q["hub_named_rows"], 1)
+        self.assertEqual(q["named_share_hub"], 1.0)
+
+    def test_review_salvage_reason_not_taxonomy_sourced(self):
+        row = {
+            "species_name": "Bird",
+            "decision_kind": "review_only_generic",
+            "decision_reason": "review_only_frigate_trigger_salvage",
+            "detection_provider": "yolo",
+        }
+        self.assertFalse(is_frigate_sourced_row(row))
 
 
 if __name__ == "__main__":

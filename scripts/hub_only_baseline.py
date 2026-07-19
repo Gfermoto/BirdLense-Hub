@@ -20,13 +20,13 @@ from collections import Counter
 from typing import Any
 
 
+# Keep in sync with visit_contract.FRIGATE_TAXONOMY_REASONS (salvage excluded).
 _FRIGATE_REASONS = frozenset(
     {
         "promoted_by_frigate",
         "frigate_standalone",
         "frigate_standalone_excluded",
         "frigate_trigger_named_accept",
-        "review_only_frigate_trigger_salvage",
     }
 )
 _GENERIC = frozenset({"bird", "unknown", "unknown bird", "rodent", "squirrel", ""})

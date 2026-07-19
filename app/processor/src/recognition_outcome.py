@@ -166,24 +166,14 @@ def from_persist_row(
             hub_taxonomy_win=False,
         )
 
-    if named and not frigate:
-        return RecognitionOutcome(
-            kind=OutcomeKind.NAMED_ACCEPT,
-            species_name=species,
-            presence_label=None,
-            authority=authority,
-            skip_reason=skip_reason,
-            decision_kind=kind_raw or None,
-            decision_reason=reason or None,
-            hub_taxonomy_win=True,
-        )
-
+    # Named label without explicit accept contract is never a silent hub taxonomy win.
     return RecognitionOutcome(
         kind=OutcomeKind.PRESENCE,
-        species_name=None,
-        presence_label=species or "Bird",
+        species_name=species if named else None,
+        presence_label=None if named else (species or "Bird"),
         authority=authority,
-        skip_reason=skip_reason,
+        skip_reason=skip_reason
+        or ("named_without_accept_contract" if named else None),
         decision_kind=kind_raw or None,
         decision_reason=reason or None,
         hub_taxonomy_win=False,

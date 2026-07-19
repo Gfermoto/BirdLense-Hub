@@ -49,6 +49,8 @@ Environment:
   AUDIT_CAMERAS                       default BirdBox,Forest
   FAIL_ON_PARITY_HOTSPOT              1 to fail when parity hotspots > 0
   SKIP_YOLO_GOLDEN                    1 to skip yolo golden clips gate (default 0)
+  SKIP_SPECIES_GOLDEN                 1 to skip RC6 species taxonomy gate (default 0)
+  SKIP_DETECTOR_GOLDEN                1 to skip RC6 detector golden gate (default 0)
   YOLO_GOLDEN_CLIP_1819               mp4 path for regen gate (optional)
   BIRDLENSE_DB                        sqlite path for video 1819 session metrics
   SKIP_BBOX_PARITY                    1 to skip validate_bbox_parity.sh (default 0)
@@ -263,6 +265,24 @@ if [[ "${SKIP_YOLO_GOLDEN}" != "1" ]]; then
     echo "quality-gate: yolo-golden PASS"
   else
     echo "quality-gate: yolo-golden FAIL" >&2
+    exit 1
+  fi
+fi
+
+# RC6: detector stubs ≠ taxonomy PASS; species cases are Hub-only JSON (no GPU).
+if [[ "${SKIP_SPECIES_GOLDEN:-0}" != "1" ]]; then
+  if (cd "${BASH_SOURCE%/*}/.." && make validate-species-golden); then
+    echo "quality-gate: species-golden PASS"
+  else
+    echo "quality-gate: species-golden FAIL" >&2
+    exit 1
+  fi
+fi
+if [[ "${SKIP_DETECTOR_GOLDEN:-0}" != "1" ]]; then
+  if (cd "${BASH_SOURCE%/*}/.." && make validate-detector-golden); then
+    echo "quality-gate: detector-golden PASS"
+  else
+    echo "quality-gate: detector-golden FAIL" >&2
     exit 1
   fi
 fi

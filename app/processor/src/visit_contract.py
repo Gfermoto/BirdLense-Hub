@@ -45,30 +45,39 @@ def is_frigate_promoteable_reason(decision_reason: str | None) -> bool:
     return str(decision_reason or "").strip().lower() in _PROMOTEABLE_DECISION_REASONS
 
 
-_FRIGATE_SOURCED_REASONS = frozenset(
+# Taxonomy authority / standalone only — salvage evidence must not exclude Hub rows.
+FRIGATE_TAXONOMY_REASONS = frozenset(
     {
         "promoted_by_frigate",
         "frigate_standalone",
         "frigate_standalone_excluded",
         "frigate_trigger_named_accept",
-        "review_only_frigate_trigger_salvage",
     }
 )
 
 
 def is_frigate_sourced_row(row: Mapping[str, Any] | None) -> bool:
-    """True when species/accept came from Frigate path (not Hub YOLO+classifier)."""
+    """True when species/accept came from Frigate taxonomy authority (not Hub).
+
+    ``frigate_trigger_salvage`` / review-salvage reasons are evidence-only and do
+    **not** mark a row as Frigate-sourced for ``named_share_hub``.
+    """
     if not isinstance(row, Mapping):
         return False
     if bool(row.get("frigate_species_promoted")) or bool(row.get("frigate_standalone")):
         return True
-    if bool(row.get("frigate_trigger_salvage")):
-        return True
     reason = str(row.get("decision_reason") or "").strip().lower()
-    if reason in _FRIGATE_SOURCED_REASONS:
+    if reason in FRIGATE_TAXONOMY_REASONS:
         return True
     provider = str(row.get("detection_provider") or "").strip().lower()
-    return provider == "frigate"
+    if provider != "frigate":
+        return False
+    # Pure Frigate detection provider: count only when no Hub classifier label.
+    if row.get("classifier_species_name") is not None:
+        hub_cls = str(row.get("classifier_species_name") or "").strip()
+        if hub_cls and is_named_product_species(hub_cls):
+            return False
+    return True
 
 
 def apply_frigate_named_accept(row: dict[str, Any], *, species: str, confidence: float | None = None) -> dict[str, Any]:

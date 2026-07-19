@@ -213,6 +213,13 @@ log "Domain closure package gate (#557 final artifacts)"
   --out-json "docs/reports/domain_finetune/closure_package_latest.json" \
   --out-md "docs/reports/domain_finetune/closure_package_latest.md"
 
+log "RC6 golden gates (detector ≠ taxonomy)"
+(
+  cd "${ROOT}"
+  make validate-detector-golden
+  make validate-species-golden
+)
+
 if [[ "${CI_FULL_DOCKER}" != "1" ]]; then
   log "Docker-слой пропущен (CI_FULL_DOCKER=1 для processor+web тестов в образе и E2E smoke)"
   log "Готово (локальный CI без Docker)."

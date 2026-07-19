@@ -154,6 +154,42 @@ class TestApplyHints(unittest.TestCase):
         self.assertEqual(out[0]["species_name"], "Bird")
         self.assertFalse(out[0].get("frigate_species_promoted"))
 
+    def test_role_camera_authority_enables_promote(self):
+        """Scorer must honor frigate_species_authority via camera_id (parity with fusion)."""
+        rows = [{"species_name": "Bird", "confidence": 0.2, "detector_confidence": 0.3}]
+        events = [
+            {
+                "source": "frigate",
+                "camera": "Forest",
+                "label": "bird",
+                "sub_label": "Lesser Goldfinch",
+                "confidence": 0.84,
+            }
+        ]
+        cfg = {
+            "detection.classifier_hints_enabled": True,
+            "detection.frigate_promote_generic_enabled": True,
+            "detection.frigate_species_authority": False,
+            "video": {
+                "cameras": [
+                    {
+                        "id": "Forest",
+                        "tuning_role": "frigate_site",
+                        "stream_name": "main",
+                        "detect_stream_name": "det",
+                    }
+                ]
+            },
+            "processor.camera_tuning_by_role.frigate_site": {
+                "frigate_species_authority": True,
+            },
+        }
+        out = apply_classifier_hints(
+            rows, mqtt_events=events, app_config=cfg, camera_id="Forest"
+        )
+        self.assertEqual(out[0]["species_name"], "Lesser Goldfinch")
+        self.assertTrue(out[0].get("frigate_species_promoted"))
+
 
 if __name__ == "__main__":
     unittest.main()
