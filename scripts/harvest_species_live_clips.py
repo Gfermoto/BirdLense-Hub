@@ -73,7 +73,11 @@ def main() -> int:
     )
     ap.add_argument("--limit", type=int, default=4)
     ap.add_argument("--clip-seconds", type=float, default=6.0)
-    ap.add_argument("--copy-full", action="store_true", help="Copy full mp4 (no ffmpeg cut).")
+    ap.add_argument(
+        "--copy-full",
+        action="store_true",
+        help="Copy full mp4 (no ffmpeg cut). Prefer for named_accept — short cuts often yield Unknown.",
+    )
     ap.add_argument(
         "--ffmpeg",
         default="ffmpeg",

@@ -18,6 +18,11 @@ Harvest 4×5s clips (pigeon/fieldfare/great tit/sparrow).
 8. **RC6 classify-first regen** — `track_regenerator` calls `enrich_tracks_classifier_at_finalize`
 9. **RC9** — `session_summary.reliability.*` namespace
 
-## Next (if still open after Orin live re-run)
-- Curate pack until `named_accept` green on Orin
-- PresenceRecorder vs SpeciesRecognizer split (radical)
+## Orin live pack (verified)
+
+Full-clip Common Wood Pigeon → `PASS species-live-hub-only (clips=1 mode=runtime)`  
+with classify-first regen. Short cuts → Unknown; use `--copy-full`.
+
+## Remaining (radical / later)
+- PresenceRecorder vs SpeciesRecognizer split
+- Broader curated named pack (multi-species)

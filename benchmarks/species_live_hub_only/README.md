@@ -34,5 +34,7 @@ tracked empty/partial index — or keep harvest local for Orin eval.
 
 ## Status
 
-Manifest scaffold + runtime gate (2026-07-19). Empty `clips: []` skips unless
-`REQUIRE_CLIPS=1`.
+Runtime gate wired (2026-07-19). Empty `clips: []` in git skips unless
+`REQUIRE_CLIPS=1`. Orin: full-clip harvest + classify-first regen —
+**Common Wood Pigeon named_accept PASS** (`SPECIES_LIVE_DOCKER=birdlense`).
+Prefer `--copy-full` for named; short ffmpeg cuts often yield Unknown.
