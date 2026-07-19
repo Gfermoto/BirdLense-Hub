@@ -1128,6 +1128,24 @@ def finalize_motion_recording(
                     trigger_source=trigger_source,
                     app_config=app_config,
                 )
+                try:
+                    from metrics import set_gauge
+
+                    rs_blob = session_summary.get("recognition_stack") or {}
+                    set_gauge(
+                        "last_recognition_box_count",
+                        float(int(rs_blob.get("box_count") or 0)),
+                    )
+                    set_gauge(
+                        "last_recognition_hint_count",
+                        float(int(rs_blob.get("hint_count") or 0)),
+                    )
+                    set_gauge(
+                        "last_hub_is_species_authority",
+                        1.0 if rs_blob.get("hub_is_species_authority") else 0.0,
+                    )
+                except Exception:
+                    logging.debug("recognition_stack gauges skipped", exc_info=True)
             except Exception:
                 logging.debug("recognition_stack build failed", exc_info=True)
         except Exception:

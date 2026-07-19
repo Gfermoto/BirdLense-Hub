@@ -58,6 +58,11 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
     (flag stays off until operator enables)
 22. **recording_context.trigger_poll** — session stores TriggerSource poll event
 
+## Done (loop tick 3)
+23. **recognition_stack gauges** — `last_recognition_box_count` /
+    `last_recognition_hint_count` / `last_hub_is_species_authority`
+24. **pack harvest attempts** — `--per-species-attempts` (Orin still 2 KEEP)
+
 ## Remaining (ops / deeper dig)
 - Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
 - Operator canary enable async patch on Orin (see canary plan; not auto)
