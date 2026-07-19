@@ -42,8 +42,12 @@ validate-species-golden:
 	@python3 scripts/species_golden_gate.py --enforce
 
 # Live Hub-only labeled mp4 pack (RC6 residual). Empty pack skips unless REQUIRE_CLIPS=1.
+# SPECIES_LIVE_RUN=1 → heavy track regen; SPECIES_LIVE_DOCKER=birdlense → run inside container.
 validate-species-live-hub-only:
-	@python3 scripts/species_live_hub_only_gate.py --enforce $(if $(REQUIRE_CLIPS),--require-clips,)
+	@python3 scripts/species_live_hub_only_gate.py --enforce \
+		$(if $(REQUIRE_CLIPS),--require-clips,) \
+		$(if $(SPECIES_LIVE_RUN),--run-clips,) \
+		$(if $(SPECIES_LIVE_DOCKER),--docker $(SPECIES_LIVE_DOCKER),)
 
 # Hub-only named_share from Orin session summaries / DB (Frigate rows excluded).
 hub-only-baseline:

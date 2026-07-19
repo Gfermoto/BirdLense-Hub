@@ -98,8 +98,9 @@ Evidence: `feedback_loop_service.py`; Birder weights load-once
 **Remediation:** versioned `SiteAdapter` + canary; until then, review-queue KPIs
 are product metrics, not ML-ops side tools.
 
-**Progress (2026-07-19):** `site_adapter.py` manifest + canary noop;
-`feedback_loop_status.site_adapter` KPI. Weights/LoRA apply still open.
+**Progress (2026-07-19):** `site_adapter.py` manifest + canary;
+species_priors adjust classifier conf in linear path; KPI
+`runtime_apply=species_priors|weights_file_*`. LoRA/ONNX weight load still open.
 
 ### RC6 — High: CI golden validates tracks, not species
 
@@ -115,8 +116,9 @@ renamed as detector gate only.
 `make validate-detector-golden` / `make validate-species-golden`,
 `RecognitionOutcome` + `benchmarks/species_golden_cases.json`. Live pack
 scaffold: `benchmarks/species_live_hub_only/` +
-`make validate-species-live-hub-only` (empty pack skips; `--require-clips` for
-strict CI). Clip runtime eval still open.
+`make validate-species-live-hub-only` (empty pack skips; `--require-clips` /
+`--run-clips` / `SPECIES_LIVE_DOCKER`). Harvest script + Orin baseline: tracks
+ok, named=0 offline — taxonomy gap now measurable.
 
 ### RC7 — Medium: weak open-set / Unknown handling
 

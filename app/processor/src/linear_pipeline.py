@@ -167,6 +167,28 @@ def _species_from_classifier(
     rows = by_name[best_name]
     avg_cls = sum(float(r.get("confidence") or 0.0) for r in rows) / len(rows)
     avg_combined = sum(float(r.get("combined_confidence") or 0.0) for r in rows) / len(rows)
+    # RC5 / Bet A: site-adapter species priors (canary) adjust classifier conf.
+    adapter_info: dict[str, Any] = {"applied": False}
+    try:
+        from processor_support import get_data_dir
+        from site_adapter import adjust_confidence_with_site_adapter
+
+        track_id = track.get("track_id", track.get("id"))
+        adj_cls, adapter_info = adjust_confidence_with_site_adapter(
+            data_dir=get_data_dir(),
+            species=best_name,
+            confidence=avg_cls,
+            track_id=track_id,
+        )
+        if adapter_info.get("applied"):
+            avg_cls = adj_cls
+            if avg_combined > 0:
+                avg_combined = max(
+                    0.0,
+                    min(1.0, avg_combined + float(adapter_info.get("delta") or 0.0)),
+                )
+    except Exception:
+        adapter_info = {"applied": False}
     meta = {
         "species_name": best_name,
         "event_count": len(rows),
@@ -176,6 +198,8 @@ def _species_from_classifier(
         "avg_entropy": None,
         "avg_top1_top2_margin": None,
     }
+    if adapter_info.get("applied"):
+        meta["site_adapter"] = adapter_info
     if avg_cls < min_guess:
         meta["abstain"] = "low_conf"
         return None, avg_cls, True, meta

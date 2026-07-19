@@ -126,6 +126,8 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
         "present": False,
         "status": "inactive",
         "runtime_apply": "noop_until_adapter_weights",
+        "has_species_priors": False,
+        "has_weights_file": False,
     }
     adapter_path = Path(data_dir) / "site_adapter" / "manifest.json"
     if adapter_path.is_file():
@@ -133,6 +135,17 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
             raw = json.loads(adapter_path.read_text(encoding="utf-8"))
             if isinstance(raw, dict):
                 status = str(raw.get("status") or "inactive")
+                priors = raw.get("species_priors") if isinstance(raw.get("species_priors"), dict) else {}
+                weights_rel = str(raw.get("weights_file") or "").strip()
+                weights_ok = bool(weights_rel) and (adapter_path.parent / weights_rel).is_file()
+                if priors and weights_ok:
+                    runtime_apply = "priors_and_weights_file"
+                elif priors:
+                    runtime_apply = "species_priors"
+                elif weights_ok:
+                    runtime_apply = "weights_file_present"
+                else:
+                    runtime_apply = "noop_until_adapter_weights"
                 site_adapter = {
                     "present": True,
                     "status": status,
@@ -141,7 +154,9 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
                     "source": raw.get("source"),
                     "canary_share": raw.get("canary_share"),
                     "canary_ready": status in {"canary", "active"},
-                    "runtime_apply": "noop_until_adapter_weights",
+                    "runtime_apply": runtime_apply,
+                    "has_species_priors": bool(priors),
+                    "has_weights_file": weights_ok,
                 }
         except Exception:
             logger.debug("site_adapter manifest unreadable: %s", adapter_path, exc_info=True)

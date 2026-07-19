@@ -289,3 +289,5 @@ scripts/smoke_detect_subtype_compare.py
 benchmarks/fixtures/clip_1819.mp4
 benchmarks/fixtures/clip_birdbox_visit.mp4
 benchmarks/fixtures/clip_forest_visit.mp4
+# Live Hub-only species pack mp4 (harvest via scripts/harvest_species_live_clips.py)
+benchmarks/species_live_hub_only/clips/

@@ -15,8 +15,24 @@ clips that must pass with MQTT/Frigate off.
 | `mqtt` | must be `off` / empty |
 
 Gate: `make validate-species-live-hub-only`  
-Strict (fail if empty): `REQUIRE_CLIPS=1 make validate-species-live-hub-only`
+Strict empty fail: `REQUIRE_CLIPS=1 make validate-species-live-hub-only`  
+Runtime regen (Orin):  
+`SPECIES_LIVE_RUN=1 SPECIES_LIVE_DOCKER=birdlense make validate-species-live-hub-only`
+
+## Harvest (Orin)
+
+```bash
+python3 scripts/harvest_species_live_clips.py \
+  --db app/data/db/birdlense.db \
+  --recordings-root app \
+  --limit 4 --clip-seconds 6 \
+  --docker-ffmpeg birdlense
+```
+
+`clips/*.mp4` are gitignored. Commit only `manifest.json` when you want a
+tracked empty/partial index — or keep harvest local for Orin eval.
 
 ## Status
 
-Manifest scaffold (2026-07-19). `clips: []` — no labeled mp4 checked in yet.
+Manifest scaffold + runtime gate (2026-07-19). Empty `clips: []` skips unless
+`REQUIRE_CLIPS=1`.
