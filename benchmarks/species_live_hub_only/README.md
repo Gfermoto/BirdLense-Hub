@@ -14,9 +14,9 @@ clips that must pass with MQTT/Frigate off.
 | `expected_species` | required for `named_accept` |
 | `mqtt` | must be `off` / empty |
 
-Gate entry (planned): `make validate-species-live-hub-only` — fails closed if
-the pack is empty in CI strict mode; local Orin may skip until clips exist.
+Gate: `make validate-species-live-hub-only`  
+Strict (fail if empty): `REQUIRE_CLIPS=1 make validate-species-live-hub-only`
 
 ## Status
 
-Scaffold only (2026-07-19). No labeled mp4 checked in yet.
+Manifest scaffold (2026-07-19). `clips: []` — no labeled mp4 checked in yet.

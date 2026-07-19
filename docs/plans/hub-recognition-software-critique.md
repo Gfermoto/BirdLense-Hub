@@ -83,6 +83,10 @@ Evidence: `default_config.yaml` triggers; `detection_fusion.py`;
 `SpeciesAuthority`. Hub-only profile unloads Frigate modules. Named Frigate
 never enters Hub go-metrics.
 
+**Progress (2026-07-19):** `tuning_role: hub_only` +
+`app_config/profiles/hub_only.example.yaml` (Frigate trigger/salvage/authority
+off). Full module unload / protocol interfaces still open.
+
 ### RC5 — High: no closed learning loop in product
 
 Review → export / active-learning buffer. No runtime adapter (LoRA /
@@ -93,6 +97,9 @@ Evidence: `feedback_loop_service.py`; Birder weights load-once
 
 **Remediation:** versioned `SiteAdapter` + canary; until then, review-queue KPIs
 are product metrics, not ML-ops side tools.
+
+**Progress (2026-07-19):** `site_adapter.py` manifest + canary noop;
+`feedback_loop_status.site_adapter` KPI. Weights/LoRA apply still open.
 
 ### RC6 — High: CI golden validates tracks, not species
 
@@ -107,7 +114,9 @@ renamed as detector gate only.
 **Progress (2026-07-19):** detector vs taxonomy split landed —
 `make validate-detector-golden` / `make validate-species-golden`,
 `RecognitionOutcome` + `benchmarks/species_golden_cases.json`. Live pack
-scaffold: `benchmarks/species_live_hub_only/` (no mp4 yet).
+scaffold: `benchmarks/species_live_hub_only/` +
+`make validate-species-live-hub-only` (empty pack skips; `--require-clips` for
+strict CI). Clip runtime eval still open.
 
 ### RC7 — Medium: weak open-set / Unknown handling
 

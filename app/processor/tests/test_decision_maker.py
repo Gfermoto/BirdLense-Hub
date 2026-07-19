@@ -65,6 +65,7 @@ def _make_track(
 
 
 def _cfg_get_non_linear(key, default=None, *, real_get=None):
+    """Force dual to exercise quarantined legacy cascade (RC3)."""
     if key == "processor.pipeline_mode":
         return "dual"
     if real_get is not None:

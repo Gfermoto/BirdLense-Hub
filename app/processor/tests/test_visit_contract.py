@@ -143,6 +143,37 @@ class TestVisitContract(unittest.TestCase):
         )
         self.assertFalse(frigate_species_authority(cfg, camera_id="Forest"))
 
+    def test_hub_only_role_disables_frigate_salvage_flags(self):
+        cfg = _Cfg(
+            {
+                "video": {
+                    "cameras": [
+                        {
+                            "id": "BirdBox",
+                            "tuning_role": "hub_only",
+                            "stream_name": "main",
+                            "detect_stream_name": "det",
+                        }
+                    ]
+                },
+                "processor.camera_tuning_by_role.hub_only": {
+                    "frigate_trigger_review_salvage_enabled": False,
+                    "frigate_species_authority": False,
+                    "frigate_standalone_when_no_yolo": False,
+                },
+            }
+        )
+        self.assertFalse(frigate_species_authority(cfg, camera_id="BirdBox"))
+        self.assertFalse(
+            role_detection_flag(
+                cfg,
+                "frigate_trigger_review_salvage_enabled",
+                camera_id="BirdBox",
+                default=True,
+                opt_in=False,
+            )
+        )
+
     def test_salvage_flag_not_frigate_sourced_for_hub_row(self):
         hub = {
             "species_name": "Great Tit",

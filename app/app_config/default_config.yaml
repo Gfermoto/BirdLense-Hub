@@ -525,6 +525,15 @@ processor:
       frigate_standalone_when_no_yolo: false
       frigate_standalone_when_no_accepted_species: false
       frigate_standalone_require_blind_yolo: true
+    # Hub-only: no Frigate salvage/authority knobs — pair with triggers.frigate.enabled=false
+    # (see app_config/profiles/hub_only.example.yaml).
+    hub_only:
+      frigate_trigger_review_salvage_enabled: false
+      frigate_trigger_review_salvage_allow_without_yolo_tracks: false
+      frigate_species_authority: false
+      frigate_standalone_when_no_yolo: false
+      frigate_standalone_when_no_accepted_species: false
+      frigate_standalone_require_blind_yolo: true
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на detect substream слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.03

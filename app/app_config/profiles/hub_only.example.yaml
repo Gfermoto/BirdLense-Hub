@@ -1,0 +1,25 @@
+# Hub-only install profile (RC4) — copy keys into user_config.yaml as needed.
+# Frigate/MQTT are optional priors, never required for taxonomy go-metrics.
+
+triggers:
+  frigate:
+    enabled: false
+  opencv:
+    enabled: true
+
+mqtt:
+  broker: ""
+
+detection:
+  frigate_species_authority: false
+  frigate_standalone_when_no_yolo: false
+  frigate_promote_generic_enabled: false
+  frigate_trigger_review_salvage_enabled: false
+
+processor:
+  # Assign cameras: video.cameras[].tuning_role: hub_only
+  camera_tuning_by_role:
+    hub_only:
+      frigate_trigger_review_salvage_enabled: false
+      frigate_species_authority: false
+      frigate_standalone_when_no_yolo: false

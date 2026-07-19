@@ -122,6 +122,30 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
             )
             export_status = {"status": "invalid_json", "path": str(status_path)}
 
+    site_adapter: dict[str, Any] = {
+        "present": False,
+        "status": "inactive",
+        "runtime_apply": "noop_until_adapter_weights",
+    }
+    adapter_path = Path(data_dir) / "site_adapter" / "manifest.json"
+    if adapter_path.is_file():
+        try:
+            raw = json.loads(adapter_path.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                status = str(raw.get("status") or "inactive")
+                site_adapter = {
+                    "present": True,
+                    "status": status,
+                    "version": raw.get("version"),
+                    "created_at": raw.get("created_at"),
+                    "source": raw.get("source"),
+                    "canary_share": raw.get("canary_share"),
+                    "canary_ready": status in {"canary", "active"},
+                    "runtime_apply": "noop_until_adapter_weights",
+                }
+        except Exception:
+            logger.debug("site_adapter manifest unreadable: %s", adapter_path, exc_info=True)
+
     return {
         "schema": "feedback_loop_status@v1",
         "events_total": total,
@@ -134,6 +158,7 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
             "latest_export_tag": str(latest_tag or "").strip() or None,
         },
         "latest_export": export_status,
+        "site_adapter": site_adapter,
     }
 
 
