@@ -455,9 +455,11 @@ processor:
   # (например min_box_size_px, min_confidence_binary_bird, min_confidence_to_process, min_track_duration).
   camera_overrides: {}
   # Ролевые пресеты: video.cameras[].tuning_role → merge до camera_overrides (per-id побеждает).
-  # Новые инсталляции без ручного BirdBox/Forest — feeder_close / feeder_far.
+  # RC8: feeder_close/feeder_far = install physics (also profiles/feeder_install.example.yaml).
+  # Hub taxonomy product default: hub_only (+ profiles/hub_only.example.yaml).
   camera_tuning_by_role:
     feeder_close:
+      # INSTALL PHYSICS (not taxonomy SoT). Canonical copy: profiles/feeder_install.example.yaml.
       # Frigate-style: явный detect substream inference_lores_wh [704,704], не «native без letterbox».
       # Prod-proven (VPS 2026-06): low conf + ByteTrack; scene_adaptive off.
       detect_use_native_resolution: false
@@ -492,6 +494,7 @@ processor:
       scoring_static_phantom_reject_enabled: false
       scene_adaptive_conf_enabled: false
     feeder_far:
+      # INSTALL PHYSICS (not taxonomy SoT). Canonical copy: profiles/feeder_install.example.yaml.
       # Distant / Forest-style: weak conf 0.03–0.12; must accept before ByteTrack IDs stabilize.
       detect_use_native_resolution: false
       min_confidence_binary: 0.04

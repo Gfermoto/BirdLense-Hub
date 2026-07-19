@@ -23,6 +23,11 @@ Harvest 4×5s clips (pigeon/fieldfare/great tit/sparrow).
 Full-clip Common Wood Pigeon → `PASS species-live-hub-only (clips=1 mode=runtime)`  
 with classify-first regen. Short cuts → Unknown; use `--copy-full`.
 
-## Remaining (radical / later)
-- PresenceRecorder vs SpeciesRecognizer split
-- Broader curated named pack (multi-species)
+## Done (loop 3)
+10. **RC1 facades** — `presence_recorder.py` / `species_recognizer.py` wire into session_summary
+11. **RC8** — `profiles/feeder_install.example.yaml`; feeder roles marked install-physics in defaults
+12. **RC6 curate** — `scripts/curate_species_live_pack.py` (offline named_accept keep)
+
+## Remaining
+- Broader multi-species pack (run curate on Orin)
+- Full PresenceRecorder/SpeciesRecognizer service split (async classify)

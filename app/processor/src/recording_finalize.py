@@ -1073,27 +1073,27 @@ def finalize_motion_recording(
                 birder_unknown_label=birder_unknown,
             )
             vq = session_summary.get("visit_quality") or {}
-            session_summary["taxonomy"] = {
-                "hub_wins": int(vq.get("hub_taxonomy_wins") or 0),
-                "named_share_hub": vq.get("named_share_hub"),
-                "auto_accept_rows": int(vq.get("auto_accept_rows") or 0),
-                "review_only_rows": int(vq.get("review_only_rows") or 0),
-            }
-            session_summary["presence"] = {
-                "rows": int(vq.get("presence_rows") or 0),
-                "db_persist_success": bool(video_id is not None),
-                "persisted_rows": int(vq.get("persisted_rows") or 0),
-            }
-            # RC9: reliability namespace (persist/latency) — distinct from taxonomy/presence.
-            session_summary["reliability"] = {
-                "db_persist_success": bool(video_id is not None),
-                "video_file_ok": bool(video_file_ok),
-                "finalize_duration_ms": finalize_duration_ms,
-                "yolo_blind_score": round(float(blind_score), 4),
-                "yolo_blind_confirmed": bool(yolo_blind_confirmed),
-                "latency_budget_breaches": list(latency_breaches or []),
-                "post_fusion_persisted": 1 if video_id is not None else 0,
-            }
+            # RC1 facades: SpeciesRecognizer vs PresenceRecorder (separate product SLOs).
+            from presence_recorder import summarize_presence, summarize_reliability
+            from species_recognizer import summarize_taxonomy
+
+            session_summary["taxonomy"] = summarize_taxonomy(
+                visit_quality=vq,
+                recognition_outcomes=session_summary.get("recognition_outcomes"),
+            )
+            session_summary["presence"] = summarize_presence(
+                visit_quality=vq,
+                video_id=video_id,
+                video_file_ok=bool(video_file_ok),
+            )
+            session_summary["reliability"] = summarize_reliability(
+                video_id=video_id,
+                video_file_ok=bool(video_file_ok),
+                finalize_duration_ms=finalize_duration_ms,
+                yolo_blind_score=float(blind_score or 0.0),
+                yolo_blind_confirmed=bool(yolo_blind_confirmed),
+                latency_budget_breaches=list(latency_breaches or []),
+            )
         except Exception:
             logging.debug("visit_quality / recognition_outcomes build failed", exc_info=True)
         try:

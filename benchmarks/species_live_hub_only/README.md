@@ -19,18 +19,21 @@ Strict empty fail: `REQUIRE_CLIPS=1 make validate-species-live-hub-only`
 Runtime regen (Orin):  
 `SPECIES_LIVE_RUN=1 SPECIES_LIVE_DOCKER=birdlense make validate-species-live-hub-only`
 
-## Harvest (Orin)
+## Harvest + curate (Orin)
 
 ```bash
+# Candidates only:
 python3 scripts/harvest_species_live_clips.py \
-  --db app/data/db/birdlense.db \
-  --recordings-root app \
-  --limit 4 --clip-seconds 6 \
-  --docker-ffmpeg birdlense
+  --db app/data/db/birdlense.db --recordings-root app \
+  --limit 6 --copy-full
+
+# Keep only offline named_accept PASS:
+python3 scripts/curate_species_live_pack.py \
+  --db app/data/db/birdlense.db --recordings-root app \
+  --limit 6 --docker birdlense --copy-full
 ```
 
-`clips/*.mp4` are gitignored. Commit only `manifest.json` when you want a
-tracked empty/partial index — or keep harvest local for Orin eval.
+`clips/*.mp4` are gitignored. Prefer `--copy-full` (short cuts → Unknown).
 
 ## Status
 

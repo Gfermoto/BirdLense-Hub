@@ -1,0 +1,65 @@
+# Feeder install physics (RC8) — copy keys into user_config.yaml as needed.
+# Hub product default role is hub_only (see profiles/hub_only.example.yaml).
+# These presets encode site geometry (close/far feeder), not taxonomy SoT.
+
+processor:
+  camera_tuning_by_role:
+    feeder_close:
+      detect_use_native_resolution: false
+      light_gate_min_brightness: 8
+      light_gate_min_contrast: 6
+      detect_first_confirm_min_track_seconds: 0.25
+      detect_first_confirm_min_hits: 1
+      min_confidence_binary: 0.04
+      min_confidence_binary_bird: 0.02
+      min_confidence_to_process: 0.04
+      min_track_duration: 0.15
+      tracker: models/tracker/bytetrack_birdlense.yaml
+      tracker_remember_seconds: 2.4
+      min_box_size_px: 8
+      min_center_dist: 0.01
+      max_box_area_norm: 0.92
+      track_to_predict_fallback_enabled: true
+      detect_record_time_offset_sec: -0.1
+      track_static_reject_enabled: false
+      track_static_reject_min_duration_sec: 1.5
+      track_static_reject_min_frames: 3
+      track_static_reject_min_frames_sparse: 2
+      track_static_reject_min_duration_sparse_sec: 0.8
+      track_static_reject_max_center_dispersion_norm: 0.055
+      track_static_reject_max_relative_center_dispersion: 0.11
+      track_static_reject_max_bbox_iou_first_last_min: 0.72
+      scoring_moving_roi_min_motion_score: 0.18
+      scoring_default_low_threshold: 0.1
+      scoring_relaxed_min_confidence: 0.02
+      scoring_static_phantom_reject_enabled: false
+      scene_adaptive_conf_enabled: false
+    feeder_far:
+      detect_use_native_resolution: false
+      min_confidence_binary: 0.04
+      min_confidence_binary_bird: 0.02
+      min_confidence_to_process: 0.03
+      min_box_size_px: 4
+      min_center_dist: 0.01
+      max_box_area_norm: 0.92
+      track_to_predict_fallback_enabled: true
+      min_track_duration: 0.0
+      tracker_remember_seconds: 2.4
+      detect_record_time_offset_sec: -0.12
+      track_static_reject_enabled: false
+      track_static_reject_max_center_dispersion_norm: 0.1
+      track_static_reject_max_relative_center_dispersion: 0.18
+      track_static_reject_min_duration_sec: 2.5
+      track_static_reject_min_frames: 3
+      track_static_reject_min_frames_sparse: 2
+      scoring_default_low_threshold: 0.08
+      scoring_relaxed_min_confidence: 0.02
+      scoring_static_phantom_reject_enabled: false
+      scoring_moving_roi_min_motion_score: 0.22
+      scene_adaptive_conf_enabled: false
+video:
+  cameras:
+  - id: FeederClose
+    tuning_role: feeder_close
+  - id: FeederFar
+    tuning_role: feeder_far
