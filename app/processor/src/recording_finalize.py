@@ -858,9 +858,12 @@ def finalize_motion_recording(
                     app_config=app_config,
                     video_id=video_id,
                     camera_id=session_camera_id,
-                    video_path=video_path_for_api,
+                    # Local file for hires crop seeks (not API logical path).
+                    video_path=video_output,
                     decisions=video_detections,
                     track_map=track_map,
+                    session_tracks=session_tracks,
+                    strategy=getattr(frame_processor, "strategy", None),
                     api=api,
                 )
             except Exception:

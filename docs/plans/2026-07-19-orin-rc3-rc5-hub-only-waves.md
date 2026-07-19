@@ -39,7 +39,12 @@ with classify-first regen. Short cuts → Unknown; use `--copy-full`.
     `apply_processor_species_enrich` (no `manually_corrected`);
     async worker patches named leftovers via track map
 
+## Done (loop 6 — dig reclassify)
+17. **RC2 reclassify** — async worker second-budget Birder on leftover tracks
+    (`track_ids` / runtime overrides in `enrich_tracks_classifier_at_finalize`);
+    fills `patch_species_name` → enrich PATCH. Flag still default off.
+
 ## Remaining (ops / deeper dig)
-- Broader multi-species pack on Orin (re-curate after deploy; clips gitignored)
-- Async **reclassify** fill of leftover `patch_species_name` (budget second pass)
+- Broader multi-species pack on Orin (model/data ceiling ~2 named offline)
+- Enable async patch on Orin canary + measure GPU contention
 - Full PresenceRecorder/SpeciesRecognizer service classes (beyond facades)

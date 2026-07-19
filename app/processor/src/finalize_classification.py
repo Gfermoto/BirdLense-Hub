@@ -116,6 +116,11 @@ def enrich_tracks_classifier_at_finalize(
     *,
     video_path: str | None = None,
     camera_id: str | None = None,
+    track_ids: set[Any] | frozenset[Any] | None = None,
+    max_runtime_ms: float | None = None,
+    max_tracks: int | None = None,
+    event_source: str = "finalize_deferred",
+    require_defer_enabled: bool = True,
 ) -> dict[str, Any]:
     """
     Run Birder on key crops per track.
@@ -131,8 +136,11 @@ def enrich_tracks_classifier_at_finalize(
 
     Latency: wall-clock ``processor.classifier_finalize_max_runtime_ms`` stops more tracks;
     ``classifier_finalize_max_tracks`` keeps only top-N by best_frame_score.
+
+    Async patch path may pass ``track_ids`` / ``max_runtime_ms`` / ``max_tracks``
+    overrides and ``require_defer_enabled=False``.
     """
-    if not defer_classifier_to_finalize(app_config):
+    if require_defer_enabled and not defer_classifier_to_finalize(app_config):
         return _empty_finalize_outcome(reason="defer_disabled")
     if not tracks:
         return _empty_finalize_outcome(reason="no_tracks")
@@ -145,8 +153,14 @@ def enrich_tracks_classifier_at_finalize(
         "processor.classifier_best_guess_min_confidence",
         CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
     )
-    max_runtime_ms = _finalize_max_runtime_ms(app_config)
-    max_tracks = _finalize_max_tracks(app_config)
+    if max_runtime_ms is None:
+        max_runtime_ms = _finalize_max_runtime_ms(app_config)
+    else:
+        max_runtime_ms = float(max_runtime_ms)
+    if max_tracks is None:
+        max_tracks = _finalize_max_tracks(app_config)
+    else:
+        max_tracks = int(max_tracks)
     unknown_labels = _unknown_labels(app_config)
     started = time.perf_counter()
     deadline_mono = started + (max_runtime_ms / 1000.0)
@@ -171,9 +185,15 @@ def enrich_tracks_classifier_at_finalize(
         resolve_enrichment_crop = None  # type: ignore[assignment,misc]
         track_as_detection = None  # type: ignore[assignment,misc]
 
+    filter_ids: set[str] | None = None
+    if track_ids is not None:
+        filter_ids = {str(x) for x in track_ids if x is not None}
+
     eligible: list[tuple[Any, dict[str, Any]]] = []
     for track_id, track in tracks.items():
         if not isinstance(track, dict):
+            continue
+        if filter_ids is not None and str(track_id) not in filter_ids:
             continue
         if track.get("classifier_events"):
             continue
@@ -334,7 +354,7 @@ def enrich_tracks_classifier_at_finalize(
                     "entropy": getattr(out, "entropy", None),
                     "top1_top2_margin": getattr(out, "top1_top2_margin", None),
                     "t": track.get("end_time"),
-                    "source": "finalize_deferred",
+                    "source": str(event_source or "finalize_deferred"),
                     "crop_source": crop_src,
                 }
             )

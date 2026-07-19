@@ -240,3 +240,44 @@ def test_enrich_respects_max_runtime_budget():
     assert strategy.calls < 20
     assert outcome["appended"] == strategy.calls
     assert outcome["timed_out"] is True
+
+
+def test_enrich_track_ids_filter_and_overrides():
+    tracks = {
+        1: {
+            "detector_events": [{"label": "Bird", "confidence": 0.5}],
+            "best_frame": object(),
+            "best_frame_score": 3.0,
+            "end_time": 1.0,
+        },
+        2: {
+            "detector_events": [{"label": "Bird", "confidence": 0.5}],
+            "best_frame": object(),
+            "best_frame_score": 1.0,
+            "end_time": 2.0,
+        },
+    }
+    strategy = _Strategy()
+    cfg = _Cfg(
+        {
+            "processor.classifier_defer_to_finalize": False,
+            "processor.classifier_finalize_max_key_frames": 1,
+            "processor.classifier_finalize_max_tracks": 1,
+            "processor.classifier_best_guess_min_confidence": 0.10,
+        }
+    )
+    outcome = enrich_tracks_classifier_at_finalize(
+        tracks,
+        strategy,
+        cfg,
+        track_ids={2},
+        max_tracks=5,
+        max_runtime_ms=5000,
+        event_source="async_classify_patch",
+        require_defer_enabled=False,
+    )
+    assert outcome["appended"] == 1
+    assert outcome["eligible"] == 1
+    assert "classifier_events" not in tracks[1]
+    assert tracks[2]["classifier_events"][0]["source"] == "async_classify_patch"
+
