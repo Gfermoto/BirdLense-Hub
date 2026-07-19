@@ -117,6 +117,13 @@ def main() -> int:
     ap.add_argument("--max-species", type=int, default=12)
     ap.add_argument("--from-video-species", action="store_true")
     ap.add_argument("--video-conf-min", type=float, default=0.50)
+    ap.add_argument(
+        "--include-species",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="Force-add named prior (repeatable or comma-separated). Soft delta.",
+    )
     ap.add_argument("--status", default="canary", choices=("inactive", "canary", "active"))
     ap.add_argument("--canary-share", type=float, default=0.25)
     ap.add_argument("--apply", action="store_true")
@@ -153,9 +160,20 @@ def main() -> int:
     finally:
         con.close()
 
+    forced: list[str] = []
+    for raw in args.include_species or []:
+        for part in str(raw).split(","):
+            name = part.strip()
+            if name and name.lower() not in GENERIC:
+                forced.append(name)
+    soft = round(min(0.08, max(0.01, float(args.delta) * 0.75)), 4)
+    for name in forced:
+        # Do not override stronger relabel delta if already present.
+        priors.setdefault(name, soft)
+
     if not priors:
         print(
-            "FAIL: no priors (need relabels and/or --from-video-species)",
+            "FAIL: no priors (need relabels, --from-video-species, and/or --include-species)",
             file=sys.stderr,
         )
         return 1
