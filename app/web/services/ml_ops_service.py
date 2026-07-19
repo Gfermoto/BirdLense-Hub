@@ -433,6 +433,26 @@ def build_similarity_summary_payload(
 
 def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
     """Operator-facing ML/CV runtime config state (#373/#372)."""
+    data_dir = str(app_config.get("directories.data") or "data")
+    site_adapter: dict[str, Any] = {"present": False}
+    try:
+        from pathlib import Path as _Path
+
+        manifest_path = _Path(data_dir) / "site_adapter" / "manifest.json"
+        if manifest_path.is_file():
+            raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                priors = raw.get("species_priors") if isinstance(raw.get("species_priors"), dict) else {}
+                site_adapter = {
+                    "present": True,
+                    "status": raw.get("status"),
+                    "version": raw.get("version"),
+                    "canary_share": raw.get("canary_share"),
+                    "prior_species_count": len(priors),
+                }
+    except Exception:
+        site_adapter = {"present": False, "error": "unreadable"}
+
     return {
         "schema": "ml_runtime_status@v1",
         "video": {
@@ -450,7 +470,16 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
             "classifier_inference_device": app_config.get("processor.classifier_inference_device"),
             "reid_runtime_enabled": app_config.get("processor.reid.runtime_enabled"),
             "welfare_runtime_enabled": app_config.get("processor.welfare.runtime_enabled"),
+            "async_classify_patch_enabled": app_config.get("processor.async_classify_patch_enabled"),
+            "async_classify_patch_max_runtime_ms": app_config.get(
+                "processor.async_classify_patch_max_runtime_ms"
+            ),
+            "classifier_finalize_max_runtime_ms": app_config.get(
+                "processor.classifier_finalize_max_runtime_ms"
+            ),
+            "classifier_finalize_max_tracks": app_config.get("processor.classifier_finalize_max_tracks"),
         },
+        "site_adapter": site_adapter,
     }, 200
 
 
