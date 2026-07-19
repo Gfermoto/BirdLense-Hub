@@ -6,7 +6,7 @@ Typical Orin usage (inside repo on device or via ssh):
   python3 scripts/harvest_species_live_clips.py \\
     --db app/data/db/birdlense.db \\
     --recordings-root app/data \\
-    --limit 4 --clip-seconds 6
+    --limit 4 --per-species-attempts 2 --clip-seconds 6
 
 Writes gitignored mp4 under clips/ + updates manifest.json.
 Does not require Frigate; prefers detection_provider=yolo and excludes
@@ -71,7 +71,13 @@ def main() -> int:
         default=None,
         help="Directory that contains data/recordings/... (usually app/ or app/data parent).",
     )
-    ap.add_argument("--limit", type=int, default=4)
+    ap.add_argument("--limit", type=int, default=4, help="Max distinct species to harvest")
+    ap.add_argument(
+        "--per-species-attempts",
+        type=int,
+        default=2,
+        help="Candidate clips per species (curate retries if first fails named_accept)",
+    )
     ap.add_argument("--clip-seconds", type=float, default=6.0)
     ap.add_argument(
         "--copy-full",
@@ -125,9 +131,11 @@ def main() -> int:
     LIMIT ?
     """
     # Pull a wide candidate pool so curate can find ≥N offline named_accept species.
-    rows = list(con.execute(q, (max(1, args.limit) * 20,)))
+    attempts = max(1, int(args.per_species_attempts))
+    species_target = max(1, int(args.limit))
+    rows = list(con.execute(q, (species_target * attempts * 20,)))
     clips_out: list[dict] = []
-    seen_species: set[str] = set()
+    species_counts: dict[str, int] = {}
     clips_dir = PACK / "clips"
     clips_dir.mkdir(parents=True, exist_ok=True)
     docker_ctr = str(args.docker_ffmpeg or "").strip()
@@ -135,7 +143,12 @@ def main() -> int:
     for r in rows:
         species = str(r["species"] or "").strip()
         key = species.lower()
-        if key in GENERIC or key in seen_species:
+        if key in GENERIC:
+            continue
+        n = species_counts.get(key, 0)
+        if n >= attempts:
+            continue
+        if key not in species_counts and len(species_counts) >= species_target:
             continue
         rel_video = str(r["video_path"] or "").lstrip("./")
         src = root / rel_video
@@ -194,8 +207,11 @@ def main() -> int:
                 "source_confidence": float(r["confidence"] or 0.0),
             }
         )
-        seen_species.add(key)
-        if len(clips_out) >= args.limit:
+        species_counts[key] = n + 1
+        if (
+            len(species_counts) >= species_target
+            and all(c >= attempts for c in species_counts.values())
+        ):
             break
 
     manifest = {
@@ -203,6 +219,7 @@ def main() -> int:
         "mqtt": "off",
         "clips": clips_out,
         "harvest_note": "mp4 under clips/ are gitignored; regenerate via this script",
+        "per_species_attempts": attempts,
     }
     PACK.mkdir(parents=True, exist_ok=True)
     (PACK / "manifest.json").write_text(

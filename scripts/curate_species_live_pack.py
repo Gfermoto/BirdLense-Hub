@@ -9,7 +9,7 @@ Orin example::
 
   python3 scripts/curate_species_live_pack.py \\
     --db app/data/db/birdlense.db --recordings-root app \\
-    --limit 6 --docker birdlense --copy-full
+    --limit 6 --per-species-attempts 2 --docker birdlense --copy-full
 """
 
 from __future__ import annotations
@@ -37,7 +37,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--db", type=Path, required=True)
     ap.add_argument("--recordings-root", type=Path, default=None)
-    ap.add_argument("--limit", type=int, default=6)
+    ap.add_argument("--limit", type=int, default=6, help="Target distinct species to keep")
+    ap.add_argument(
+        "--per-species-attempts",
+        type=int,
+        default=2,
+        help="Harvest/gate this many clips per species before giving up",
+    )
     ap.add_argument("--docker", default="birdlense")
     ap.add_argument("--copy-full", action="store_true", default=True)
     ap.add_argument("--frame-step", type=int, default=4)
@@ -51,6 +57,8 @@ def main() -> int:
         str(args.db),
         "--limit",
         str(args.limit),
+        "--per-species-attempts",
+        str(max(1, int(args.per_species_attempts))),
     ]
     if args.recordings_root:
         harvest_cmd.extend(["--recordings-root", str(args.recordings_root)])
@@ -68,8 +76,16 @@ def main() -> int:
         return 1
 
     kept: list[dict] = []
+    kept_species: set[str] = set()
+    species_target = max(1, int(args.limit))
     for clip in candidates:
         species = str(clip.get("expected_species") or "")
+        skey = species.lower()
+        if skey in kept_species:
+            print(f"  {species}: SKIP (already kept)", flush=True)
+            continue
+        if len(kept) >= species_target:
+            break
         # Single-clip manifest for isolation
         trial = {
             "schema": "species_live_hub_only@v1",
@@ -116,10 +132,14 @@ def main() -> int:
             print(f"  {species}: {'KEEP' if ok else 'DROP'} rc={rc} fail={payload.get('fail')}")
             if ok:
                 kept.append(clip)
+                kept_species.add(skey)
 
     data["clips"] = kept
     data["curated"] = True
-    data["curate_note"] = f"offline named_accept verified ({len(kept)}/{len(candidates)})"
+    data["per_species_attempts"] = max(1, int(args.per_species_attempts))
+    data["curate_note"] = (
+        f"offline named_accept verified ({len(kept)} species / {len(candidates)} candidates)"
+    )
     manifest_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     # Drop unused mp4s
