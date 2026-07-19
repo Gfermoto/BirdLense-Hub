@@ -71,7 +71,9 @@ class SpeciesConfig(_SectionBase):
 
 
 class ProcessorConfig(_SectionBase):
-    pipeline_mode: Literal["linear", "legacy"] | str | None = None
+    # Production: linear only. ``legacy`` is coerced to linear at runtime (#621).
+    # ``dual`` is a test harness for the quarantined DecisionMaker cascade.
+    pipeline_mode: Literal["linear", "legacy", "dual"] | str | None = None
     single_rtsp_read: bool | None = None
     detection_strategy: Literal["two_stage"] | str | None = None
     inference_backend: Literal["torch", "onnxruntime", "tensorrt", "auto"] | str | None = None

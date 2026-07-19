@@ -220,6 +220,63 @@ class TestLinearPipeline(unittest.TestCase):
         )
         self.assertFalse(outcome.hub_taxonomy_win)
 
+    def test_deferred_classify_sets_skip_reason(self):
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "processor.min_confidence_binary_bird": 0.08,
+                "processor.linear_static_pinned_reject_enabled": False,
+            }
+        )
+        ev = evaluate_track_linear(
+            app_config=cfg,
+            track=_track(conf=0.2),
+            min_track_duration=0.0,
+            min_confidence_to_process=0.12,
+        )
+        self.assertEqual(ev["decision_kind"], "review_only_generic")
+        self.assertEqual(ev["classify_skip_reason"], "deferred")
+
+    def test_budget_skip_reason_copied_from_track(self):
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "processor.linear_static_pinned_reject_enabled": False,
+            }
+        )
+        track = _track(conf=0.2)
+        track["classify_skip_reason"] = "budget"
+        ev = evaluate_track_linear(
+            app_config=cfg,
+            track=track,
+            min_track_duration=0.0,
+            min_confidence_to_process=0.12,
+        )
+        self.assertEqual(ev["classify_skip_reason"], "budget")
+
+    def test_unknown_only_classifier_events_abstain(self):
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "processor.birder_eu_unknown_label": "Unknown Bird",
+                "processor.linear_static_pinned_reject_enabled": False,
+            }
+        )
+        track = _track(conf=0.3)
+        track["classifier_events"] = [
+            {"species_name": "Unknown Bird", "confidence": 0.9, "combined_confidence": 0.27},
+        ]
+        ev = evaluate_track_linear(
+            app_config=cfg,
+            track=track,
+            min_track_duration=0.0,
+            min_confidence_to_process=0.12,
+        )
+        self.assertEqual(ev["out_species"], "Bird")
+        self.assertEqual(ev["decision_kind"], "review_only_generic")
+        self.assertEqual(ev["classify_skip_reason"], "unknown_abstain")
+        self.assertEqual(ev["pipeline_stage"], "classify_enrich")
+
     def test_build_linear_decisions_via_decision_maker(self):
         dm = DecisionMaker(min_track_duration=0.5, min_confidence_to_process=0.12)
         cfg = _Cfg(

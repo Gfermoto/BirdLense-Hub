@@ -142,7 +142,20 @@ def _species_from_classifier(
             continue
         by_name.setdefault(name, []).append(ev)
 
+    raw_events = [ev for ev in (track.get("classifier_events") or []) if isinstance(ev, dict)]
     if not by_name:
+        # Classifier ran but only Unknown / empty labels → open-set abstain (RC7).
+        if raw_events:
+            return None, 0.0, True, {
+                "species_name": None,
+                "event_count": len(raw_events),
+                "vote_share": 0.0,
+                "avg_classifier_confidence": 0.0,
+                "combined_confidence": 0.0,
+                "avg_entropy": None,
+                "avg_top1_top2_margin": None,
+                "abstain": "unknown",
+            }
         return None, 0.0, True, None
 
     def _score(name: str) -> tuple[int, float]:
@@ -157,13 +170,14 @@ def _species_from_classifier(
     meta = {
         "species_name": best_name,
         "event_count": len(rows),
-        "vote_share": len(rows) / max(1, len(track.get("classifier_events") or [])),
+        "vote_share": len(rows) / max(1, len(raw_events)),
         "avg_classifier_confidence": avg_cls,
         "combined_confidence": avg_combined,
         "avg_entropy": None,
         "avg_top1_top2_margin": None,
     }
     if avg_cls < min_guess:
+        meta["abstain"] = "low_conf"
         return None, avg_cls, True, meta
     needs_review = avg_cls < birder_min
     return best_name, max(avg_combined, avg_cls), needs_review, meta
@@ -284,12 +298,26 @@ def evaluate_track_linear(
     from visit_contract import is_named_product_species
 
     birder_unknown = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird")
+    classify_skip_reason = track.get("classify_skip_reason")
+    if isinstance(classify_skip_reason, str):
+        classify_skip_reason = classify_skip_reason.strip() or None
+    else:
+        classify_skip_reason = None
+
     if species is None:
         species = GENERIC_BIRD_SPECIES
         sp_conf = 0.0
         needs_review = True
         evidence_state = "detector_only"
         decision_reason = "accepted_binary_track_classifier_deferred"
+        abstain = (clf_meta or {}).get("abstain") if isinstance(clf_meta, dict) else None
+        if not classify_skip_reason:
+            if abstain == "unknown":
+                classify_skip_reason = "unknown_abstain"
+            elif abstain == "low_conf":
+                classify_skip_reason = "low_conf"
+            else:
+                classify_skip_reason = "deferred"
     elif needs_review:
         evidence_state = "weak_classifier"
         decision_reason = "accepted_binary_track_classifier_uncertain"
@@ -319,6 +347,11 @@ def evaluate_track_linear(
         notification_eligible = bool(visit_ok)
 
     out_conf = max(float(detector_conf), float(sp_conf))
+    pipeline_stage = (
+        STAGE_CLASSIFY_ENRICH
+        if (isinstance(clf_meta, dict) and clf_meta.get("event_count")) or named
+        else STAGE_DETECT_TRACK
+    )
     return {
         "accepted": True,
         "decision_reason": decision_reason,
@@ -334,6 +367,8 @@ def evaluate_track_linear(
         "evidence_state": evidence_state,
         "classifier_needs_review": needs_review or (not named),
         "classifier_candidate": clf_meta,
+        "classify_skip_reason": classify_skip_reason,
+        "pipeline_stage": pipeline_stage,
     }
 
 
@@ -441,13 +476,14 @@ def build_linear_decisions(decision_maker, tracks: dict, app_config) -> list[dic
                 "decision_kind": decision_kind,
                 "reject_reason_code": reject_code,
                 "evidence_state": str(ev["evidence_state"]),
-                "trust_band": decision_maker._trust_band_for_decision(
-                    accepted, decision_reason, float(ev["out_conf"]), reject_code
-                ),
-                "pipeline_stage": STAGE_DETECT_TRACK,
-                "classify_skip_reason": track.get("classify_skip_reason"),
-            }
-        )
+                    "trust_band": decision_maker._trust_band_for_decision(
+                        accepted, decision_reason, float(ev["out_conf"]), reject_code
+                    ),
+                    "pipeline_stage": str(ev.get("pipeline_stage") or STAGE_DETECT_TRACK),
+                    "classify_skip_reason": ev.get("classify_skip_reason")
+                    or track.get("classify_skip_reason"),
+                }
+            )
         decisions.append(stamp_recognition_outcome(row, birder_unknown_label=birder_unknown))
 
     decisions.sort(

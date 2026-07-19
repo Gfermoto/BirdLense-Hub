@@ -31,9 +31,10 @@ Evidence: `persist_mode.py`, `visit_eligibility.py`, `visit_contract.py`,
 (`presence | review | named_accept | named_reject`). Persist/UI/notify/visit
 derive from it. CI and go-gates use taxonomy metrics, not `db_persist_success`.
 
-**Progress (2026-07-19):** thin type + `from_persist_row` in
-`recognition_outcome.py` (used by species golden). Persist/visit/notify still
-on legacy fields — full derivation migration next.
+**Progress (2026-07-19):** `RecognitionOutcome` stamped on persist rows; session
+summary exposes `recognition_outcomes` / `taxonomy` / `presence`;
+`named_share_hub` = `hub_taxonomy_win`; visit/notify honor review-only.
+Remaining: PresenceRecorder vs SpeciesRecognizer service split (radical arch).
 
 ### RC2 — Critical: classify is not a product stage
 
@@ -48,6 +49,11 @@ Evidence: `finalize_classification.py`, `recording_finalize.py` order,
 `skip_reason`. Separate latency SLO from recognition completeness (async
 classify + patch visit allowed).
 
+**Progress (2026-07-19):** defaults aligned (8s/6 tracks/3 kf);
+`classify_skip_reason` stamped on budget/timeout/no_crop/deferred/unknown_abstain
+and copied into decision rows; `pipeline_stage=classify_enrich` when classifier
+touched. Async patch-visit still open.
+
 ### RC3 — High: dual decision engines + post-hoc salvage
 
 Default `pipeline_mode=linear` short-circuits `DecisionMaker`; legacy
@@ -59,6 +65,10 @@ anchor restore in `recording_finalize.py`.
 
 **Remediation:** one decision function. Salvage emits presence evidence only,
 never silent species accept.
+
+**Progress (2026-07-19):** salvage review-only; `legacy` forced to linear;
+legacy cascade quarantined behind test-only `pipeline_mode=dual`. Full delete
+of dual body still open.
 
 ### RC4 — High: Frigate/MQTT entangled in core
 
@@ -96,8 +106,8 @@ renamed as detector gate only.
 
 **Progress (2026-07-19):** detector vs taxonomy split landed —
 `make validate-detector-golden` / `make validate-species-golden`,
-`RecognitionOutcome` + `benchmarks/species_golden_cases.json`. Live labeled mp4
-pack (`expected_species`) still open.
+`RecognitionOutcome` + `benchmarks/species_golden_cases.json`. Live pack
+scaffold: `benchmarks/species_live_hub_only/` (no mp4 yet).
 
 ### RC7 — Medium: weak open-set / Unknown handling
 
@@ -108,6 +118,10 @@ Evidence: `birder_eu_classifier.py`; `linear_pipeline._species_from_classifier`.
 
 **Remediation:** explicit abstention; `Unknown` ≠ presence Bird; never map
 abstain → named_accept without calibration.
+
+**Progress (2026-07-19):** Birder honest argmax (no prefer-named-over-Unknown);
+linear maps Unknown-only events → `classify_skip_reason=unknown_abstain` +
+presence Bird review_only (not named_accept).
 
 ### RC8 — Medium: site roles in core defaults
 
@@ -128,6 +142,10 @@ only in install examples.
 Evidence: `recording_finalize.py` session summary; `runtime_contract.py`.
 
 **Remediation:** namespaces `reliability.*` / `presence.*` / `taxonomy.*`.
+
+**Progress (2026-07-19):** session summary `taxonomy` / `presence` /
+`recognition_outcomes`; `primary_signal=species_classifier_review` for uncertain
+named. Full `reliability.*` metric rename still open.
 
 ## Why agents keep “tuning the site”
 
