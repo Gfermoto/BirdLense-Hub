@@ -137,6 +137,10 @@ def _species_from_classifier(
     for ev in track.get("classifier_events") or []:
         if not isinstance(ev, dict):
             continue
+        # Open-set invent must not win live species (Fieldfare@prior spam).
+        # Pack KEEP uses track_regenerator soft near-miss rows instead.
+        if ev.get("soft") and str(ev.get("soft_reason") or "") == "prior_open_set_guess":
+            continue
         name = str(ev.get("species_name") or "").strip()
         if not name or name.lower() in unknown:
             continue

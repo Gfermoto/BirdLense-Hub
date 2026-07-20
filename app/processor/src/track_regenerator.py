@@ -115,7 +115,7 @@ def _soft_near_miss_detections(tracks, app_config, species_mapping) -> list[dict
     except Exception:
         pass
 
-    soft_reasons = {"topk_prior", "unknown_topk_prior"}
+    soft_reasons = {"topk_prior", "unknown_topk_prior", "prior_open_set_guess"}
     adjust_fn = None
     data_dir = None
     try:
@@ -210,7 +210,7 @@ def _companion_hard_named_detections(tracks, app_config, species_mapping) -> lis
     except Exception:
         pass
 
-    soft_reasons = {"topk_prior", "unknown_topk_prior"}
+    soft_reasons = {"topk_prior", "unknown_topk_prior", "prior_open_set_guess"}
     adjust_fn = None
     data_dir = None
     try:
