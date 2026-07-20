@@ -158,37 +158,73 @@ def _species_from_classifier(
             }
         return None, 0.0, True, None
 
-    def _score(name: str) -> tuple[int, float]:
-        rows = by_name[name]
-        confs = [float(r.get("confidence") or 0.0) for r in rows]
-        return (len(rows), sum(confs) / len(confs))
-
-    best_name = max(by_name.keys(), key=_score)
-    rows = by_name[best_name]
-    avg_cls = sum(float(r.get("confidence") or 0.0) for r in rows) / len(rows)
-    avg_combined = sum(float(r.get("combined_confidence") or 0.0) for r in rows) / len(rows)
-    # RC5 / Bet A: site-adapter species priors (canary) adjust classifier conf.
-    adapter_info: dict[str, Any] = {"applied": False}
+    track_id = track.get("track_id", track.get("id"))
+    adjust_fn = None
+    data_dir = None
     try:
         from processor_support import get_data_dir
         from site_adapter import adjust_confidence_with_site_adapter
 
-        track_id = track.get("track_id", track.get("id"))
-        adj_cls, adapter_info = adjust_confidence_with_site_adapter(
-            data_dir=get_data_dir(),
-            species=best_name,
-            confidence=avg_cls,
-            track_id=track_id,
-        )
-        if adapter_info.get("applied"):
-            avg_cls = adj_cls
-            if avg_combined > 0:
-                avg_combined = max(
-                    0.0,
-                    min(1.0, avg_combined + float(adapter_info.get("delta") or 0.0)),
-                )
+        adjust_fn = adjust_confidence_with_site_adapter
+        data_dir = get_data_dir()
     except Exception:
-        adapter_info = {"applied": False}
+        adjust_fn = None
+
+    def _avg_conf(name: str) -> float:
+        rows = by_name[name]
+        confs = [float(r.get("confidence") or 0.0) for r in rows]
+        return sum(confs) / len(confs)
+
+    def _adjust(name: str) -> tuple[float, float, dict[str, Any]]:
+        avg = _avg_conf(name)
+        adj = avg
+        info: dict[str, Any] = {"applied": False}
+        if adjust_fn is not None and data_dir is not None:
+            try:
+                adj, info = adjust_fn(
+                    data_dir=data_dir,
+                    species=name,
+                    confidence=avg,
+                    track_id=track_id,
+                )
+                if not info.get("applied"):
+                    adj = avg
+            except Exception:
+                adj = avg
+                info = {"applied": False}
+        return float(adj), avg, info
+
+    def _score(name: str) -> tuple[float, int, float]:
+        """Prior-aware rank: adjusted conf, then vote count, then raw avg."""
+        adj, avg, _info = _adjust(name)
+        return (adj, len(by_name[name]), avg)
+
+    # Prior re-rank only (adj conf). No confuse-group / tiny-mass dove override —
+    # those flipped true pigeon clips when long-tail dove got site prior.
+    best_name = max(by_name.keys(), key=_score)
+    rows = by_name[best_name]
+    avg_cls = _avg_conf(best_name)
+    avg_combined = sum(float(r.get("combined_confidence") or 0.0) for r in rows) / len(rows)
+    soft_share = sum(1 for r in rows if r.get("soft")) / max(1, len(rows))
+    # RC5 / Bet A: site-adapter species priors (canary) adjust classifier conf.
+    adapter_info: dict[str, Any] = {"applied": False}
+    if adjust_fn is not None and data_dir is not None:
+        try:
+            adj_cls, adapter_info = adjust_fn(
+                data_dir=data_dir,
+                species=best_name,
+                confidence=avg_cls,
+                track_id=track_id,
+            )
+            if adapter_info.get("applied"):
+                avg_cls = adj_cls
+                if avg_combined > 0:
+                    avg_combined = max(
+                        0.0,
+                        min(1.0, avg_combined + float(adapter_info.get("delta") or 0.0)),
+                    )
+        except Exception:
+            adapter_info = {"applied": False}
     meta = {
         "species_name": best_name,
         "event_count": len(rows),
@@ -197,13 +233,15 @@ def _species_from_classifier(
         "combined_confidence": avg_combined,
         "avg_entropy": None,
         "avg_top1_top2_margin": None,
+        "soft_share": soft_share,
     }
     if adapter_info.get("applied"):
         meta["site_adapter"] = adapter_info
+        meta["prior_rerank"] = True
     if avg_cls < min_guess:
         meta["abstain"] = "low_conf"
         return None, avg_cls, True, meta
-    needs_review = avg_cls < birder_min
+    needs_review = avg_cls < birder_min or soft_share >= 1.0
     return best_name, max(avg_combined, avg_cls), needs_review, meta
 
 

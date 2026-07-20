@@ -1,5 +1,56 @@
 {
   "schema": "species_live_hub_only@v1",
   "mqtt": "off",
-  "clips": []
+  "clips": [
+    {
+      "clip": "clips/455_great_tit.mp4",
+      "expected_kind": "named_accept",
+      "expected_species": "Great Tit",
+      "mqtt": "off"
+    },
+    {
+      "clip": "clips/456_fieldfare.mp4",
+      "expected_kind": "named_accept",
+      "expected_species": "Fieldfare",
+      "mqtt": "off"
+    },
+    {
+      "clip": "clips/458_common_wood_pigeon.mp4",
+      "expected_kind": "review",
+      "expected_species": "Common Wood Pigeon",
+      "mqtt": "off",
+      "notes": "demoted: unstable named_accept on current stack"
+    },
+    {
+      "clip": "clips/462_eurasian_collared_dove.mp4",
+      "expected_kind": "named_accept",
+      "expected_species": "Eurasian Collared-Dove",
+      "mqtt": "off"
+    },
+    {
+      "clip": "clips/463_common_wood_pigeon.mp4",
+      "expected_kind": "review",
+      "expected_species": "Common Wood Pigeon",
+      "mqtt": "off",
+      "notes": "demoted: unstable named_accept on current stack"
+    },
+    {
+      "clip": "clips/469_common_wood_pigeon.mp4",
+      "expected_kind": "named_accept",
+      "expected_species": "Common Wood Pigeon",
+      "mqtt": "off"
+    },
+    {
+      "clip": "clips/496_great_tit.mp4",
+      "expected_kind": "named_accept",
+      "expected_species": "Great Tit",
+      "mqtt": "off"
+    },
+    {
+      "clip": "clips/556_house_sparrow.mp4",
+      "expected_kind": "named_accept",
+      "expected_species": "House Sparrow",
+      "mqtt": "off"
+    }
+  ]
 }

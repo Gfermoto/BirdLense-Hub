@@ -50,11 +50,20 @@ class SiteAdapterManifest:
         }
 
     def priors_map(self) -> dict[str, float]:
-        return {str(k).strip().lower(): float(v) for k, v in self.species_priors if str(k).strip()}
+        return {
+            _prior_species_key(k): float(v)
+            for k, v in self.species_priors
+            if str(k).strip()
+        }
 
 
 def adapter_dir(data_dir: str | Path) -> Path:
     return Path(data_dir) / ADAPTER_DIRNAME
+
+
+def _prior_species_key(name: str) -> str:
+    """Lowercase + hyphen/space fold so Collared-Dove matches Birder labels."""
+    return " ".join(str(name or "").strip().lower().replace("-", " ").split())
 
 
 def _parse_priors(raw: Any) -> tuple[tuple[str, float], ...]:
@@ -62,7 +71,7 @@ def _parse_priors(raw: Any) -> tuple[tuple[str, float], ...]:
         return ()
     out: list[tuple[str, float]] = []
     for key, val in raw.items():
-        name = str(key or "").strip().lower()
+        name = _prior_species_key(key)
         if not name:
             continue
         try:
@@ -246,7 +255,7 @@ def adjust_confidence_with_site_adapter(
     manifest = load_site_adapter(data_dir)
     if manifest is None or not canary_selected_for_track(manifest, track_id):
         return max(0.0, min(1.0, base)), info
-    name = str(species or "").strip().lower()
+    name = _prior_species_key(species) if species else ""
     delta = manifest.priors_map().get(name, 0.0) if name else 0.0
     if delta == 0.0 and not weights_present(data_dir, manifest):
         return max(0.0, min(1.0, base)), info

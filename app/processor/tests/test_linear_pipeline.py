@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(current_dir, "../src"))
@@ -21,6 +22,7 @@ from linear_pipeline import (
     linear_skip_frigate_salvage_paths,
     linear_skip_legacy_fusion_safeguards,
 )
+from site_adapter import STATUS_ACTIVE, write_site_adapter_manifest
 
 
 def _bbox_frames(n=3):
@@ -385,6 +387,147 @@ class TestLinearPipeline(unittest.TestCase):
             }
         )
         self.assertTrue(frigate_salvage_allow_without_yolo(cfg, camera_id="main"))
+
+    def test_site_prior_rerank_picks_prior_species(self):
+        """Soft lower-conf prior species beats higher-conf rival after prior delta."""
+        with tempfile.TemporaryDirectory() as tmp:
+            write_site_adapter_manifest(
+                tmp,
+                version="unit-prior-rerank",
+                source="unit_test",
+                status=STATUS_ACTIVE,
+                canary_share=1.0,
+                species_priors={"house sparrow": 0.20},
+            )
+            cfg = _Cfg(
+                {
+                    "processor.classifier_best_guess_min_confidence": 0.10,
+                    "processor.birder_eu_min_confidence": 0.15,
+                    "processor.linear_static_pinned_reject_enabled": False,
+                }
+            )
+            track = _track(conf=0.4, species=None)
+            track["track_id"] = 42
+            track["classifier_events"] = [
+                {
+                    "species_name": "Eurasian Jay",
+                    "confidence": 0.12,
+                    "combined_confidence": 0.12,
+                },
+                {
+                    "species_name": "House Sparrow",
+                    "confidence": 0.08,
+                    "combined_confidence": 0.08,
+                    "soft": True,
+                },
+            ]
+            with patch("processor_support.get_data_dir", return_value=tmp):
+                ev = evaluate_track_linear(
+                    app_config=cfg,
+                    track=track,
+                    min_track_duration=0.0,
+                    min_confidence_to_process=0.12,
+                )
+            self.assertTrue(ev["accepted"])
+            self.assertEqual(ev["out_species"], "House Sparrow")
+            meta = (ev.get("classifier_candidate") or {})
+            # prior: 0.08+0.20=0.28 > jay 0.12
+            self.assertGreaterEqual(
+                float(meta.get("avg_classifier_confidence") or 0.0), 0.25
+            )
+
+    def test_prior_rerank_does_not_invent_over_strong_pigeon(self):
+        """Tiny dove soft must not beat strong pigeon after prior (no confuse override)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            write_site_adapter_manifest(
+                tmp,
+                version="unit-columbidae",
+                source="unit_test",
+                status=STATUS_ACTIVE,
+                canary_share=1.0,
+                species_priors={
+                    "eurasian collared-dove": 0.35,
+                    "common wood pigeon": 0.02,
+                },
+            )
+            cfg = _Cfg(
+                {
+                    "processor.classifier_best_guess_min_confidence": 0.10,
+                    "processor.birder_eu_min_confidence": 0.15,
+                    "processor.linear_static_pinned_reject_enabled": False,
+                }
+            )
+            track = _track(conf=0.4, species=None)
+            track["track_id"] = 7
+            track["classifier_events"] = [
+                {
+                    "species_name": "Common Wood Pigeon",
+                    "confidence": 0.78,
+                    "combined_confidence": 0.78,
+                },
+                {
+                    "species_name": "Eurasian Collared-Dove",
+                    "confidence": 0.04,
+                    "combined_confidence": 0.04,
+                    "soft": True,
+                    "soft_reason": "topk_prior",
+                },
+            ]
+            with patch("processor_support.get_data_dir", return_value=tmp):
+                ev = evaluate_track_linear(
+                    app_config=cfg,
+                    track=track,
+                    min_track_duration=0.0,
+                    min_confidence_to_process=0.12,
+                )
+            self.assertTrue(ev["accepted"])
+            self.assertEqual(ev["out_species"], "Common Wood Pigeon")
+
+    def test_prior_rerank_dove_wins_mid_conf_pigeon(self):
+        """Real dove near-miss + prior beats mid-conf pigeon."""
+        with tempfile.TemporaryDirectory() as tmp:
+            write_site_adapter_manifest(
+                tmp,
+                version="unit-dove-mid",
+                source="unit_test",
+                status=STATUS_ACTIVE,
+                canary_share=1.0,
+                species_priors={
+                    "eurasian collared dove": 0.20,
+                    "common wood pigeon": 0.02,
+                },
+            )
+            cfg = _Cfg(
+                {
+                    "processor.classifier_best_guess_min_confidence": 0.10,
+                    "processor.birder_eu_min_confidence": 0.15,
+                    "processor.linear_static_pinned_reject_enabled": False,
+                }
+            )
+            track = _track(conf=0.4, species=None)
+            track["track_id"] = 8
+            track["classifier_events"] = [
+                {
+                    "species_name": "Common Wood Pigeon",
+                    "confidence": 0.28,
+                    "combined_confidence": 0.28,
+                },
+                {
+                    "species_name": "Eurasian collared dove",
+                    "confidence": 0.18,
+                    "combined_confidence": 0.18,
+                    "soft": True,
+                },
+            ]
+            with patch("processor_support.get_data_dir", return_value=tmp):
+                ev = evaluate_track_linear(
+                    app_config=cfg,
+                    track=track,
+                    min_track_duration=0.0,
+                    min_confidence_to_process=0.12,
+                )
+            self.assertTrue(ev["accepted"])
+            self.assertEqual(ev["out_species"], "Eurasian collared dove")
 
 
 if __name__ == "__main__":

@@ -26,6 +26,14 @@ class BirderEuClassifierResult:
     top1_confidence: float
     entropy: float
     top1_top2_margin: float
+    # Named near-miss when primary is Unknown (low conf / open-set). Soft finalize may keep it.
+    alt_species_name: str | None = None
+    alt_confidence: float | None = None
+    # Second-best named (always) for site-prior re-rank vs wrong top1.
+    runner_up_species_name: str | None = None
+    runner_up_confidence: float | None = None
+    # Top-k named (name, conf) for site-prior soft rescue vs confusion (pigeon/dove).
+    top_named: tuple[tuple[str, float], ...] = ()
 
 
 def _load_manifest(weights_dir: Path) -> dict[str, Any]:
@@ -218,6 +226,41 @@ class BirderEuClassifier:
 
         raise ValueError(f"Unsupported backend: {self.backend}")
 
+    def _named_ranked(
+        self, probs: np.ndarray, *, exclude_id: int | None = None, top_k: int = 5
+    ) -> list[tuple[str, float]]:
+        """Top-k non-Unknown classes for soft finalize / prior rescue."""
+
+        def _is_unknown_label(label: str) -> bool:
+            return str(label or "").strip().lower() in ("unknown", "unknown bird")
+
+        ids = (
+            list(self._allowed_ids)
+            if self._allowed_ids is not None
+            else list(range(len(probs)))
+        )
+        ranked: list[tuple[str, float]] = []
+        for i in ids:
+            if i >= len(probs) or (exclude_id is not None and i == exclude_id):
+                continue
+            label = self.id2label.get(i, self.unknown_label)
+            if _is_unknown_label(label):
+                continue
+            name = str(label).strip()
+            if not name:
+                continue
+            ranked.append((name, float(probs[i])))
+        ranked.sort(key=lambda x: x[1], reverse=True)
+        return ranked[: max(1, int(top_k))]
+
+    def _best_named_alt(
+        self, probs: np.ndarray, *, exclude_id: int | None = None
+    ) -> tuple[str | None, float]:
+        ranked = self._named_ranked(probs, exclude_id=exclude_id, top_k=1)
+        if not ranked:
+            return None, 0.0
+        return ranked[0][0], ranked[0][1]
+
     def classify_crop_bgr(self, crop_bgr: np.ndarray) -> BirderEuClassifierResult:
         probs = self._infer_probs(crop_bgr)
         ent, margin = _entropy_margin(probs)
@@ -236,13 +279,44 @@ class BirderEuClassifier:
             best_id = int(np.argmax(probs))
             conf = float(probs[best_id])
 
-        if conf < self.min_confidence:
-            return BirderEuClassifierResult(self.unknown_label, conf, ent, margin)
-
         label = self.id2label.get(best_id, self.unknown_label)
+        top_named = tuple(self._named_ranked(probs, exclude_id=None, top_k=35))
         if _is_unknown_label(label):
-            return BirderEuClassifierResult(self.unknown_label, conf, ent, margin)
-        return BirderEuClassifierResult(label, conf, ent, margin)
+            alt, alt_conf = self._best_named_alt(probs, exclude_id=best_id)
+            return BirderEuClassifierResult(
+                self.unknown_label,
+                float(conf),
+                ent,
+                margin,
+                alt_species_name=alt,
+                alt_confidence=float(alt_conf) if alt else None,
+                top_named=top_named,
+            )
+
+        if conf < self.min_confidence:
+            named = str(label).strip() or None
+            ru, ru_conf = self._best_named_alt(probs, exclude_id=best_id)
+            return BirderEuClassifierResult(
+                self.unknown_label,
+                conf,
+                ent,
+                margin,
+                alt_species_name=named,
+                alt_confidence=float(conf) if named else None,
+                runner_up_species_name=ru,
+                runner_up_confidence=float(ru_conf) if ru else None,
+                top_named=top_named,
+            )
+        ru, ru_conf = self._best_named_alt(probs, exclude_id=best_id)
+        return BirderEuClassifierResult(
+            label,
+            conf,
+            ent,
+            margin,
+            runner_up_species_name=ru,
+            runner_up_confidence=float(ru_conf) if ru else None,
+            top_named=top_named,
+        )
 
     def warmup(self) -> None:
         dummy = np.zeros((self._input_size, self._input_size, 3), dtype=np.uint8)

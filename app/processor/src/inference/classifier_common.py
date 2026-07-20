@@ -26,4 +26,6 @@ def entropy_margin(probs: np.ndarray) -> tuple[float, float]:
 
 
 def normalize_species_label(name: str) -> str:
-    return str(name or "").replace("_OR_", "/").replace("_", " ").strip()
+    # Collapse hyphen/underscore variants so "Collared-Dove" matches Birder "collared dove".
+    raw = str(name or "").replace("_OR_", "/").replace("_", " ").replace("-", " ")
+    return " ".join(raw.split()).strip()

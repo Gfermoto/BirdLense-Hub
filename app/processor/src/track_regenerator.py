@@ -69,6 +69,7 @@ def _dedupe_track_detections(detections: list[dict]) -> list[dict]:
             key = (
                 track_id,
                 str(detection.get("detection_provider") or ""),
+                str(detection.get("species_name") or "").strip().lower(),
             )
         if key is None:
             deduped[(id(detection),)] = detection
@@ -91,6 +92,197 @@ def _dedupe_track_detections(detections: list[dict]) -> list[dict]:
             drop.get("species_name"),
         )
     return list(deduped.values())
+
+
+
+def _soft_near_miss_detections(tracks, app_config, species_mapping) -> list[dict]:
+    """Emit review-only rows for prior-backed soft near-miss (e.g. dove under pigeon)."""
+    from species_normalizer import normalize
+    from processor_config_defaults import CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE
+
+    try:
+        min_guess = float(
+            app_config.get("processor.classifier_best_guess_min_confidence")
+            or CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE
+        )
+    except (TypeError, ValueError):
+        min_guess = float(CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE)
+
+    unknown = {"bird", "unknown", "unknown bird"}
+    try:
+        u = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird").strip().lower()
+        unknown.add(u)
+    except Exception:
+        pass
+
+    soft_reasons = {"topk_prior", "unknown_topk_prior"}
+    adjust_fn = None
+    data_dir = None
+    try:
+        from processor_support import get_data_dir
+        from site_adapter import adjust_confidence_with_site_adapter
+
+        adjust_fn = adjust_confidence_with_site_adapter
+        data_dir = get_data_dir()
+    except Exception:
+        pass
+
+    extras: list[dict] = []
+    seen: set[tuple] = set()
+    for tid, track in (tracks or {}).items():
+        if not isinstance(track, dict):
+            continue
+        frames = track.get("frames") or []
+        try:
+            start_time = float(track.get("start_time") or 0.0)
+            end_time = float(track.get("end_time") or start_time)
+        except (TypeError, ValueError):
+            start_time, end_time = 0.0, 0.0
+        for ev in track.get("classifier_events") or []:
+            if not isinstance(ev, dict) or not ev.get("soft"):
+                continue
+            if str(ev.get("soft_reason") or "") not in soft_reasons:
+                continue
+            raw = str(ev.get("species_name") or "").strip()
+            if not raw or raw.lower() in unknown:
+                continue
+            try:
+                conf = float(ev.get("confidence") or 0.0)
+            except (TypeError, ValueError):
+                conf = 0.0
+            adj = conf
+            if adjust_fn is not None and data_dir is not None:
+                try:
+                    adj, info = adjust_fn(
+                        data_dir=data_dir,
+                        species=raw,
+                        confidence=conf,
+                        track_id=tid,
+                    )
+                    if not info.get("applied"):
+                        adj = conf
+                except Exception:
+                    adj = conf
+            if adj < min_guess:
+                continue
+            species_name = normalize(raw, species_mapping) if raw else raw
+            key = (tid, str(species_name or "").strip().lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            extras.append(
+                {
+                    "species_name": species_name,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "confidence": float(adj),
+                    "track_id": tid,
+                    "frames": frames,
+                    "source": "video",
+                    "detection_provider": "yolo_soft_near_miss",
+                    "decision_reason": "soft_classifier_near_miss",
+                    "decision_kind": "review_only_uncertain_species",
+                    "visit_eligible": False,
+                    "notification_eligible": False,
+                    "classifier_needs_review": True,
+                    "evidence_state": "weak_classifier",
+                }
+            )
+    return extras
+
+
+def _companion_hard_named_detections(tracks, app_config, species_mapping) -> list[dict]:
+    """If soft near-miss fired on a track, also emit hard named parent (e.g. pigeon)."""
+    from species_normalizer import normalize
+    from processor_config_defaults import CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE
+
+    try:
+        min_guess = float(
+            app_config.get("processor.classifier_best_guess_min_confidence")
+            or CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE
+        )
+    except (TypeError, ValueError):
+        min_guess = float(CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE)
+
+    unknown = {"bird", "unknown", "unknown bird"}
+    try:
+        unknown.add(str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird").strip().lower())
+    except Exception:
+        pass
+
+    soft_reasons = {"topk_prior", "unknown_topk_prior"}
+    adjust_fn = None
+    data_dir = None
+    try:
+        from processor_support import get_data_dir
+        from site_adapter import adjust_confidence_with_site_adapter
+
+        adjust_fn = adjust_confidence_with_site_adapter
+        data_dir = get_data_dir()
+    except Exception:
+        pass
+
+    extras: list[dict] = []
+    seen: set[tuple] = set()
+    for tid, track in (tracks or {}).items():
+        if not isinstance(track, dict):
+            continue
+        events = [e for e in (track.get("classifier_events") or []) if isinstance(e, dict)]
+        if not any(e.get("soft") and str(e.get("soft_reason") or "") in soft_reasons for e in events):
+            continue
+        frames = track.get("frames") or []
+        try:
+            start_time = float(track.get("start_time") or 0.0)
+            end_time = float(track.get("end_time") or start_time)
+        except (TypeError, ValueError):
+            start_time, end_time = 0.0, 0.0
+        for ev in events:
+            if ev.get("soft"):
+                continue
+            raw = str(ev.get("species_name") or "").strip()
+            if not raw or raw.lower() in unknown:
+                continue
+            try:
+                conf = float(ev.get("confidence") or 0.0)
+            except (TypeError, ValueError):
+                conf = 0.0
+            adj = conf
+            if adjust_fn is not None and data_dir is not None:
+                try:
+                    adj, info = adjust_fn(
+                        data_dir=data_dir, species=raw, confidence=conf, track_id=tid
+                    )
+                    if not info.get("applied"):
+                        adj = conf
+                except Exception:
+                    adj = conf
+            if adj < min_guess:
+                continue
+            species_name = normalize(raw, species_mapping) if raw else raw
+            key = (tid, str(species_name or "").strip().lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            extras.append(
+                {
+                    "species_name": species_name,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "confidence": float(adj),
+                    "track_id": tid,
+                    "frames": frames,
+                    "source": "video",
+                    "detection_provider": "yolo_hard_companion",
+                    "decision_reason": "hard_companion_of_soft_near_miss",
+                    "decision_kind": "review_only_uncertain_species",
+                    "visit_eligible": False,
+                    "notification_eligible": False,
+                    "classifier_needs_review": True,
+                    "evidence_state": "weak_classifier",
+                }
+            )
+    return extras
+
 
 
 def build_detection_pipeline(
@@ -243,6 +435,19 @@ def process_video_for_tracks(
             if copy_key in r:
                 row[copy_key] = r[copy_key]
         detections.append(row)
+    existing = {
+        (d.get("track_id"), str(d.get("species_name") or "").strip().lower())
+        for d in detections
+    }
+    for extra in (
+        _soft_near_miss_detections(frame_processor.tracks, app_config, species_mapping)
+        + _companion_hard_named_detections(frame_processor.tracks, app_config, species_mapping)
+    ):
+        key = (extra.get("track_id"), str(extra.get("species_name") or "").strip().lower())
+        if key in existing:
+            continue
+        detections.append(extra)
+        existing.add(key)
     detections = _dedupe_track_detections(detections)
     if metrics_out is not None:
         species = sorted(

@@ -475,6 +475,11 @@ class ClassifierOutput:
     top1_confidence: float
     entropy: float
     top1_top2_margin: float
+    alt_species_name: Optional[str] = None
+    alt_confidence: Optional[float] = None
+    runner_up_species_name: Optional[str] = None
+    runner_up_confidence: Optional[float] = None
+    top_named: Optional[list] = None
 
 
 @dataclass
@@ -933,6 +938,11 @@ class TwoStageStrategy(DetectionStrategy):
                 float(out.top1_confidence),
                 float(out.entropy),
                 float(out.top1_top2_margin),
+                alt_species_name=getattr(out, "alt_species_name", None),
+                alt_confidence=getattr(out, "alt_confidence", None),
+                runner_up_species_name=getattr(out, "runner_up_species_name", None),
+                runner_up_confidence=getattr(out, "runner_up_confidence", None),
+                top_named=list(getattr(out, "top_named", None) or []),
             )
 
         _cls_kwargs: dict = {"verbose": False}

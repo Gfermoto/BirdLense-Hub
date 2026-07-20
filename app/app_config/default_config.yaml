@@ -578,6 +578,9 @@ processor:
   classifier_best_guess_enabled: true
   classifier_best_guess_min_confidence: 0.06
   classifier_best_guess_min_events: 1
+  # Soft near-miss classifier events (below min_guess) for site-prior re-rank / rescue.
+  classifier_soft_events_enabled: true
+  classifier_soft_min_confidence: 0.01
   # Trapper Rodent → каталог Rodent (не birder_eu)
   squirrel_species_label: "Rodent"
   # ONNX Runtime CUDA EP (Orin).
