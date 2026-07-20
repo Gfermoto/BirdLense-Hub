@@ -16,10 +16,9 @@
     },
     {
       "clip": "clips/458_common_wood_pigeon.mp4",
-      "expected_kind": "review",
+      "expected_kind": "named_accept",
       "expected_species": "Common Wood Pigeon",
-      "mqtt": "off",
-      "notes": "demoted: unstable named_accept on current stack"
+      "mqtt": "off"
     },
     {
       "clip": "clips/462_eurasian_collared_dove.mp4",
