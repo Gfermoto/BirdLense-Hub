@@ -391,6 +391,7 @@ def enrich_tracks_classifier_at_finalize(
             )
 
     appended = 0
+    invent_budget = 1  # max prior_open_set_guess per video
     timed_out = False
     no_crop_tracks = 0
     classify_errors = 0
@@ -657,56 +658,61 @@ def enrich_tracks_classifier_at_finalize(
                                 pass
                         # Skip invent when coli mass / non-flat peak / alt already soft-accepted.
                         _skip_invent = (
-                            _coli_mass >= 0.001
-                            or _peak >= 0.003
+                            invent_budget <= 0
+                            or _coli_mass >= 0.001
+                            or _peak >= 0.002
                             or (bool(alt_s) and alt_conf >= prior_floor)
                         )
                         manifest = None if _skip_invent else load_site_adapter(data_dir)
                         if manifest is not None:
                             # Thrush/sparrow open-set rescue (not columbidae invent).
+                            # Thrush-only open-set rescue; max invent_budget per video.
+                            if invent_budget <= 0 or _peak >= 0.002:
+                                manifest = None
                             _OPEN_SET_DISPLAY = {
                                 "fieldfare": "Fieldfare",
                                 "mistle thrush": "Mistle Thrush",
                                 "song thrush": "Song Thrush",
                                 "redwing": "Redwing",
-                                "house sparrow": "House Sparrow",
-                                "great tit": "Great Tit",
                             }
-                            ranked = sorted(
-                                (
-                                    (float(delta), prior_name)
-                                    for prior_name, delta in manifest.priors_map().items()
-                                    if prior_name in _OPEN_SET_DISPLAY and float(delta) >= 0.15
-                                ),
-                                reverse=True,
-                            )
-                            for delta, prior_name in ranked[:1]:
-                                display = _OPEN_SET_DISPLAY[prior_name]
-                                guess_conf = max(soft_min, 0.05)
-                                adj, info = adjust_confidence_with_site_adapter(
-                                    data_dir=data_dir,
-                                    species=display,
-                                    confidence=guess_conf,
-                                    track_id=track_id,
+                            if manifest is not None:
+                                ranked = sorted(
+                                    (
+                                        (float(delta), prior_name)
+                                        for prior_name, delta in manifest.priors_map().items()
+                                        if prior_name in _OPEN_SET_DISPLAY and float(delta) >= 0.20
+                                    ),
+                                    reverse=True,
                                 )
-                                if not info.get("applied"):
-                                    continue
-                                track.setdefault("classifier_events", []).append(
-                                    {
-                                        "species_name": display,
-                                        "confidence": guess_conf,
-                                        "detector_confidence": det_conf,
-                                        "combined_confidence": det_conf * guess_conf,
-                                        "entropy": getattr(out, "entropy", None),
-                                        "top1_top2_margin": getattr(out, "top1_top2_margin", None),
-                                        "t": track.get("end_time"),
-                                        "source": str(event_source or "finalize_deferred"),
-                                        "crop_source": crop_src,
-                                        "soft": True,
-                                        "soft_reason": "prior_open_set_guess",
-                                    }
-                                )
-                                appended += 1
+                                for delta, prior_name in ranked[:1]:
+                                    display = _OPEN_SET_DISPLAY[prior_name]
+                                    guess_conf = max(soft_min, 0.05)
+                                    adj, info = adjust_confidence_with_site_adapter(
+                                        data_dir=data_dir,
+                                        species=display,
+                                        confidence=guess_conf,
+                                        track_id=track_id,
+                                    )
+                                    if not info.get("applied"):
+                                        continue
+                                    track.setdefault("classifier_events", []).append(
+                                        {
+                                            "species_name": display,
+                                            "confidence": guess_conf,
+                                            "detector_confidence": det_conf,
+                                            "combined_confidence": det_conf * guess_conf,
+                                            "entropy": getattr(out, "entropy", None),
+                                            "top1_top2_margin": getattr(out, "top1_top2_margin", None),
+                                            "t": track.get("end_time"),
+                                            "source": str(event_source or "finalize_deferred"),
+                                            "crop_source": crop_src,
+                                            "soft": True,
+                                            "soft_reason": "prior_open_set_guess",
+                                        }
+                                    )
+                                    appended += 1
+                                    invent_budget -= 1
+                                    break
                     except Exception:
                         pass
                 unknown_skips += 1

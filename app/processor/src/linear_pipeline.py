@@ -194,10 +194,18 @@ def _species_from_classifier(
                 info = {"applied": False}
         return float(adj), avg, info
 
-    def _score(name: str) -> tuple[float, int, float]:
-        """Prior-aware rank: adjusted conf, then vote count, then raw avg."""
+    def _invent_only(name: str) -> bool:
+        rows = by_name[name]
+        return bool(rows) and all(
+            r.get("soft") and str(r.get("soft_reason") or "") == "prior_open_set_guess"
+            for r in rows
+        )
+
+    def _score(name: str) -> tuple[int, float, int, float]:
+        """Prefer real model mass over open-set invent; then prior-aware adj."""
         adj, avg, _info = _adjust(name)
-        return (adj, len(by_name[name]), avg)
+        # invent_only=0 ranks above invent_only=1
+        return (0 if _invent_only(name) else 1, adj, len(by_name[name]), avg)
 
     # Prior re-rank only (adj conf). No confuse-group / tiny-mass dove override —
     # those flipped true pigeon clips when long-tail dove got site prior.
@@ -241,7 +249,14 @@ def _species_from_classifier(
     if avg_cls < min_guess:
         meta["abstain"] = "low_conf"
         return None, avg_cls, True, meta
-    needs_review = avg_cls < birder_min or soft_share >= 1.0
+    invent_share = sum(
+        1
+        for r in rows
+        if r.get("soft") and str(r.get("soft_reason") or "") == "prior_open_set_guess"
+    ) / max(1, len(rows))
+    needs_review = avg_cls < birder_min or soft_share >= 1.0 or invent_share > 0
+    if invent_share >= 1.0:
+        meta["invent_only"] = True
     return best_name, max(avg_combined, avg_cls), needs_review, meta
 
 
