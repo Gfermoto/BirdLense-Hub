@@ -70,7 +70,15 @@ def _valid_track_frames(frames: Any) -> list[dict[str, Any]]:
 
 
 def _row_exempt_from_video_bbox_requirement(row: dict[str, Any]) -> bool:
-    """Frameless MQTT-evidence rows are not YOLO track visits."""
+    """Only framed Frigate MQTT evidence may skip YOLO bbox contract.
+
+    Frameless Frigate standalone used to pass through as 0..duration visits —
+    full timeline stripe with no boxes. Those rows must be dropped here.
+    """
+    frames = row.get("frames")
+    has_frames = isinstance(frames, list) and bool(frames)
+    if not has_frames:
+        return False
     provider = str(row.get("detection_provider") or "").strip().lower()
     if provider == "frigate":
         return True

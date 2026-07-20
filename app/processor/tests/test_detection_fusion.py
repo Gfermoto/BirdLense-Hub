@@ -348,7 +348,8 @@ def test_frigate_standalone_creates_row_when_no_yolo():
     assert out[0]['yolo_track_present'] is False
 
 
-def test_frigate_standalone_keeps_rows_frameless_to_avoid_stuck_overlay_bbox():
+def test_frigate_standalone_frameless_is_not_visit_eligible():
+    """Without preserve_bbox_frames: no frames → no visit (avoids full-clip stripe)."""
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=20)
     cfg = DummyConfig({
@@ -384,6 +385,9 @@ def test_frigate_standalone_keeps_rows_frameless_to_avoid_stuck_overlay_bbox():
     )
     assert len(out) == 1
     assert not out[0].get('frames')
+    assert out[0]['visit_eligible'] is False
+    assert out[0]['notification_eligible'] is False
+    assert float(out[0]['end_time']) - float(out[0]['start_time']) <= 5.0
 
 
 def test_frigate_standalone_requires_geometry_by_default():
@@ -1379,6 +1383,10 @@ def test_frigate_standalone_preserves_mqtt_bbox_as_frames():
     assert len(out) == 1
     assert out[0]['detection_provider'] == 'frigate'
     assert out[0]['frames'] == [{'t': 4.25, 'bbox': [0.1, 0.2, 0.3, 0.4]}]
+    assert out[0]['visit_eligible'] is True
+    # Timed Frigate row must not span the whole clip.
+    assert float(out[0]['end_time']) - float(out[0]['start_time']) <= 8.0
+    assert float(out[0]['start_time']) <= 4.25 <= float(out[0]['end_time'])
 
 
 def test_build_fused_video_detections_keeps_fragmented_generic_bird_visits_separate():

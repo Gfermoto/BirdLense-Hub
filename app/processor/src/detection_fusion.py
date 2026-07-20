@@ -282,15 +282,44 @@ def _frigate_standalone_prepared_rows(
         suppressed = bool(pack.get("_standalone_suppressed"))
         kind = "frigate_standalone_excluded" if suppressed else "frigate_standalone"
         reason = "frigate_standalone_excluded_label" if suppressed else "frigate_standalone"
+        bbox = pack.get("frigate_bbox_norm")
+        preserve_bbox = bool(app_config.get("detection.frigate_standalone_preserve_bbox_frames", False))
+        frames = None
+        event_t = None
+        if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
+            try:
+                event_t = max(
+                    0.0,
+                    min(
+                        video_duration,
+                        (datetime.fromisoformat(str(pack.get("timestamp")).replace("Z", "+00:00")) - start_time).total_seconds(),
+                    ),
+                )
+                if preserve_bbox:
+                    frames = [{"t": round(event_t, 3), "bbox": [float(x) for x in bbox[:4]]}]
+            except (TypeError, ValueError, AttributeError):
+                logger.debug("frigate standalone bbox frame build failed", exc_info=True)
+                event_t = None
+                frames = None
+        # Frameless full-clip stripe is unusable in UI — no visit/notify; short window if timed.
+        has_frames = bool(frames)
+        visit_ok = (not suppressed) and has_frames
+        notify_ok = (not suppressed) and notify_standalone and has_frames
+        if event_t is not None:
+            start_t = max(0.0, event_t - 1.0)
+            end_t = min(video_duration, max(start_t + 0.5, event_t + 3.0))
+        else:
+            start_t = 0.0
+            end_t = min(video_duration, 2.0) if not has_frames else video_duration
         row = {
             "track_id": -(i + 1),
             "accepted": True,
-            "visit_eligible": True,
+            "visit_eligible": visit_ok,
             "species_name": species,
             "species": species,
             "confidence": conf,
-            "start_time": 0.0,
-            "end_time": video_duration,
+            "start_time": start_t,
+            "end_time": end_t,
             "detection_provider": "frigate",
             "detector_confidence": raw_c,
             "classifier_confidence": None,
@@ -300,28 +329,17 @@ def _frigate_standalone_prepared_rows(
             "confidence_level": "low",
             "outcome_bucket": compute_outcome_bucket(
                 accepted=True,
-                visit_eligible=True,
+                visit_eligible=visit_ok,
                 decision_kind=kind,
             ),
-            "notification_eligible": (not suppressed) and notify_standalone,
+            "notification_eligible": notify_ok,
+            "classifier_needs_review": not has_frames,
             "source": "video",
             "frigate_standalone": True,
             "frigate_merge_suppressed": suppressed,
         }
-        bbox = pack.get("frigate_bbox_norm")
-        preserve_bbox = bool(app_config.get("detection.frigate_standalone_preserve_bbox_frames", False))
-        if preserve_bbox and isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
-            try:
-                rel_t = max(
-                    0.0,
-                    min(
-                        video_duration,
-                        (datetime.fromisoformat(str(pack.get("timestamp")).replace("Z", "+00:00")) - start_time).total_seconds(),
-                    ),
-                )
-                row["frames"] = [{"t": round(rel_t, 3), "bbox": [float(x) for x in bbox[:4]]}]
-            except (TypeError, ValueError, AttributeError):
-                logger.debug("frigate standalone bbox frame build failed", exc_info=True)
+        if frames is not None:
+            row["frames"] = frames
         aliases: list[str] = []
         for key in ("species", "sub_label", "label"):
             raw_name = str((pack or {}).get(key) or "").strip()
